@@ -54,19 +54,20 @@ fn main() {
     );
     context.partition(args.verbose > 0);
 
-    /* Example that shows that failing attempts can be fixed
-    if args.antennas == 32 && args.multiplier == 30 && args.extra_bits == 1 {
-        context.replace(16, 27, 16);
-        context.replace(17, 10, 12);
-        context.replace(17, 25, 14);
-        context.replace(17, 2, 9);
-        context.sort_inputs();
-    }
-    */
-
     println!("{}", context);
     if args.verbose > 0 {
+        if args.verbose > 1 {
+            println!("{}", context.a_mux_array);
+            println!("{}", context.b_mux_array);
+        }
+
         let unneeded = context.find_unneeded();
-        println!("Uneeded {{\n{:?}\n}} (len: {})", unneeded, unneeded.len());
+        println!(
+            "Uneeded nodes (total = {}):\n{}",
+            unneeded.total_count(),
+            unneeded,
+        );
+
+        context.unit_scores();
     }
 }

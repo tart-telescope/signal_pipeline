@@ -7,6 +7,30 @@ pub struct Chunked<T> {
     values: Vec<T>,
 }
 
+impl<T: std::fmt::Display> std::fmt::Display for Chunked<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "Chunked {{")?;
+        writeln!(f, "    stride: {}", self.stride)?;
+        writeln!(f, "    length: {}", self.counts.len())?;
+        writeln!(f, "    counts: {:?}", self.counts)?;
+
+        writeln!(f, "    values: [")?;
+        let mut b = 0;
+        for i in 0..self.counts.len() {
+            let c = self.counts[i];
+            write!(f, "        [ ")?;
+            for j in b..b + c {
+                write!(f, "{} ", &self.values[j])?;
+            }
+            writeln!(f, "]")?;
+            b += self.stride;
+        }
+
+        writeln!(f, "    ]")?;
+        writeln!(f, "}}")
+    }
+}
+
 impl<T> Default for Chunked<T> {
     fn default() -> Self {
         Self {
@@ -170,9 +194,26 @@ impl<T: Default + Clone + PartialEq> Chunked<T> {
         }
     }
 
+    pub fn total_count(&self) -> usize {
+        let mut sum = 0;
+        for c in self.counts.iter() {
+            sum += *c;
+        }
+        sum
+    }
+
     pub fn reset(&mut self) -> &mut Self {
         self.counts.fill(0);
         self
+    }
+}
+
+impl<T: Ord> Chunked<T> {
+    pub fn sort_chunks(&mut self) {
+        for (i, xs) in self.values.chunks_mut(self.stride).enumerate() {
+            assert_eq!(self.stride, self.counts[i]);
+            xs.sort_unstable();
+        }
     }
 }
 
@@ -189,6 +230,20 @@ impl<T> core::ops::Index<usize> for Chunked<T> {
         }
         let p = index * self.stride;
         self.values.get(p..p + self.counts[index]).unwrap() as &[T]
+    }
+}
+
+impl<T> core::ops::IndexMut<usize> for Chunked<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index >= self.counts.len() {
+            panic!(
+                "Out of bounds! (index: {} > length: {})",
+                index,
+                self.counts.len()
+            );
+        }
+        let p = index * self.stride;
+        self.values.get_mut(p..p + self.counts[index]).unwrap() as &mut [T]
     }
 }
 

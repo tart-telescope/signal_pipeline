@@ -1,29 +1,11 @@
-.PHONY:	all doc build run clean
-all:	run build build/gen doc
+.PHONY:	all doc clean
+all:	doc
 
 #
 #  Generator settings
 ##
 
-# Build sources and artifacts
-SRCS	= $(wildcard src/*.c)
-OBJS	= $(SRCS:src/%.c=build/%.o)
-
-SOURCES	?= 8
-CORRELS ?= 4
-
-run:	build build/gen
-	./build/gen $(SOURCES) $(CORRELS)
-
-build/gen:	$(OBJS)
-	+gcc $^ -lm -o $@
-
-build:
-	@mkdir -p build
-
-build/%.o: src/%.c
-	+gcc -c $< -o $@
-
+# TODO:
 
 #
 #  Documentation settings

@@ -32,13 +32,8 @@ pub struct Context {
     nodes_count: Vec<usize>,
 
     /* (Current, A- & B-) MUX assignments */
-    a_mux_array: Chunked<usize>,
-    b_mux_array: Chunked<usize>,
-
-    a_mux_count: Vec<usize>,
-    a_mux_nodes: Vec<usize>,
-    b_mux_count: Vec<usize>,
-    b_mux_nodes: Vec<usize>,
+    pub a_mux_array: Chunked<usize>,
+    pub b_mux_array: Chunked<usize>,
 }
 
 impl fmt::Display for Context {
@@ -62,7 +57,8 @@ impl fmt::Display for Context {
 
         if !self.is_complete() || self.verbose {
             writeln!(f, "    edges_pairs {{")?;
-            for (i, (s, d)) in self.edges_array.clone().into_iter().enumerate() {
+            for (i, (s, d)) in self.edges_array.clone().into_iter().enumerate()
+            {
                 let c = from_count("count: ", self.edges_count[i]);
                 let p = from_count("pairs: ", self.pairs_count[i]);
                 writeln!(
@@ -76,14 +72,13 @@ impl fmt::Display for Context {
         writeln!(f, "    nodes_count: {:?}", self.nodes_count)?;
 
         writeln!(f, "    mux {{")?;
-        for i in 0..self.num_units {
-            let b = i * self.mux_width;
-            let x = Vec::from(&self.a_mux_nodes[b..(b + self.a_mux_count[i])]);
+        for u in 0..self.num_units {
+            let x = Vec::from(&self.a_mux_array[u]);
             let s = format!("{:?}", x);
-            let y = Vec::from(&self.b_mux_nodes[b..(b + self.b_mux_count[i])]);
+            let y = Vec::from(&self.b_mux_array[u]);
             let pads = " ".repeat(2 + (self.mux_width * 4 - s.len()) % 8);
             let tabs = "\t".repeat(1 + (self.mux_width * 4 - s.len()) / 8);
-            write!(f, "        COR{}\tA:{}", i, s)?;
+            write!(f, "        COR{}\tA:{}", u, s)?;
             writeln!(f, "{}{}B:{:?}", pads, tabs, y)?;
         }
         writeln!(f, "    }}")?;
@@ -106,7 +101,8 @@ impl Context {
         } else {
             (num_antennas * num_antennas) >> 1
         };
-        let num_units: usize = (num_calcs as f64 / clock_multiplier as f64).ceil() as usize;
+        let num_units: usize =
+            (num_calcs as f64 / clock_multiplier as f64).ceil() as usize;
 
         // If using means, then '+1', and if fewer correlators than antennas,
         // then another '+1'?
@@ -114,7 +110,8 @@ impl Context {
         if num_units < num_antennas {
             extras += 1;
         }
-        let width0: usize = ((clock_multiplier + extras) as f64).sqrt().ceil() as usize;
+        let width0: usize =
+            ((clock_multiplier + extras) as f64).sqrt().ceil() as usize;
         let width1: usize = num_antennas >> 1;
         let mux_width: usize = width1.min(width0 + extra_bits);
 
@@ -134,50 +131,21 @@ impl Context {
 
             a_mux_array: Chunked::new(mux_width, num_units),
             b_mux_array: Chunked::new(mux_width, num_units),
-
-            a_mux_count: vec![0; num_units],
-            a_mux_nodes: vec![0; num_units * mux_width],
-            b_mux_count: vec![0; num_units],
-            b_mux_nodes: vec![0; num_units * mux_width],
         }
     }
 
     // -- PRIVATE NODES FUNCTIONS -- //
 
-    fn a_mux_contains(&self, unit: usize, node: usize) -> bool {
-        let mut index = unit * self.mux_width;
-        let limit = index + self.a_mux_count[unit];
-
-        while index < limit {
-            if self.a_mux_nodes[index] == node {
-                return true;
-            }
-            index += 1;
-        }
-
-        false
-    }
-
-    fn b_mux_contains(&self, unit: usize, node: usize) -> bool {
-        let mut index = unit * self.mux_width;
-        let limit = index + self.b_mux_count[unit];
-
-        while index < limit {
-            if self.b_mux_nodes[index] == node {
-                return true;
-            }
-            index += 1;
-        }
-
-        false
-    }
-
     pub fn can_insert_a_node(&self, unit: usize, node: usize) -> bool {
-        self.a_mux_contains(unit, node) || self.a_mux_count[unit] < self.mux_width
+        (self.a_mux_array[unit].contains(&node)
+            || self.a_mux_array[unit].len() < self.mux_width)
+            && !self.b_mux_array[unit].contains(&node)
     }
 
     pub fn can_insert_b_node(&self, unit: usize, node: usize) -> bool {
-        self.b_mux_contains(unit, node) || self.b_mux_count[unit] < self.mux_width
+        (self.b_mux_array[unit].contains(&node)
+            || self.b_mux_array[unit].len() < self.mux_width)
+            && !self.a_mux_array[unit].contains(&node)
     }
 
     /**
@@ -186,39 +154,22 @@ impl Context {
      */
     fn insert_a_node(&mut self, unit: usize, node: usize) -> usize {
         let mut edges = 0;
-        if self.a_mux_contains(unit, node) {
-            return edges;
-        } else if self.b_mux_contains(unit, node) {
-            println!(
-                "ERROR: attempt to insert '{}' into A-MUX, when present in B-MUX!\n",
-                node
-            );
-            return edges;
-        }
-
-        let width = self.mux_width;
-        let count = self.a_mux_count[unit];
-        let base = unit * width;
-
-        assert!(count <= width);
-        if count == width {
+        if !self.can_insert_a_node(unit, node) {
             return edges;
         }
 
         // Update all node pairs-counts due to the other MUX inputs
-        for dest in &self.a_mux_nodes[base..(base + count)] {
+        for dest in self.a_mux_array[unit].iter() {
             // For each A-MUX node, increase the corresponding A-A pairs count
             let index = self.calc_edge_index(node, *dest);
             self.pairs_count[index] += 1;
         }
 
-        self.a_mux_nodes[base + count] = node;
-        self.a_mux_count[unit] = count + 1;
+        self.a_mux_array.push(unit, node);
         self.nodes_count[node] += 1;
 
         // Compute any new edges due to the new A-MUX node
-        let count = self.b_mux_count[unit];
-        for dest in &self.b_mux_nodes[base..(base + count)] {
+        for dest in self.b_mux_array[unit].iter() {
             // For each B-MUX node, increase the corresponding A-B edge count
             let index = self.calc_edge_index(node, *dest);
             let e_num = self.edges_count[index];
@@ -240,39 +191,22 @@ impl Context {
      */
     fn insert_b_node(&mut self, unit: usize, node: usize) -> usize {
         let mut edges = 0;
-        if self.b_mux_contains(unit, node) {
-            return edges;
-        } else if self.b_mux_contains(unit, node) {
-            println!(
-                "ERROR: attempt to insert '{}' into B-MUX, when present in A-MUX!\n",
-                node
-            );
-            return edges;
-        }
-
-        let width = self.mux_width;
-        let count = self.b_mux_count[unit];
-        let base = unit * width;
-
-        assert!(count <= width);
-        if count == width {
+        if !self.can_insert_b_node(unit, node) {
             return edges;
         }
 
         // Update all node pairs-counts due to the other MUX inputs
-        for dest in &self.b_mux_nodes[base..(base + count)] {
+        for dest in self.b_mux_array[unit].iter() {
             // For each B-MUX node, increase the corresponding B-B pairs count
             let index = self.calc_edge_index(node, *dest);
             self.pairs_count[index] += 1;
         }
 
-        self.b_mux_nodes[base + count] = node;
-        self.b_mux_count[unit] = count + 1;
+        self.b_mux_array.push(unit, node);
         self.nodes_count[node] += 1;
 
         // Compute any new edges due to the new B-MUX node
-        let count = self.a_mux_count[unit];
-        for dest in &self.a_mux_nodes[base..(base + count)] {
+        for dest in self.a_mux_array[unit].iter() {
             // For each A-MUX node, increase the corresponding A-B edge count
             let index = self.calc_edge_index(node, *dest);
             let e_num = self.edges_count[index];
@@ -290,24 +224,28 @@ impl Context {
 
     // -- PUBLIC NODES FUNCTIONS -- //
 
-    pub fn insert_node_pair(&mut self, unit: usize, node_a: usize, node_b: usize) -> usize {
+    pub fn insert_node_pair(
+        &mut self,
+        unit: usize,
+        node_a: usize,
+        node_b: usize,
+    ) -> usize {
         if node_a == node_b {
             panic!("RETARTED!!");
         }
-
         // Insert the A-MUX node, if not present, and update edge-counts
-        let edges = self.insert_a_node(unit, node_a);
-
-        // Insert the B-MUX node, if not present, and update edge-counts
-        edges + self.insert_b_node(unit, node_b)
+        self.insert_a_node(unit, node_a) + self.insert_b_node(unit, node_b)
     }
 
     // -- PRIVATE EDGES FUNCTIONS -- //
 
+    /**
+     *  Computed by expanding out the expressions for the upper-triangular
+     *  matrix coordinates to array-index.
+     */
     fn calc_edge_index(&self, node_a: usize, node_b: usize) -> usize {
         let src = if node_a > node_b { node_b } else { node_a };
         let dst = if node_a > node_b { node_a } else { node_b };
-
         assert!(src < dst);
 
         ((src * ((self.num_antennas << 1) - 3 - src)) >> 1) + dst - 1
@@ -315,7 +253,8 @@ impl Context {
 
     fn make_edges(num_antennas: usize) -> Vec<(usize, usize)> {
         let num_edges: usize = (num_antennas * (num_antennas - 1)) >> 1;
-        let mut edges: Vec<(usize, usize)> = Vec::<(usize, usize)>::with_capacity(num_edges);
+        let mut edges: Vec<(usize, usize)> =
+            Vec::<(usize, usize)>::with_capacity(num_edges);
 
         for i in 0..num_antennas {
             for j in i + 1..num_antennas {
@@ -349,19 +288,15 @@ impl Context {
         let (mut node_a, mut node_b) = self.edges_array[edge];
 
         // Determine the required A- & B- nodes for the edge
-        if self.a_mux_contains(unit, node_b) {
-            if self.b_mux_contains(unit, node_a) {
+        if self.a_mux_array[unit].contains(&node_b) {
+            if self.b_mux_array[unit].contains(&node_a) {
                 // Already present, so zero new edges
                 return 0;
             } else {
-                // SWAP
-                (node_a, node_b) = (node_b, node_a);
-                // let mut temp = node_a; node_a = node_b; node_b = temp;
+                (node_a, node_b) = (node_b, node_a); // SWAP
             }
-        } else if self.b_mux_contains(unit, node_a) {
-            // SWAP
-            (node_a, node_b) = (node_b, node_a);
-            // let mut temp = node_a; node_a = node_b; node_b = temp;
+        } else if self.b_mux_array[unit].contains(&node_a) {
+            (node_a, node_b) = (node_b, node_a); // SWAP
         }
 
         self.insert_node_pair(unit, node_a, node_b)
@@ -409,7 +344,7 @@ impl Context {
     // -- PUBLIC PARTS -- //
 
     pub fn num_nodes_at(&self, unit: usize) -> usize {
-        self.a_mux_count[unit] + self.b_mux_count[unit]
+        self.a_mux_array[unit].len() + self.b_mux_array[unit].len()
     }
 
     pub fn get_mux_width(&self) -> usize {
@@ -458,56 +393,98 @@ impl Context {
      */
     fn a_mux_score(&self, unit: usize, node: usize) -> (usize, usize, usize) {
         // Can not insert into both A- & B- MUXs, or already in A-MUX
-        if self.b_mux_contains(unit, node) || self.a_mux_contains(unit, node) {
+        if self.b_mux_array[unit].contains(&node)
+            || self.a_mux_array[unit].contains(&node)
+        {
             return (usize::MAX, usize::MAX, usize::MAX);
         }
 
         // To start with, compute the global score
-        let (mut edge_score, mut pair_score, node_score) = self.node_score(node);
+        let (edges, pairs, nodes) = self.node_score(node);
+        let mut edge_score = 0;
+        let mut dups_score = edges + pairs;
 
         // Update the edge-score due to insertion of 'node'
-        let base = self.mux_width * unit;
-        for i in base..(base + self.b_mux_count[unit]) {
-            let edge = self.calc_edge_index(node, self.b_mux_nodes[i]);
-            edge_score += self.edges_count[edge] + 1;
+        for r in self.b_mux_array[unit].iter() {
+            let e = self.calc_edge_index(node, *r);
+            if self.edges_count[e] > 0 {
+                edge_score += 1;
+                dups_score += self.edges_count[e] + 1;
+            }
         }
 
         // Update the pair-score due to insertion of 'node'
-        for i in base..(base + self.a_mux_count[unit]) {
-            let pair = self.calc_edge_index(node, self.a_mux_nodes[i]);
-            pair_score += self.pairs_count[pair] + 1;
+        for r in self.a_mux_array[unit].iter() {
+            let e = self.calc_edge_index(node, *r);
+            dups_score += self.pairs_count[e] + 1;
         }
 
-        (edge_score, pair_score, node_score + 1)
+        (edge_score, dups_score, nodes + 1)
     }
 
     fn b_mux_score(&self, unit: usize, node: usize) -> (usize, usize, usize) {
         // Can not insert into both A- & B- MUXs, or already in B-MUX
-        if self.a_mux_contains(unit, node) || self.b_mux_contains(unit, node) {
+        if self.a_mux_array[unit].contains(&node)
+            || self.b_mux_array[unit].contains(&node)
+        {
             return (usize::MAX, usize::MAX, usize::MAX);
         }
 
         // To start with, compute the global score
-        let (mut edge_score, mut pair_score, node_score) = self.node_score(node);
+        let (edges, pairs, nodes) = self.node_score(node);
+        let mut edge_score = 0;
+        let mut dups_score = edges + pairs;
 
         // Update the edge-score due to insertion of 'node'
-        let base = self.mux_width * unit;
-        for i in base..(base + self.a_mux_count[unit]) {
-            let edge = self.calc_edge_index(node, self.a_mux_nodes[i]);
-            edge_score += self.edges_count[edge] + 1;
+        for r in self.a_mux_array[unit].iter() {
+            let e = self.calc_edge_index(node, *r);
+            if self.edges_count[e] > 0 {
+                edge_score += 1;
+                dups_score += self.edges_count[e] + 1;
+            }
         }
 
         // Update the pair-score due to insertion of 'node'
-        for i in base..(base + self.b_mux_count[unit]) {
-            let pair = self.calc_edge_index(node, self.b_mux_nodes[i]);
-            pair_score += self.pairs_count[pair] + 1;
+        for r in self.b_mux_array[unit].iter() {
+            let e = self.calc_edge_index(node, *r);
+            dups_score += self.pairs_count[e] + 1;
+        }
+
+        (edge_score, dups_score, nodes + 1)
+    }
+
+    /*
+    fn b_mux_score(&self, unit: usize, node: usize) -> (usize, usize, usize) {
+        // Can not insert into both A- & B- MUXs, or already in B-MUX
+        if self.a_mux_array[unit].contains(&node)
+            || self.b_mux_array[unit].contains(&node)
+        {
+            return (usize::MAX, usize::MAX, usize::MAX);
+        }
+
+        // To start with, compute the global score
+        let (mut edge_score, mut pair_score, node_score) =
+            self.node_score(node);
+
+        // Update the edge-score due to insertion of 'node'
+        for r in self.a_mux_array[unit].iter() {
+            let e = self.calc_edge_index(node, *r);
+            edge_score += self.edges_count[e] + 1;
+        }
+
+        // Update the pair-score due to insertion of 'node'
+        for r in self.b_mux_array[unit].iter() {
+            let e = self.calc_edge_index(node, *r);
+            pair_score += self.pairs_count[e] + 1;
         }
 
         (edge_score, pair_score, node_score + 1)
     }
+    */
 
     fn place_a_mux(&mut self, unit: usize) -> &mut Self {
-        let mut scores: Vec<((usize, usize, usize), usize)> = Vec::with_capacity(self.num_antennas);
+        let mut scores: Vec<((usize, usize, usize), usize)> =
+            Vec::with_capacity(self.num_antennas);
 
         for i in 0..self.num_antennas {
             scores.push((self.a_mux_score(unit, i), i));
@@ -519,7 +496,8 @@ impl Context {
     }
 
     fn place_b_mux(&mut self, unit: usize) -> &mut Self {
-        let mut scores: Vec<((usize, usize, usize), usize)> = Vec::with_capacity(self.num_antennas);
+        let mut scores: Vec<((usize, usize, usize), usize)> =
+            Vec::with_capacity(self.num_antennas);
 
         for i in 0..self.num_antennas {
             let score = self.b_mux_score(unit, i);
@@ -537,7 +515,8 @@ impl Context {
     pub fn fill_unit(&mut self, unit: usize) {
         while self.num_nodes_at(unit) < 2 * self.mux_width {
             // Add node to the emptiest MUX
-            let mux_b: bool = self.a_mux_count[unit] > self.b_mux_count[unit];
+            let mux_b: bool =
+                self.a_mux_array[unit].len() > self.b_mux_array[unit].len();
 
             if mux_b {
                 self.place_b_mux(unit);
@@ -547,6 +526,45 @@ impl Context {
         }
     }
 
+    fn calc_mux_score(&self, a_mux: Vec<usize>, b_mux: Vec<usize>) -> usize {
+        let mut score = 0;
+        for a in a_mux.iter() {
+            for o in a_mux.iter() {
+                if *o > *a {
+                    score += self.pairs_count[self.calc_edge_index(*a, *o)] - 1;
+                }
+            }
+            for b in b_mux.iter() {
+                let e = self.calc_edge_index(*a, *b);
+                score += self.edges_count[e] - 1;
+            }
+            score += self.nodes_count[*a] - 1;
+        }
+        for b in b_mux.iter() {
+            for o in b_mux.iter() {
+                if *o > *b {
+                    score += self.pairs_count[self.calc_edge_index(*b, *o)] - 1;
+                }
+            }
+            score += self.nodes_count[*b] - 1;
+        }
+        score
+    }
+
+    fn improve_unit_score(&self, unit: usize) -> usize {
+        let a_mux: Vec<usize> = self.a_mux_array[unit].to_vec();
+        let b_mux: Vec<usize> = self.b_mux_array[unit].to_vec();
+        self.calc_mux_score(a_mux, b_mux)
+    }
+
+    pub fn unit_scores(&self) {
+        let mut scores = Vec::new();
+        for u in 0..self.num_units {
+            scores.push(self.improve_unit_score(u));
+        }
+        println!("Scores: {:?}", scores);
+    }
+
     /**
      *  Clear all current node, edge, and MUX assignments.
      */
@@ -554,81 +572,76 @@ impl Context {
         self.edges_count.fill(0);
         self.nodes_count.fill(0);
         self.pairs_count.fill(0);
-        self.a_mux_count.fill(0);
-        self.b_mux_count.fill(0);
+
+        self.a_mux_array.reset();
+        self.b_mux_array.reset();
     }
 
+    /**
+     *  Sorts the nodes-order for each MUX, if each set of MUX inputs is full.
+     */
     pub fn sort_inputs(&mut self) {
-        let w = self.mux_width;
-        for (i, xs) in self.a_mux_nodes.chunks_mut(w).enumerate() {
-            assert_eq!(w, self.a_mux_count[i]);
-            xs.sort_unstable();
-        }
-        for (i, xs) in self.b_mux_nodes.chunks_mut(w).enumerate() {
-            assert_eq!(w, self.b_mux_count[i]);
-            xs.sort_unstable();
-        }
+        self.a_mux_array.sort_chunks();
+        self.b_mux_array.sort_chunks();
     }
 
     pub fn replace(&mut self, unit: usize, curr: usize, next: usize) {
-        if self.a_mux_contains(unit, curr) {
-            let c = self.a_mux_count[unit];
-            let p = unit * self.mux_width;
+        let mut index = 0;
 
-            for i in p..p + c {
-                if self.a_mux_nodes[i] == curr {
-                    for j in p..p + self.b_mux_count[unit] {
-                        let b = self.b_mux_nodes[j];
-                        let e = self.calc_edge_index(curr, b);
+        if self.a_mux_array[unit].contains(&curr) {
+            for (i, r) in self.a_mux_array[unit].iter().enumerate() {
+                if *r == curr {
+                    index = i;
+                    for j in self.b_mux_array[unit].iter() {
+                        let e = self.calc_edge_index(curr, *j);
                         self.edges_count[e] -= 1;
-                        let e = self.calc_edge_index(next, b);
+                        let e = self.calc_edge_index(next, *j);
                         self.edges_count[e] += 1;
                     }
                     self.nodes_count[curr] -= 1;
-
-                    self.a_mux_nodes[i] = next;
                     self.nodes_count[next] += 1;
                 } else {
-                    let e = self.calc_edge_index(curr, self.a_mux_nodes[i]);
+                    let e = self.calc_edge_index(curr, *r);
                     self.pairs_count[e] -= 1;
-                    let e = self.calc_edge_index(next, self.a_mux_nodes[i]);
+                    let e = self.calc_edge_index(next, *r);
                     self.pairs_count[e] += 1;
                 }
             }
-        } else if self.b_mux_contains(unit, curr) {
-            let c = self.b_mux_count[unit];
-            let p = unit * self.mux_width;
-            for i in p..p + c {
-                if self.b_mux_nodes[i] == curr {
-                    for j in p..p + self.a_mux_count[unit] {
-                        let a = self.a_mux_nodes[j];
-                        let e = self.calc_edge_index(curr, a);
+            self.a_mux_array[unit][index] = next;
+        } else if self.b_mux_array[unit].contains(&curr) {
+            for (i, r) in self.b_mux_array[unit].iter().enumerate() {
+                if *r == curr {
+                    index = i;
+                    for j in self.a_mux_array[unit].iter() {
+                        let e = self.calc_edge_index(curr, *j);
                         self.edges_count[e] -= 1;
-                        let e = self.calc_edge_index(next, a);
+                        let e = self.calc_edge_index(next, *j);
                         self.edges_count[e] += 1;
                     }
                     self.nodes_count[curr] -= 1;
-
-                    self.b_mux_nodes[i] = next;
                     self.nodes_count[next] += 1;
                 } else {
-                    let e = self.calc_edge_index(curr, self.b_mux_nodes[i]);
+                    let e = self.calc_edge_index(curr, *r);
                     self.pairs_count[e] -= 1;
-                    let e = self.calc_edge_index(next, self.b_mux_nodes[i]);
+                    let e = self.calc_edge_index(next, *r);
                     self.pairs_count[e] += 1;
                 }
             }
+            self.b_mux_array[unit][index] = next;
         }
     }
 
     /// TODO:
-    pub fn replace_score(&self, unit: usize, node: usize, next: usize) -> usize {
+    pub fn replace_score(
+        &self,
+        unit: usize,
+        node: usize,
+        next: usize,
+    ) -> usize {
         // Compute score for removing an unnecessary node
-        let score = if self.a_mux_contains(unit, node) {
-            let c = self.b_mux_count[unit];
-            let p = unit * self.mux_width;
+        let score = if self.a_mux_array[unit].contains(&node) {
             // todo: score of zero if any edges_count is less than two
-            Vec::from(&self.b_mux_nodes[p..p + c])
+            Vec::from(&self.b_mux_array[unit])
                 .iter()
                 .map(|b| {
                     let e = self.calc_edge_index(node, *b);
@@ -636,10 +649,8 @@ impl Context {
                 })
                 .sum::<usize>()
                 + self.nodes_count[node]
-        } else if self.b_mux_contains(unit, node) {
-            let c = self.a_mux_count[unit];
-            let p = unit * self.mux_width;
-            Vec::from(&self.a_mux_nodes[p..p + c])
+        } else if self.b_mux_array[unit].contains(&node) {
+            Vec::from(&self.a_mux_array[unit])
                 .iter()
                 .map(|a| {
                     let e = self.calc_edge_index(node, *a);
@@ -656,30 +667,26 @@ impl Context {
         score
     }
 
-    pub fn find_unneeded(&self) -> Vec<(usize, usize)> {
-        let w = self.mux_width;
-        let mut unneeded = Vec::new();
+    pub fn find_unneeded(&self) -> Chunked<usize> {
+        let mut unneeded =
+            Chunked::<usize>::new(self.mux_width << 1, self.num_units);
 
         for u in 0..self.num_units {
-            let c = self.a_mux_count[u];
-            let d = self.b_mux_count[u];
-            let p = u * w;
-
-            for a in &self.a_mux_nodes[p..p + c] {
-                if Vec::from(&self.b_mux_nodes[p..p + d])
+            for a in self.a_mux_array[u].iter() {
+                if Vec::from(&self.b_mux_array[u])
                     .iter()
                     .all(|b| self.edges_count[self.calc_edge_index(*a, *b)] > 1)
                 {
-                    unneeded.push((u, *a));
+                    unneeded.push(u, *a);
                 }
             }
 
-            for b in &self.b_mux_nodes[p..p + d] {
-                if Vec::from(&self.a_mux_nodes[p..p + c])
+            for b in self.b_mux_array[u].iter() {
+                if Vec::from(&self.a_mux_array[u])
                     .iter()
                     .all(|a| self.edges_count[self.calc_edge_index(*a, *b)] > 1)
                 {
-                    unneeded.push((u, *b));
+                    unneeded.push(u, *b);
                 }
             }
         }

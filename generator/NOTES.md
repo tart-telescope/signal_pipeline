@@ -1,6 +1,8 @@
 ---
 title: "*Notes for Assigning TART DSP Pairs*"
-author: Patrick Suggate
+author:
+ - Patrick Suggate
+ - Tim Molteno
 date: 18^th^ August, 2023
 geometry: margin=2cm
 papersize: a4
