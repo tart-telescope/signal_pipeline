@@ -7,7 +7,7 @@ pub struct Chunked<T> {
     values: Vec<T>,
 }
 
-impl<T: std::fmt::Display> std::fmt::Display for Chunked<T> {
+impl<T: std::fmt::Debug> std::fmt::Display for Chunked<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "Chunked {{")?;
         writeln!(f, "    stride: {}", self.stride)?;
@@ -20,7 +20,7 @@ impl<T: std::fmt::Display> std::fmt::Display for Chunked<T> {
             let c = self.counts[i];
             write!(f, "        [ ")?;
             for j in b..b + c {
-                write!(f, "{} ", &self.values[j])?;
+                write!(f, "{:?} ", &self.values[j])?;
             }
             writeln!(f, "]")?;
             b += self.stride;
@@ -77,6 +77,10 @@ impl<T: Default + Clone + PartialEq> Chunked<T> {
 
     pub fn get_stride(&self) -> usize {
         self.stride
+    }
+
+    pub fn len(&self) -> usize {
+        self.counts.len()
     }
 
     #[inline]

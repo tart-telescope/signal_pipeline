@@ -76,8 +76,24 @@ fn main() {
             context.unit_scores();
         }
 
-        // let edges = context.assign_edges();
-        let edges = context.assign_vodka();
-        println!("{}", edges);
+        if let Some(edges) = context.assign_edges(true) {
+            println!("Visibility-calculation assignments:");
+            println!("{}", edges);
+            /*
+            println!("{}", context.means_array);
+
+            let nodes = context.means_set(edges.clone());
+            println!("means set (len = {}): {:?}", nodes.len(), nodes);
+
+            if let Some(means) = context.assign_means(edges.clone()) {
+                println!("{}", means);
+            }
+            */
+
+            if let Some(means) = context.means_assign(edges) {
+                println!("Signal-mean calculation assignments:");
+                println!("{}", means);
+            }
+        }
     }
 }

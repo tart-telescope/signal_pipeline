@@ -34,6 +34,7 @@ pub struct Context {
     /* (Current, A- & B-) MUX assignments */
     pub a_mux_array: Chunked<usize>,
     pub b_mux_array: Chunked<usize>,
+    pub means_array: Chunked<(usize, usize)>,
 }
 
 impl fmt::Display for Context {
@@ -131,6 +132,7 @@ impl Context {
 
             a_mux_array: Chunked::new(mux_width, num_units),
             b_mux_array: Chunked::new(mux_width, num_units),
+            means_array: Chunked::new(mux_width, num_units),
         }
     }
 
@@ -330,8 +332,10 @@ impl Context {
             if temp >= self.num_antennas {
                 // Only insert just the 'A' node, and update the edge-set
                 edges += self.insert_a_node(unit, node);
+                // self.means_array.push(unit, (node, usize::MAX));
             } else {
                 edges += self.insert_node_pair(unit, node, temp);
+                // self.means_array.push(unit, (node, temp));
             }
 
             unit += 1;
@@ -453,35 +457,6 @@ impl Context {
         (edge_score, dups_score, nodes + 1)
     }
 
-    /*
-    fn b_mux_score(&self, unit: usize, node: usize) -> (usize, usize, usize) {
-        // Can not insert into both A- & B- MUXs, or already in B-MUX
-        if self.a_mux_array[unit].contains(&node)
-            || self.b_mux_array[unit].contains(&node)
-        {
-            return (usize::MAX, usize::MAX, usize::MAX);
-        }
-
-        // To start with, compute the global score
-        let (mut edge_score, mut pair_score, node_score) =
-            self.node_score(node);
-
-        // Update the edge-score due to insertion of 'node'
-        for r in self.a_mux_array[unit].iter() {
-            let e = self.calc_edge_index(node, *r);
-            edge_score += self.edges_count[e] + 1;
-        }
-
-        // Update the pair-score due to insertion of 'node'
-        for r in self.b_mux_array[unit].iter() {
-            let e = self.calc_edge_index(node, *r);
-            pair_score += self.pairs_count[e] + 1;
-        }
-
-        (edge_score, pair_score, node_score + 1)
-    }
-    */
-
     fn place_a_mux(&mut self, unit: usize) -> &mut Self {
         let mut scores: Vec<((usize, usize, usize), usize)> =
             Vec::with_capacity(self.num_antennas);
@@ -500,6 +475,7 @@ impl Context {
             Vec::with_capacity(self.num_antennas);
 
         for i in 0..self.num_antennas {
+            // todo: why is this different to the above version (for A)?
             let score = self.b_mux_score(unit, i);
             if score.0 == usize::MAX || score.1 == usize::MAX {
                 continue;
@@ -694,12 +670,21 @@ impl Context {
         unneeded
     }
 
+    /**
+     *  Computes the list of edges by (ascending) edge-frequency.
+     */
     pub fn sorted_edges(&self) -> Vec<usize> {
         let mut perm: Vec<usize> = (0..self.num_edges).collect();
         perm.sort_by_key(|p| self.edges_count[*p]);
         perm
     }
 
+    /**
+     *  Computes the set of correlator units that contains each edge.
+     *
+     *  The returned data is the same as that used by Compressed Row/Col Sparse
+     *  (CRS/CCS) matrices, for their index data.
+     */
     pub fn find_edge_units(&self) -> (Vec<usize>, Vec<usize>) {
         let mut colptrs: Vec<usize> = vec![0; self.num_edges + 1];
         for (i, c) in self.edges_count.iter().enumerate() {
@@ -727,8 +712,32 @@ impl Context {
         (colptrs, indices)
     }
 
-    pub fn assign_edges(&mut self) -> Chunked<usize> {
+    /**
+     *  Assigns edges to each correlator, in order of least-frequent to most-
+     *  frequent edges.
+     *
+     *  Note: When more than one correlator unit can be chosen, choose the
+     *    least-populated correlator. This heuristic is vulnerable to certain
+     *    edge-cases, but so far seems to perform well enough.
+     */
+    pub fn assign_edges(&mut self, cont: bool) -> Option<Chunked<usize>> {
         let ranks = self.sorted_edges();
+        if self.edges_count[ranks[0]] == 0 {
+            eprintln!("Not all edges have been covered!");
+            let mut i = 0;
+            eprint!("Missing: ");
+            while self.edges_count[ranks[i]] == 0 {
+                let (a, b) = self.edges_array[ranks[i]];
+                if i > 0 {
+                    eprint!(", ");
+                }
+                eprint!("{} -> {}", a, b);
+                i += 1;
+            }
+            eprintln!("  (num = {})", i);
+            return None;
+        }
+
         let mut units: Chunked<usize> =
             Chunked::new(self.clock_multiplier, self.num_units);
         let (ptrs, idxs) = self.find_edge_units();
@@ -737,102 +746,335 @@ impl Context {
             let c = self.edges_count[k];
             let p = ptrs[k];
 
-            if c == 1 {
+            let u = if c == 1 {
                 // Edge has to be assigned to the only unit containing it
-                let u = idxs[p];
-                if units.can_push(u, k) {
-                    units.push(u, k);
-                } else {
-                    panic!("You sucks bad\n");
-                }
+                idxs[p]
             } else {
                 // Figure out the best unit to assign the edge to
                 let us: Vec<usize> = (idxs[p..p + c]).to_vec();
                 let mut qs: Vec<usize> = (0..us.len()).collect();
-                qs.sort_by_key(|k| units.count(us[*k]));
+                qs.sort_by_key(|&k| {
+                    units.count(us[k]) + self.means_array.count(us[k])
+                });
+
                 // todo: compute some form of "score" for the edge-insertion,
                 //   based on the edges already assigned, and those remaining.
                 // let (a, b) = self.edges_array[k];
-                let u = us[qs[0]];
-                if units.can_push(u, k) {
-                    units.push(u, k);
-                } else {
-                    panic!("You sucks bad\n");
-                }
+                us[qs[0]]
+            };
+            if units.count(u) + self.means_array.count(u)
+                < self.clock_multiplier
+                && units.can_push(u, k)
+            {
+                units.push(u, k);
+            } else if !cont {
+                eprintln!("No solution, as there is no free correlator!\n");
+                return None;
+            } else {
+                let (a, b) = self.edges_array[k];
+                println!("Failed to route edge: {} -> {}", a, b);
             }
         }
 
-        units
+        Some(units)
     }
 
-    fn assign_edges_stop(
+    // todo: this method is a bit too greedy, and does not consider whether
+    //   there exists solutions for remaining means, when choosing pairs for
+    //   each step.
+    // todo: the 'means_assign(..)' function is better?
+    pub fn assign_means(
         &mut self,
-        mut assigns: Chunked<usize>,
-        mut edge_scores: Vec<usize>,
-        level: usize,
-        limit: usize,
-    ) -> Chunked<usize> {
-        for unit in 0..self.num_units {
-            for i in self.a_mux_array[unit].iter() {
-                for j in self.b_mux_array[unit].iter() {
-                    let k = self.calc_edge_index(*i, *j);
-                    if edge_scores[k] == level && assigns.can_push(unit, k) {
-                        edge_scores[k] = 0;
-                        assigns.push(unit, k);
-                    }
-                }
+        units: Chunked<usize>,
+    ) -> Option<Chunked<(usize, usize)>> {
+        // Compute the nodes from least- to most- frequent
+        let mut nodes: Vec<usize> = (0..self.num_antennas).collect();
+        nodes.sort_by_key(|p| self.nodes_count[*p]);
+
+        /*
+        let mut freqs = self.means_set(units.clone());
+        freqs.sort_unstable_by_key(|(_, c)| *c);
+        if freqs.len() < self.num_antennas {
+            eprintln!("Cannot place all signal-means calculations!\n  {:?} (len = {})", freqs.clone(), freqs.len());
+            return None;
+        }
+        let mut nodes = freqs
+            .clone()
+            .into_iter()
+            .map(|(i, _)| i)
+            .collect::<Vec<usize>>();
+        */
+
+        let mut min_count = units.get_stride();
+        for i in 0..units.len() {
+            if min_count > units.count(i) {
+                min_count = units.count(i);
             }
         }
 
-        println!("edge_scores: {:?}", edge_scores);
-        if level >= limit {
-            return assigns;
+        let stride = units.get_stride() - min_count;
+        let mut means: Chunked<(usize, usize)> =
+            Chunked::new(stride, units.len());
+        let mut prev = nodes.len();
+
+        while !nodes.is_empty() {
+            // Find the emptiest correlator unit that contains the two least-
+            // frequent nodes ...
+            let mut ranks: Vec<usize> = (0..self.num_units).collect();
+            ranks.sort_by_key(|p| units.count(*p) + means.count(*p));
+            // ranks.reverse();
+
+            for unit in ranks {
+                // Can we add to this unit?
+                if units.count(unit) + means.count(unit)
+                    >= self.clock_multiplier
+                {
+                    continue;
+                }
+
+                // Find the least two frequent nodes, and assign them
+                let mut a_node = usize::MAX;
+                let mut i = 0;
+                while i < nodes.len() {
+                    if self.a_mux_array[unit].contains(&nodes[i]) {
+                        a_node = nodes[i];
+                        break;
+                    }
+                    i += 1;
+                }
+
+                let mut b_node = usize::MAX;
+                let mut i = 0;
+                while i < nodes.len() {
+                    if self.b_mux_array[unit].contains(&nodes[i]) {
+                        b_node = nodes[i];
+                        break;
+                    }
+                    i += 1;
+                }
+
+                if a_node < usize::MAX && b_node < usize::MAX {
+                    means.push(unit, (a_node, b_node));
+                    nodes.retain(|&x| x != a_node && x != b_node);
+                    break;
+                }
+            }
+
+            if nodes.len() == prev {
+                // No nodes placed on this pass, so no solution
+                eprintln!("Cannot place all signal-means calculations!");
+                eprintln!("Remaining signal-means calculations to place:");
+                eprintln!("  {:?} (len = {})", nodes.clone(), nodes.len());
+                return None;
+            }
+            prev = nodes.len();
         }
 
-        self.assign_edges_stop(assigns, edge_scores, level + 1, limit)
+        Some(means)
     }
 
-    fn assign_edges_step(
-        &mut self,
-        mut assigns: Chunked<usize>,
-        mut edge_scores: Vec<usize>,
-    ) -> Chunked<usize> {
-        for unit in 0..self.num_units {
-            for i in self.a_mux_array[unit].iter() {
-                for j in self.b_mux_array[unit].iter() {
-                    let k = self.calc_edge_index(*i, *j);
-                    if edge_scores[k] == 1 && assigns.can_push(unit, k) {
-                        edge_scores[k] = 0;
-                        assigns.push(unit, k);
-                    }
+    pub fn means_set(&self, units: Chunked<usize>) -> Vec<(usize, usize)> {
+        let length = self.num_antennas;
+        let mut count: Vec<usize> = vec![0; length];
+
+        for i in 0..units.len() {
+            if units.count(i) < self.clock_multiplier {
+                for j in self.a_mux_array[i].iter() {
+                    count[*j] += 1;
+                }
+                for j in self.b_mux_array[i].iter() {
+                    count[*j] += 1;
                 }
             }
         }
 
-        let new_scores: Vec<usize> = edge_scores
+        count
             .iter()
-            .map(|x| if *x > 1 { *x - 1 } else { *x })
-            .collect();
-        println!("new_scores: {:?}", new_scores);
-        if new_scores.iter().all(|x| *x == 0) {
-            return assigns;
-        }
-
-        self.assign_edges_step(assigns, new_scores)
+            .enumerate()
+            .filter_map(|(i, &x)| if x > 0 { Some((i, x)) } else { None })
+            .collect::<Vec<(usize, usize)>>()
     }
 
-    // todo: not good -- about to be deleted ...
-    pub fn assign_silly(&mut self) -> Chunked<usize> {
-        let assigns = Chunked::new(self.clock_multiplier, self.num_units);
-        if let Some(limit) = self.edges_count.iter().max() {
-            return self.assign_edges_stop(
-                assigns,
-                self.edges_count.clone(),
-                1,
-                *limit,
-            );
+    pub fn means_assign(
+        &mut self,
+        units: Chunked<usize>,
+    ) -> Option<Chunked<(usize, usize)>> {
+        let mut freqs = self.means_set(units.clone());
+        freqs.sort_unstable_by_key(|(_, c)| *c);
+        if freqs.len() < self.num_antennas {
+            eprintln!("Cannot place all signal-means calculations!");
+            eprintln!("  {:?} (len = {})", freqs.clone(), freqs.len());
+            return None;
         }
-        self.assign_edges_step(assigns, self.edges_count.clone())
+        let mut nodes = freqs
+            .clone()
+            .into_iter()
+            .map(|(i, _)| i)
+            .collect::<Vec<usize>>();
+        nodes.reverse();
+
+        let mut min_count = units.get_stride();
+        for i in 0..units.len() {
+            if min_count > units.count(i) {
+                min_count = units.count(i);
+            }
+        }
+
+        let stride = units.get_stride() - min_count;
+        let mut means: Chunked<(usize, usize)> =
+            Chunked::new(stride, units.len());
+
+        while !nodes.is_empty() {
+            let node = nodes.pop().unwrap();
+            let mut pairs = vec![usize::MAX; units.len()];
+            let mut scores = vec![0; units.len()];
+
+            for i in 0..units.len() {
+                if units.count(i) + means.count(i) >= self.clock_multiplier {
+                    continue;
+                }
+
+                // If we choose 'node', we need to also select a suitable pair
+                let mut others = Vec::with_capacity(self.mux_width);
+                if self.a_mux_array[i].contains(&node) {
+                    for j in &self.b_mux_array[i] {
+                        if nodes.contains(j) {
+                            others.push(*j);
+                        }
+                    }
+                } else if self.b_mux_array[i].contains(&node) {
+                    for j in &self.a_mux_array[i] {
+                        if nodes.contains(j) {
+                            others.push(*j);
+                        }
+                    }
+                } else {
+                    continue;
+                }
+
+                if others.is_empty() {
+                    continue;
+                }
+
+                // See which of the remaining nodes can still be placed, if we
+                // assign the current 'node' to 'units[i]'.
+                let mut rest = vec![0; nodes.len()];
+                let mut arest = vec![0; nodes.len()];
+                let mut brest = vec![0; nodes.len()];
+                let mut lut = vec![usize::MAX; self.num_antennas];
+                for (j, r) in nodes.iter().enumerate() {
+                    lut[*r] = j;
+                }
+
+                // Each 'rest' node must still be assignable, if we place 'node
+                // into 'units[i]'.
+                for k in 0..units.len() {
+                    if i == k {
+                        for &l in &others {
+                            rest[lut[l]] += 1;
+                        }
+                    } else if units.count(k) + means.count(k)
+                        < self.clock_multiplier
+                    {
+                        for &l in &self.a_mux_array[k] {
+                            if lut[l] < usize::MAX {
+                                rest[lut[l]] += 1;
+                                arest[lut[l]] += 1;
+                            }
+                        }
+                        for &l in &self.b_mux_array[k] {
+                            if lut[l] < usize::MAX {
+                                rest[lut[l]] += 1;
+                                brest[lut[l]] += 1;
+                            }
+                        }
+                    }
+                }
+
+                // No route for at least one of the remaining means calculations
+                if rest.contains(&0) {
+                    continue;
+                }
+
+                // Try to fill up the A-MUX and B-MUX at the same rates ...
+                let asu: usize = arest.iter().sum();
+                let bsu: usize = brest.iter().sum();
+                let rem: usize = nodes.len() >> 1;
+                if asu < rem || bsu < rem {
+                    println!(
+                        "asum: {}, bsum: {} (remaining: {})",
+                        asu, bsu, rem
+                    );
+                    continue;
+                }
+
+                // todo: detect the case that selecting 'units[i]' for 'node'
+                //   results in too few solutions remaining for the 'others'?
+                /*
+                let mut sols = others.len();
+                for &j in &others {
+                    if rest[lut[j]] < 2 {
+                        sols -= 1;
+                    }
+                }
+
+                if others.len() > 1 && sols < 2 {
+                    eprintln!(
+                        "No means solution for 'unit: {}' and 'node: {}'",
+                        i, node
+                    );
+                    continue;
+                }
+                else {
+                    println!("Remaining (pair) solutions for 'unit: {}' and 'node: {}': {} (others.len() = {}, rest: {:?})",
+                        i, node, sols, others.len(), rest.clone(),
+                    );
+                }
+                */
+
+                // Find the least-common node in the other MUX
+                let mut pmin = usize::MAX;
+                let mut pidx = usize::MAX;
+                for (j, &p) in rest.iter().enumerate() {
+                    if others.contains(&nodes[j]) && p < pmin {
+                        pmin = p;
+                        pidx = nodes[j];
+                    }
+                }
+
+                if pmin < usize::MAX {
+                    // todo: can this underflow?
+                    let s = rest.into_iter().sum::<usize>()
+                        - if asu > bsu { asu - bsu } else { bsu - asu };
+                    scores[i] = s;
+                    // scores[i] = rest.into_iter().sum();
+                    pairs[i] = pidx;
+                }
+            }
+
+            // Find the best-scoring unit
+            let mut smax = usize::MIN;
+            let mut sidx = usize::MAX;
+            for (i, &s) in scores.iter().enumerate() {
+                if s > smax {
+                    smax = s;
+                    sidx = i;
+                }
+            }
+
+            if sidx < usize::MAX {
+                let pair = pairs[sidx];
+                means.push(sidx, (node, pair));
+                nodes.retain(|&x| x != pair);
+            } else {
+                nodes.push(node);
+                println!("{}", means);
+                println!("No solution, and remaining nodes: {:?}", nodes);
+                return None;
+            }
+        }
+
+        Some(means)
     }
 
     /**
