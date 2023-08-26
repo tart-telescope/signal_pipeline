@@ -84,11 +84,15 @@ fn main() {
 
             let nodes = context.means_set(edges.clone());
             println!("means set (len = {}): {:?}", nodes.len(), nodes);
+            */
 
             if let Some(means) = context.assign_means(edges.clone()) {
                 println!("{}", means);
             }
-            */
+
+            if let Some(means) = context.means_another(edges.clone()) {
+                println!("{}", means);
+            }
 
             if let Some(means) = context.means_assign(edges) {
                 println!("Signal-mean calculation assignments:");
