@@ -53,21 +53,31 @@ fn main() {
         args.extra_bits,
     );
     context.partition(args.verbose > 0);
-
     println!("{}", context);
+
     if args.verbose > 0 {
-        if args.verbose > 1 {
+        if args.verbose > 2 {
+            let (colptrs, indices) = context.find_edge_units();
+            println!("colptrs: {:?}", colptrs);
+            println!("indices: {:?}", indices);
+
             println!("{}", context.a_mux_array);
             println!("{}", context.b_mux_array);
         }
 
-        let unneeded = context.find_unneeded();
-        println!(
-            "Uneeded nodes (total = {}):\n{}",
-            unneeded.total_count(),
-            unneeded,
-        );
+        if args.verbose > 1 {
+            let unneeded = context.find_unneeded();
+            println!(
+                "Uneeded nodes (total = {}):\n{}",
+                unneeded.total_count(),
+                unneeded,
+            );
 
-        context.unit_scores();
+            context.unit_scores();
+        }
+
+        // let edges = context.assign_edges();
+        let edges = context.assign_vodka();
+        println!("{}", edges);
     }
 }

@@ -694,6 +694,147 @@ impl Context {
         unneeded
     }
 
+    pub fn sorted_edges(&self) -> Vec<usize> {
+        let mut perm: Vec<usize> = (0..self.num_edges).collect();
+        perm.sort_by_key(|p| self.edges_count[*p]);
+        perm
+    }
+
+    pub fn find_edge_units(&self) -> (Vec<usize>, Vec<usize>) {
+        let mut colptrs: Vec<usize> = vec![0; self.num_edges + 1];
+        for (i, c) in self.edges_count.iter().enumerate() {
+            if i >= self.num_edges - 1 {
+                break;
+            }
+            let x = colptrs[i + 1];
+            colptrs[i + 2] = x + c;
+        }
+
+        let length: usize = self.edges_count.iter().sum();
+        let mut indices: Vec<usize> = vec![0; length];
+
+        for unit in 0..self.num_units {
+            for i in self.a_mux_array[unit].iter() {
+                for j in self.b_mux_array[unit].iter() {
+                    let k = self.calc_edge_index(*i, *j);
+                    let p = colptrs[k + 1];
+                    indices[p] = unit;
+                    colptrs[k + 1] = p + 1;
+                }
+            }
+        }
+
+        (colptrs, indices)
+    }
+
+    pub fn assign_edges(&mut self) -> Chunked<usize> {
+        let ranks = self.sorted_edges();
+        let mut units: Chunked<usize> =
+            Chunked::new(self.clock_multiplier, self.num_units);
+        let (ptrs, idxs) = self.find_edge_units();
+
+        for k in ranks.into_iter() {
+            let c = self.edges_count[k];
+            let p = ptrs[k];
+
+            if c == 1 {
+                // Edge has to be assigned to the only unit containing it
+                let u = idxs[p];
+                if units.can_push(u, k) {
+                    units.push(u, k);
+                } else {
+                    panic!("You sucks bad\n");
+                }
+            } else {
+                // Figure out the best unit to assign the edge to
+                let us: Vec<usize> = (idxs[p..p + c]).to_vec();
+                let mut qs: Vec<usize> = (0..us.len()).collect();
+                qs.sort_by_key(|k| units.count(us[*k]));
+                // todo: compute some form of "score" for the edge-insertion,
+                //   based on the edges already assigned, and those remaining.
+                // let (a, b) = self.edges_array[k];
+                let u = us[qs[0]];
+                if units.can_push(u, k) {
+                    units.push(u, k);
+                } else {
+                    panic!("You sucks bad\n");
+                }
+            }
+        }
+
+        units
+    }
+
+    fn assign_edges_stop(
+        &mut self,
+        mut assigns: Chunked<usize>,
+        mut edge_scores: Vec<usize>,
+        level: usize,
+        limit: usize,
+    ) -> Chunked<usize> {
+        for unit in 0..self.num_units {
+            for i in self.a_mux_array[unit].iter() {
+                for j in self.b_mux_array[unit].iter() {
+                    let k = self.calc_edge_index(*i, *j);
+                    if edge_scores[k] == level && assigns.can_push(unit, k) {
+                        edge_scores[k] = 0;
+                        assigns.push(unit, k);
+                    }
+                }
+            }
+        }
+
+        println!("edge_scores: {:?}", edge_scores);
+        if level >= limit {
+            return assigns;
+        }
+
+        self.assign_edges_stop(assigns, edge_scores, level + 1, limit)
+    }
+
+    fn assign_edges_step(
+        &mut self,
+        mut assigns: Chunked<usize>,
+        mut edge_scores: Vec<usize>,
+    ) -> Chunked<usize> {
+        for unit in 0..self.num_units {
+            for i in self.a_mux_array[unit].iter() {
+                for j in self.b_mux_array[unit].iter() {
+                    let k = self.calc_edge_index(*i, *j);
+                    if edge_scores[k] == 1 && assigns.can_push(unit, k) {
+                        edge_scores[k] = 0;
+                        assigns.push(unit, k);
+                    }
+                }
+            }
+        }
+
+        let new_scores: Vec<usize> = edge_scores
+            .iter()
+            .map(|x| if *x > 1 { *x - 1 } else { *x })
+            .collect();
+        println!("new_scores: {:?}", new_scores);
+        if new_scores.iter().all(|x| *x == 0) {
+            return assigns;
+        }
+
+        self.assign_edges_step(assigns, new_scores)
+    }
+
+    // todo: not good -- about to be deleted ...
+    pub fn assign_silly(&mut self) -> Chunked<usize> {
+        let assigns = Chunked::new(self.clock_multiplier, self.num_units);
+        if let Some(limit) = self.edges_count.iter().max() {
+            return self.assign_edges_stop(
+                assigns,
+                self.edges_count.clone(),
+                1,
+                *limit,
+            );
+        }
+        self.assign_edges_step(assigns, self.edges_count.clone())
+    }
+
     /**
      *  Partition the set of edges amongst the correlators.
      *

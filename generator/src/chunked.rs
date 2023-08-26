@@ -11,7 +11,7 @@ impl<T: std::fmt::Display> std::fmt::Display for Chunked<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "Chunked {{")?;
         writeln!(f, "    stride: {}", self.stride)?;
-        writeln!(f, "    length: {}", self.counts.len())?;
+        writeln!(f, "    chunks: {}", self.counts.len())?;
         writeln!(f, "    counts: {:?}", self.counts)?;
 
         writeln!(f, "    values: [")?;
