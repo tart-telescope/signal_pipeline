@@ -1,5 +1,6 @@
-// use std::array::IntoIter;
-
+/**
+ *  2D arrays with each subarray having up to 'stride' size.
+ */
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Chunked<T> {
     stride: usize,
@@ -13,7 +14,6 @@ impl<T: std::fmt::Debug> std::fmt::Display for Chunked<T> {
         writeln!(f, "    stride: {}", self.stride)?;
         writeln!(f, "    chunks: {}", self.counts.len())?;
         writeln!(f, "    counts: {:?}", self.counts)?;
-
         writeln!(f, "    values: [")?;
         let mut b = 0;
         for i in 0..self.counts.len() {
@@ -25,7 +25,6 @@ impl<T: std::fmt::Debug> std::fmt::Display for Chunked<T> {
             writeln!(f, "]")?;
             b += self.stride;
         }
-
         writeln!(f, "    ]")?;
         writeln!(f, "}}")
     }
@@ -41,7 +40,7 @@ impl<T> Default for Chunked<T> {
     }
 }
 
-impl<T: Default + Clone + PartialEq> Chunked<T> {
+impl<T: Default + Clone> Chunked<T> {
     pub fn new(stride: usize, length: usize) -> Self {
         if stride < 1 {
             panic!("idiot!");
@@ -52,7 +51,9 @@ impl<T: Default + Clone + PartialEq> Chunked<T> {
             values: vec![T::default(); stride * length],
         }
     }
+}
 
+impl<T> Chunked<T> {
     fn check_chunk_limit(&self, chunk: usize) -> bool {
         if chunk >= self.counts.len() {
             eprintln!(
@@ -65,11 +66,8 @@ impl<T: Default + Clone + PartialEq> Chunked<T> {
         true
     }
 
-    // -- PUBLIC QUERY FUNCTIONS -- //
-
     pub fn count(&self, chunk: usize) -> usize {
         if !self.check_chunk_limit(chunk) {
-            // return usize::MAX;
             return self.stride;
         }
         self.counts[chunk]
@@ -79,10 +77,32 @@ impl<T: Default + Clone + PartialEq> Chunked<T> {
         self.stride
     }
 
+    /**
+     *  Empty if there is no data.
+     */
+    pub fn is_empty(&self) -> bool {
+        self.counts.iter().sum::<usize>() == 0
+    }
+
+    pub fn total_count(&self) -> usize {
+        self.counts.iter().sum::<usize>()
+    }
+
     pub fn len(&self) -> usize {
         self.counts.len()
     }
 
+    pub fn capacity(&self) -> usize {
+        self.stride * self.counts.len()
+    }
+
+    pub fn reset(&mut self) -> &mut Self {
+        self.counts.fill(0);
+        self
+    }
+}
+
+impl<T: PartialEq> Chunked<T> {
     #[inline]
     fn contains_unsafe(&self, chunk: usize, value: T) -> bool {
         let base = self.stride * chunk;
@@ -106,9 +126,6 @@ impl<T: Default + Clone + PartialEq> Chunked<T> {
         self.count(chunk) < self.stride || self.contains_unsafe(chunk, value)
     }
 
-    // -- PUBLIC MODIFIER FUNCTIONS -- //
-
-    // todo: check for dups ...
     pub fn push(&mut self, chunk: usize, value: T) {
         if !self.check_chunk_limit(chunk) {
             return;
@@ -129,7 +146,9 @@ impl<T: Default + Clone + PartialEq> Chunked<T> {
             self.counts[chunk] += 1;
         }
     }
+}
 
+impl<T: Clone> Chunked<T> {
     pub fn pop(&mut self, chunk: usize) -> Option<T> {
         if !self.check_chunk_limit(chunk) {
             return None;
@@ -161,7 +180,9 @@ impl<T: Default + Clone + PartialEq> Chunked<T> {
         }
         self.counts[chunk] -= 1;
     }
+}
 
+impl<T: Clone + PartialEq> Chunked<T> {
     pub fn remove(&mut self, chunk: usize, value: T) {
         if !self.check_chunk_limit(chunk) {
             return;
@@ -197,19 +218,6 @@ impl<T: Default + Clone + PartialEq> Chunked<T> {
             }
         }
     }
-
-    pub fn total_count(&self) -> usize {
-        let mut sum = 0;
-        for c in self.counts.iter() {
-            sum += *c;
-        }
-        sum
-    }
-
-    pub fn reset(&mut self) -> &mut Self {
-        self.counts.fill(0);
-        self
-    }
 }
 
 impl<T: Ord> Chunked<T> {
@@ -219,6 +227,16 @@ impl<T: Ord> Chunked<T> {
             xs.sort_unstable();
         }
     }
+
+    // todo: ordered insertion ...
+    /*
+    pub fn insert(&mut self, chunk: usize, value: T) -> &mut Self {
+        if !self.check_chunk_limit(chunk) {
+            return self;
+        }
+        self
+    }
+    */
 }
 
 impl<T> core::ops::Index<usize> for Chunked<T> {
