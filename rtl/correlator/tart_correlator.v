@@ -1,29 +1,30 @@
 `timescale 1ns / 100ps
 module tart_correlator (  /*AUTOARG*/);
 
-  parameter integer ACCUM = 36;
-  parameter integer CORES = 18;
-  parameter integer CSB = CORES - 1;
+  parameter integer WIDTH = 32; // Number of antennas/signals
+  parameter integer CORES = 18; // Number of correlator cores
+  parameter integer ACCUM = 36; // Bit-width of accumulators
 
-  parameter integer WIDTH = 32;
-  parameter integer MSB = WIDTH - 1;
+  parameter integer WORDS = 32; // Buffer SRAM size
+  parameter integer COUNT = 15; // Number of terms for partial sums
 
-  parameter integer WORDS = 32;
-  parameter integer COUNT = 15;
-
+  // Time-multiplexing rate; i.e., clock multiplier
   parameter integer TRATE = 30;
-  parameter integer TSB = 5;
+  parameter integer TBITS = 5;
 
   parameter integer ADDR = 4;
-  parameter integer ASB = ADDR - 1;
-
   parameter integer SUMBITS = 6;
-  parameter integer SSB = SUMBITS - 1;
+
+  localparam integer CSB = CORES - 1;
+  localparam integer MSB = WIDTH - 1;
+  localparam integer TSB = TBITS - 1;
+  localparam integer ASB = ADDR - 1;
+  localparam integer SSB = SUMBITS - 1;
 
   input sig_clock;
   input vis_clock;
-  input reset;
-  input enable;
+  input reset_ni;
+  input enable_i;
 
   input [MSB:0] idata_i;
   input [MSB:0] qdata_i;
@@ -46,7 +47,7 @@ module tart_correlator (  /*AUTOARG*/);
 
   always @(posedge sig_clock) begin
     // Signal address unit
-    if (reset) begin
+    if (!reset_ni) begin
       waddr <= {ADDR{1'b0}};
       wbank <= 1'b0;
       ready <= 1'b0;
@@ -75,7 +76,7 @@ module tart_correlator (  /*AUTOARG*/);
   reg fired = 1'b0;
 
   always @(posedge vis_clock) begin
-    if (reset) begin
+    if (!reset_ni) begin
       start <= 1'b0;
       fired <= 1'b0;
     end else begin
@@ -92,14 +93,14 @@ module tart_correlator (  /*AUTOARG*/);
   wire [ASB:0] rnext = raddr + 1;
   reg          frame = 1'b0;
 
-  reg  [TSB:0] times = {TRATE{1'b0}};
+  reg  [TSB:0] times = {TBITS{1'b0}};
   wire [TSB:0] tnext = times + 1;
 
   assign start_o = start;
   assign frame_o = frame;
 
   always @(posedge vis_clock) begin
-    if (reset) begin
+    if (!reset_ni) begin
       raddr <= {ADDR{1'b0}};
       rbank <= 1'b0;
       frame <= 1'b0;
