@@ -32,8 +32,14 @@ module accumulator (  /*AUTOARG*/);
 
   output [MSB:0] revis_o;
   output [MSB:0] imvis_o;
-  output valid_o;
   input ready_i;
+  output valid_o;
+  output last_o;
+
+  //
+  // Read-Modify-Write pipelined accumulator, for the partial-sums from each of
+  // the first-stage correlators.
+  //
 
   /**
    *  SRAMs that store the partially-accumulated visibilities.
@@ -66,6 +72,7 @@ module accumulator (  /*AUTOARG*/);
     end
   end
 
+
   /**
    *  Accumulate the partial-sums into full-width visibilities.
    */
@@ -83,6 +90,7 @@ module accumulator (  /*AUTOARG*/);
       write <= 1'b0;
     end
   end
+
 
   /**
    *  Write back the partial-sums into the SRAMs.
@@ -112,20 +120,26 @@ module accumulator (  /*AUTOARG*/);
   end
 
   /**
-   *  AXI4-Stream output.
+   *  "AXI4-Stream"-like output.
+   *
+   *  Note: does not support bus-idle cycles.
    */
   reg [MSB:0] revis, imvis;
   reg valid = 1'b0;
+  reg rlast = 1'b0;
   reg [CSB:0] count = {CBITS{1'b0}};
   wire [CSB:0] cnext = count + 1;
 
   assign revis_o = revis;
   assign imvis_o = imvis;
+  assign valid_o = valid;
+  assign last_o  = rlast;
 
   always @(posedge clock_i) begin
     if (!reset_ni) begin
       count <= {CBITS{1'b0}};
       valid <= 1'b0;
+      rlast <= 1'b0;  // todo: logic for this signal
     end else begin
       if (wlast) begin
         if (cnext[CSB]) begin

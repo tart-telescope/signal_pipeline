@@ -28,9 +28,9 @@ main  = do
         let re = vis $ realPart vx
             im = vis $ imagPart vx
             vis b
-              | b < 0 = "-2 | 0b110 "
-              | b > 0 = " 2 | 0b010 "
-              | otherwise = " 0 | 0b000 "
+              | b < 0 = " 0b110 | -2 "
+              | b > 0 = " 0b010 |  2 "
+              | otherwise = " 0b000 |  0 "
             bit b
               | b < 0 = "0"
               | b > 0 = "1"

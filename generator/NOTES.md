@@ -41,6 +41,10 @@ Figures of merit:
 
 What is the relative importance of each of these?
 
+Todo:
+
++ after a solution is found, re-arrange correlators and edges, so that all valid calculations precede the "idle" calculations?
+
 ## Definitions
 
 A **pair** is a pair of nodes that occurs within the same MUX (both in A or both in B, and belonging to any correlator). To compute a contribution to a visibility, a (complex) product is formed from an A input, and a B input. So pairs do not count towards the computations available to a correlator unit.

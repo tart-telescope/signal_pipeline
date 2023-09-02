@@ -6,32 +6,27 @@ all:	doc
 ##
 
 # Source Markdown files and PDF outputs:
+DIR	:= ../doc
 MD	:= $(wildcard *.md)
 DOC	:= $(filter-out %.inc.md, $(MD))
 PDF	:= $(DOC:.md=.pdf)
 
 # Include-files:
 INC	:= $(filter %.inc.md, $(MD))
-TMP	?= doc/tart.latex
-CLS	?= doc/tartreport.cls
+TMP	?= $(DIR)/tart.latex
+CLS	?= $(DIR)/tartreport.cls
 
 # Images:
-PNG	:= $(wildcard doc/images/*.png)
-SVG	:= $(wildcard doc/images/*.svg)
-DOT	:= $(wildcard doc/images/*.dot)
+PNG	:= $(wildcard $(DIR)/images/*.png)
+SVG	:= $(wildcard $(DIR)/images/*.svg)
+DOT	:= $(wildcard $(DIR)/images/*.dot)
 PIC	:= $(SVG:.svg=.pdf) $(DOT:.dot=.pdf)
 
 # Pandoc settings:
 FLT	?= --citeproc
-# FLT	?= --filter=pandoc-include --filter=pandoc-fignos --filter=pandoc-citeproc
-#OPT	?= --number-sections --bibliography=$(REF)
 OPT	?= --number-sections
 
 doc:	$(PDF) $(PIC) $(PNG) $(INC)
-	@make -C bench doc
-	@make -C generator doc
-	@make -C rtl doc
-	@make -C synth doc
 
 clean:
 	rm -f $(PDF) $(LTX) $(PIC)
