@@ -1,7 +1,22 @@
 `timescale 1ns / 100ps
-`include "tartcfg.v"
+// `include "tartcfg.v"
 
-module correlator (  /*AUTOARG*/);
+module correlator (
+    clock_i,
+    reset_ni,
+    enable_i,
+
+    idata_i,
+    qdata_i,
+
+    revis_i,
+    imvis_i,
+
+    revis_o,
+    imvis_o,
+    valid_o,
+    ready_i
+);
 
   parameter integer WIDTH = 32;  // Number of antennas/signals
   parameter integer SBITS = 5;
@@ -28,6 +43,9 @@ module correlator (  /*AUTOARG*/);
 
   output [ASB:0] revis_o;
   output [ASB:0] imvis_o;
+  output valid_o;
+  input ready_i;
+
 
   /**
    *  Select source signals for visibility calculations.

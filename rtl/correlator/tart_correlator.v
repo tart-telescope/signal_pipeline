@@ -1,5 +1,26 @@
 `timescale 1ns / 100ps
-module tart_correlator (  /*AUTOARG*/);
+module tart_correlator (
+    sig_clock,
+    vis_clock,
+    bus_clock,
+    reset_ni,
+    enable_i,
+
+    sig_idata_i,
+    sig_qdata_i,
+    sig_valid_i,
+    sig_ready_o,
+    sig_last_i,
+
+    vis_start_o,
+    vis_frame_o,
+
+    bus_revis_o,
+    bus_imvis_o,
+    bus_valid_o,
+    bus_ready_i,
+    bus_last_o
+);
 
   // FIXME: The `COUNT` parameter has to be the same as `CORES`, due to the way
   //   that results are pipelined? Explicitly, after summing `COUNT` values,
@@ -7,6 +28,8 @@ module tart_correlator (  /*AUTOARG*/);
   //   accumulator FU?
 
   parameter integer WIDTH = 32;  // Number of antennas/signals
+  parameter integer WBITS = 5;  // Log2(#width)
+
   parameter integer CORES = 18;  // Number of correlator cores
   parameter integer CBITS = 5;  // Log2(#cores)
   parameter integer ACCUM = 36;  // Bit-width of accumulators
@@ -21,6 +44,7 @@ module tart_correlator (  /*AUTOARG*/);
 
   parameter integer ADDR = 4;
   parameter integer SUMBITS = 6;
+  parameter integer MUXBITS = 3;
 
   localparam integer BANKS = BBITS << 1;
   localparam integer BSB = BBITS - 1;
@@ -37,18 +61,23 @@ module tart_correlator (  /*AUTOARG*/);
   input reset_ni;
   input enable_i;
 
-  input [MSB:0] idata_i;
-  input [MSB:0] qdata_i;
+  // Control and status signals
+  output vis_start_o;
+  output vis_frame_o;
 
-  output start_o;
-  output frame_o;
+  // AXI4-Stream input for the visibilities
+  input [MSB:0] sig_idata_i;
+  input [MSB:0] sig_qdata_i;
+  input sig_valid_i;
+  input sig_last_i;  // todo: not useful?
+  output sig_ready_o;
 
   // AXI4-Stream output for the visibilities
-  output [SSB:0] revis_o;
-  output [SSB:0] imvis_o;
-  input ready_i;
-  output valid_o;
-  output last_o;
+  output [SSB:0] bus_revis_o;
+  output [SSB:0] bus_imvis_o;
+  input bus_ready_i;
+  output bus_valid_o;
+  output bus_last_o;
 
 
   /**
@@ -57,32 +86,39 @@ module tart_correlator (  /*AUTOARG*/);
   reg          wbank = 1'b0;
   reg  [ASB:0] waddr = {ADDR{1'b0}};
   wire [ASB:0] wnext = waddr + 1;
-  reg          ready = 1'b0;
+  reg          vis_start = 1'b0;
+  reg          sig_ready = 1'b0;
 
   reg  [MSB:0] isram                [WORDS];
   reg  [MSB:0] qsram                [WORDS];
 
+  assign sig_ready_o = sig_ready;
+
   always @(posedge sig_clock) begin
-    // Signal address unit
     if (!reset_ni) begin
       waddr <= {ADDR{1'b0}};
       wbank <= 1'b0;
-      ready <= 1'b0;
+      vis_start <= 1'b0;
+      sig_ready <= 1'b0;
     end else begin
+      // Signal address unit
       if (wnext < COUNT) begin
         waddr <= waddr_next;
-        ready <= 1'b0;
+        vis_start <= 1'b0;
       end else begin
         waddr <= {ADDR{1'b0}};
         wbank <= ~wbank;
-        ready <= 1'b1;
+        vis_start <= 1'b1;
       end
     end
 
+    // AXI4-Stream flow-control
+    sig_ready <= enable_i;
+
     // Store incoming data
-    if (enable) begin
-      isram[{wbank, waddr}] <= idata_i;
-      qsram[{wbank, waddr}] <= qdata_i;
+    if (sig_ready && sig_valid_i) begin
+      isram[{wbank, waddr}] <= sig_idata_i;
+      qsram[{wbank, waddr}] <= sig_qdata_i;
     end
   end
 
@@ -97,8 +133,8 @@ module tart_correlator (  /*AUTOARG*/);
       start <= 1'b0;
       fired <= 1'b0;
     end else begin
-      start <= ready & ~fired;
-      fired <= ready;
+      start <= vis_start & ~fired;
+      fired <= vis_start;
     end
   end
 
@@ -114,8 +150,8 @@ module tart_correlator (  /*AUTOARG*/);
   reg  [TSB:0] times = {TBITS{1'b0}};
   wire [TSB:0] tnext = times + 1;
 
-  assign start_o = start;
-  assign frame_o = frame;
+  assign vis_start_o = start;
+  assign vis_frame_o = frame;
 
   always @(posedge vis_clock) begin
     if (!reset_ni) begin
@@ -149,15 +185,60 @@ module tart_correlator (  /*AUTOARG*/);
     end
   end
 
-  // todo:
-  assign revis_o = idata;
-  assign imvis_o = qdata;
 
-  correlator #(
-      .WIDTH(WIDTH),
-      .COUNT(COUNT),
-      .ADDR (ADDR)
-  ) CORR[CORES] (  /*AUTOINST*/);
+  /**
+   *  Correlator array, with daisy-chained outputs.
+   */
+  reg vis_enable = 1'b0;
+
+  always @(posedge vis_clock) begin
+    if (!reset_ni) begin
+      vis_enable <= 1'b0;
+    end else begin
+      vis_enable <= frame;
+    end
+  end
+
+  wire [SSB:0] re_w[CORES+1];
+  wire [SSB:0] im_w[CORES+1];
+
+  wire [SSB:0] acc_re, acc_im;
+
+  assign re_w[0] = {SUMBITS{1'bx}};
+  assign im_w[0] = {SUMBITS{1'bx}};
+
+  assign acc_re  = re_w[CORES];
+  assign acc_im  = im_w[CORES];
+
+  genvar ii;
+  generate
+    for (ii = 0; ii < CORES; ii = ii + 1) begin : gen_corr_inst
+      correlator #(
+          .WIDTH(WIDTH),
+          .SBITS(WBITS),
+          .COUNT(COUNT),
+          .CBITS(ADDR),
+          .XBITS(MUXBITS)
+      ) CORR (
+          // Inputs
+          .clock_i (vis_clock),
+          .reset_ni(reset_ni),
+          .enable_i(vis_enable),
+
+          .idata_i(idata),
+          .qdata_i(qdata),
+
+          .revis_i(re_w[ii]),
+          .imvis_i(im_w[ii]),
+
+          // Outputs
+          .revis_o(re_w[ii+1]),
+          .imvis_o(im_w[ii+1]),
+          .valid_o(),
+          .ready_i()
+      );
+    end  // gen_corr_inst
+  endgenerate
 
 
   /**
@@ -173,7 +254,22 @@ module tart_correlator (  /*AUTOARG*/);
   accumulator #(
       .WIDTH(ACCUM),
       .TOTAL(TOTAL)
-  ) ACCUM0 (  /*AUTOINST*/);
+  ) ACCUM0 (
+      .clock_i (vis_clock),
+      .reset_ni(reset_ni),
+      .enable_i(acc_enable),
+
+      // Inputs
+      .revis_i(revis_i[SSB:0]),
+      .imvis_i(imvis_i[SSB:0]),
+
+      // Outputs
+      .revis_o(revis_o[MSB:0]),
+      .imvis_o(imvis_o[MSB:0]),
+      .valid_o(valid_o),
+      .ready_i(ready_i),
+      .last_o (last_o)
+  );
 
 
   /**
@@ -227,10 +323,10 @@ module tart_correlator (  /*AUTOARG*/);
   reg b_vld = 1'b0;
   reg b_lst = 1'b0;
 
-  assign valid_o = b_vld;
-  assign last_o  = b_lst;
-  assign revis_o = revis;
-  assign imvis_o = imvis;
+  assign bus_valid_o = b_vld;
+  assign bus_last_o  = b_lst;
+  assign bus_revis_o = revis;
+  assign bus_imvis_o = imvis;
 
   always @(posedge bus_clock) begin
     if (!reset_ni) begin

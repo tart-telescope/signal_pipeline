@@ -1,7 +1,22 @@
 `timescale 1ns / 100ps
-`include "tartcfg.v"
+// `include "tartcfg.v"
 
-module accumulator (  /*AUTOARG*/);
+module accumulator (
+    clock_i,
+    reset_ni,
+    enable_i,
+
+    revis_i,
+    imvis_i,
+    valid_i,
+    ready_o,
+
+    revis_o,
+    imvis_o,
+    valid_o,
+    ready_i,
+    last_o
+);
 
   parameter integer CORES = 18;
   parameter integer NBITS = 5;
@@ -35,6 +50,7 @@ module accumulator (  /*AUTOARG*/);
   input ready_i;
   output valid_o;
   output last_o;
+
 
   //
   // Read-Modify-Write pipelined accumulator, for the partial-sums from each of
@@ -118,6 +134,7 @@ module accumulator (  /*AUTOARG*/);
       wlast <= 1'b0;
     end
   end
+
 
   /**
    *  "AXI4-Stream"-like output.

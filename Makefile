@@ -1,5 +1,10 @@
 .PHONY:	all doc clean
-all:	doc
+all:
+	@make -C bench all
+	@make -C generator all
+	@make -C rtl all
+	@make -C synth all
+
 
 #
 #  Documentation settings
