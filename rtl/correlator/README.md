@@ -1,3 +1,15 @@
+---
+title: "*Overview and Design Notes for the Correlator Core*"
+author:
+ - Patrick Suggate
+ - Timothy Molteno
+date: 8^th^ September, 2023
+pagesize: a4
+geometry: margin:2cm
+fontsize: 11pt
+colorlinks: true
+---
+
 # README for the TART Correlator
 
 ## Theory of Operation
@@ -40,3 +52,7 @@ where the $\mathcal{R,I}$ columns include 3-bit, twos-complement (binary) values
 Todo:
 
 1. Instead of using two's-complement, just add two to each value (and account for it at the end)?
+
+## Partial-Sum Output Chain (PSOC)
+
+Every `COUNT` cycles, each correlator unit produces a complex, partially-summed visibility. Accumulating each of these requires two additions (one each for the real and imaginary components), and these are full-width accumulators (for the two-stage-accumulator designs). Therefore, `CORES` correlator units requires `2*CORES` additions every `COUNT` cycles.

@@ -1,5 +1,31 @@
-.PHONY:	all doc clean
-all:	doc
+.PHONY:	all build doc sim clean
+all:	doc sim
+
+#
+#  Icarus Verilog settings
+##
+IVC	?= iverilog
+VERINC	:= ../../include/
+VEROPT	:= -g2005-sv -D__icarus -Wall -I$(VERINC)
+
+RTL	:= ..
+MISC	:= $(wildcard $(RTL)/misc/*.v)
+CORR	:= $(wildcard $(RTL)/correlator/*.v)
+VERLIB	:= $(filter-out %_tb.v, $(MISC) $(CORR))
+
+VERTOP	?= visfinal_tb
+VEROUT	?= ../../build
+VCDOUT	?= ../../vcd
+
+sim:	$(VEROUT)/$(VERTOP).out build
+
+build:
+	echo $(VERINC)
+	@mkdir -p $(VEROUT)
+	@mkdir -p $(VCDOUT)
+
+../../build/%.out: %.v $(VERLIB)
+	$(IVC) $(VEROPT) -o $@ -s $* $^
 
 #
 #  Documentation settings

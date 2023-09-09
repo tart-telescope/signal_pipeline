@@ -1,0 +1,55 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Sat Sep  9 07:34:49 2023
+[*]
+[dumpfile] "/home/patrick/dev/signal_pipeline/vcd/visfinal_tb.vcd"
+[dumpfile_mtime] "Sat Sep  9 07:34:07 2023"
+[dumpfile_size] 15399
+[savefile] "/home/patrick/dev/signal_pipeline/vcd/visfinal_tb.gtkw"
+[timestart] 0
+[size] 2560 1376
+[pos] -1 -1
+*-17.046843 1420000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] visfinal_tb.
+[sst_width] 233
+[signals_width] 110
+[sst_expanded] 1
+[sst_vpaned_height] 414
+@28
+visfinal_tb.clock
+visfinal_tb.rst_n
+@800200
+-fake
+@28
+visfinal_tb.start
+visfinal_tb.done
+@22
+visfinal_tb.sel[3:0]
+@29
+visfinal_tb.nxt[2:0]
+@28
+visfinal_tb.cnt[2:0]
+@1000200
+-fake
+@800200
+-source
+@28
+visfinal_tb.vld_r
+visfinal_tb.fst_r
+visfinal_tb.lst_r
+@22
+visfinal_tb.dat_r[4:0]
+@1000200
+-source
+@800200
+-sums
+@28
+visfinal_tb.vld_w
+visfinal_tb.fst_w
+visfinal_tb.lst_w
+@22
+visfinal_tb.dat_w[7:0]
+@1000200
+-sums
+[pattern_trace] 1
+[pattern_trace] 0
