@@ -18,6 +18,11 @@ module correlator (
     ready_i
 );
 
+  // TODO:
+  //  - figure out how to parameterise the input MUXs
+  //  - 'sigsource.v' for input MUXs
+  //  - 'viscalc.v' for first-stage correlation
+
   parameter integer WIDTH = 32;  // Number of antennas/signals
   parameter integer SBITS = 5;
   parameter integer COUNT = 15;  // Number of terms for partial sums

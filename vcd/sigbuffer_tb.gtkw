@@ -1,0 +1,70 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Sun Sep 10 04:47:11 2023
+[*]
+[dumpfile] "/home/patrick/dev/signal_pipeline/vcd/sigbuffer_tb.vcd"
+[dumpfile_mtime] "Sun Sep 10 04:47:07 2023"
+[dumpfile_size] 17508
+[savefile] "/home/patrick/dev/signal_pipeline/vcd/sigbuffer_tb.gtkw"
+[timestart] 0
+[size] 1920 1043
+[pos] -1 -1
+*-18.309206 2380000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] sigbuffer_tb.
+[sst_width] 233
+[signals_width] 110
+[sst_expanded] 1
+[sst_vpaned_height] 298
+@28
+sigbuffer_tb.sig_clk
+sigbuffer_tb.reset_n
+@800200
+-fake
+@28
+sigbuffer_tb.start
+sigbuffer_tb.done
+sigbuffer_tb.vld_r
+sigbuffer_tb.fst_r
+sigbuffer_tb.lst_r
+@22
+sigbuffer_tb.i_dat[3:0]
+sigbuffer_tb.q_dat[3:0]
+sigbuffer_tb.count[4:0]
+@1000200
+-fake
+@800200
+-corr
+@28
+sigbuffer_tb.vis_clk
+sigbuffer_tb.vld_w
+sigbuffer_tb.fst_w
+sigbuffer_tb.lst_w
+sigbuffer_tb.adr_w[2:0]
+@22
+sigbuffer_tb.i_sig[3:0]
+sigbuffer_tb.q_sig[3:0]
+@1000200
+-corr
+@c00200
+-sigbuf
+@22
+sigbuffer_tb.SIGBUF0.waddr[4:0]
+@28
+sigbuffer_tb.SIGBUF0.switch
+sigbuffer_tb.SIGBUF0.start
+sigbuffer_tb.SIGBUF0.fired
+sigbuffer_tb.SIGBUF0.ended
+sigbuffer_tb.SIGBUF0.frame
+sigbuffer_tb.SIGBUF0.valid
+@22
+sigbuffer_tb.SIGBUF0.raddr[3:0]
+@28
+sigbuffer_tb.SIGBUF0.rbank[4]
+sigbuffer_tb.SIGBUF0.rlast
+sigbuffer_tb.SIGBUF0.tlast
+@22
+sigbuffer_tb.SIGBUF0.qdata[3:0]
+@1401200
+-sigbuf
+[pattern_trace] 1
+[pattern_trace] 0

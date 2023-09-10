@@ -10,22 +10,24 @@ VEROPT	:= -g2005-sv -D__icarus -Wall -I$(VERINC)
 
 RTL	:= ..
 MISC	:= $(wildcard $(RTL)/misc/*.v)
-CORR	:= $(wildcard $(RTL)/correlator/*.v)
+CORR	:= $(wildcard *.v)
 VERLIB	:= $(filter-out %_tb.v, $(MISC) $(CORR))
 
-VERTOP	?= visfinal_tb
-VEROUT	?= ../../build
+VERTOP	:= $(filter %_tb.v, $(CORR))
+VEROUT	:= $(VERTOP:%.v=../../build/%.out)
+#VERTOP	?= visfinal_tb
+#VEROUT	?= ../../build
 VCDOUT	?= ../../vcd
 
-sim:	$(VEROUT)/$(VERTOP).out build
+sim:	$(VEROUT) build
 
 build:
 	echo $(VERINC)
-	@mkdir -p $(VEROUT)
+#	@mkdir -p $(VEROUT)
 	@mkdir -p $(VCDOUT)
 
 ../../build/%.out: %.v $(VERLIB)
-	$(IVC) $(VEROPT) -o $@ -s $* $^
+	$(IVC) $(VEROPT) -o $@ -s $(*F) $^
 
 #
 #  Documentation settings

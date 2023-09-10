@@ -83,107 +83,33 @@ module tart_correlator (
   /**
    *  Input-buffering SRAM's for signal IQ data.
    */
-  reg          wbank = 1'b0;
-  reg  [ASB:0] waddr = {ADDR{1'b0}};
-  wire [ASB:0] wnext = waddr + 1;
-  reg          vis_start = 1'b0;
-  reg          sig_ready = 1'b0;
+  wire vis_valid_w, vis_first_w, vis_last_w;
+  wire [TSB:0] vis_taddr_w;
+  wire [MSB:0] vis_idata_w, vis_qdata_w;
 
-  reg  [MSB:0] isram                [WORDS];
-  reg  [MSB:0] qsram                [WORDS];
-
-  assign sig_ready_o = sig_ready;
-
-  always @(posedge sig_clock) begin
-    if (!reset_ni) begin
-      waddr <= {ADDR{1'b0}};
-      wbank <= 1'b0;
-      vis_start <= 1'b0;
-      sig_ready <= 1'b0;
-    end else begin
-      // Signal address unit
-      if (wnext < COUNT) begin
-        waddr <= waddr_next;
-        vis_start <= 1'b0;
-      end else begin
-        waddr <= {ADDR{1'b0}};
-        wbank <= ~wbank;
-        vis_start <= 1'b1;
-      end
-    end
-
-    // AXI4-Stream flow-control
-    sig_ready <= enable_i;
-
-    // Store incoming data
-    if (sig_ready && sig_valid_i) begin
-      isram[{wbank, waddr}] <= sig_idata_i;
-      qsram[{wbank, waddr}] <= sig_qdata_i;
-    end
-  end
-
-  /**
-   *  When a new bank of signal data is ready, start a new visibility calculation.
-   */
-  reg start = 1'b0;
-  reg fired = 1'b0;
-
-  always @(posedge vis_clock) begin
-    if (!reset_ni) begin
-      start <= 1'b0;
-      fired <= 1'b0;
-    end else begin
-      start <= vis_start & ~fired;
-      fired <= vis_start;
-    end
-  end
-
-
-  /**
-   *  Output of SRAM IQ data to the correlators.
-   */
-  reg          rbank = 1'b0;
-  reg  [ASB:0] raddr = {ADDR{1'b0}};
-  wire [ASB:0] rnext = raddr + 1;
-  reg          frame = 1'b0;
-
-  reg  [TSB:0] times = {TBITS{1'b0}};
-  wire [TSB:0] tnext = times + 1;
-
-  assign vis_start_o = start;
-  assign vis_frame_o = frame;
-
-  always @(posedge vis_clock) begin
-    if (!reset_ni) begin
-      raddr <= {ADDR{1'b0}};
-      rbank <= 1'b0;
-      frame <= 1'b0;
-      times <= {TRATE{1'b0}};
-    end else begin
-      if (ready & ~fired) begin
-        frame <= 1'b1;
-      end else if (rnext == COUNT) begin
-        raddr <= {ADDR{1'b0}};
-        if (tnext == TRATE) begin
-          frame <= 1'b0;
-          rbank <= ~rbank;
-        end
-      end
-
-      if (frame) begin
-        raddr <= raddr_next;
-      end else begin
-        raddr <= {ADDR{1'b0}};
-      end
-    end
-  end
-
-  always @(posedge vis_clock) begin
-    if (frame) begin
-      idata <= isram[{rbank, raddr}];
-      qdata <= qsram[{rbank, raddr}];
-    end
-  end
+  sigbuffer #(
+      .WIDTH(WIDTH),
+      .TRATE(TRATE),
+      .TBITS(TBITS),
+      .COUNT(COUNT),
+      .CBITS(CBITS),
+      .BBITS(BBITS)
+  ) SIGBUF0 (
+      .sig_clk(sig_clock),
+      .vis_clk(vis_clock),
+      .reset_n(reset_ni),
+      // Antenna/source signals
+      .valid_i(sig_valid_i),
+      .idata_i(sig_idata_i),
+      .qdata_i(sig_qdata_i),
+      // Delayed, up-rated, looped signals
+      .valid_o(vis_valid_w),
+      .first_o(vis_first_w),
+      .last_o (vis_last_w),
+      .taddr_o(vis_taddr_w),
+      .idata_o(vis_idata_w),
+      .qdata_o(vis_qdata_w)
+  );
 
 
   /**

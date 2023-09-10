@@ -12,6 +12,31 @@ colorlinks: true
 
 # README for the TART Correlator
 
+Pseudocode:
+```rust
+for i in 0..TRATE {
+  // Select the timeseries (arrays) for the subsequent correlations
+  let ai = i[muxa[i]];
+  let aq = q[muxa[i]];
+  let bi = i[muxa[i]];
+  let bq = q[muxa[i]];
+  
+  // Accumulate in two stages, and forward partial-sums to the accumulator
+  for j in 0..COUNT[1] {
+    let mut vr = 0;
+    let mut vi = 0;
+    
+    for k in 0..COUNT[0] {
+      let l = j*COUNT[0] + k;
+      vr += ai[l] * bi[l] + aq[l] * bq[l];
+      vi += aq[l] * bi[l] - ai[l] * bq[l];
+    }
+    out.send((vr, vi))?;
+  }
+}
+```
+demonstrating the order that the antenna signals are read out of the buffer SRAMs.
+
 ## Theory of Operation
 
 Accumumates `COUNT` samples from each antenna, in order to efficiently batch-compute partially-summed visibilities. These are then forwarded onto a wider accumulator, to compute the sum of the desired number of cross-correlations.

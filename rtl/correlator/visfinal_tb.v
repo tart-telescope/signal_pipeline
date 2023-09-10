@@ -7,7 +7,7 @@ module visfinal_tb;
   localparam integer OBITS = 8;
   localparam integer OSB = OBITS - 1;
 
-  localparam integer ABITS = 4;
+  localparam integer ABITS = 2;
   localparam integer ASB = ABITS - 1;
   localparam integer NSUMS = 1 << ABITS;
 

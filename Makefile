@@ -1,9 +1,13 @@
-.PHONY:	all doc clean
+.PHONY:	all sim doc clean
 all:
 	@make -C bench all
 	@make -C generator all
 	@make -C rtl all
 	@make -C synth all
+
+sim:
+	@make -C rtl/correlator sim
+	@make -C build sim
 
 
 #
