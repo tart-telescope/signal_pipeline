@@ -6,8 +6,8 @@ module accumulator (
     reset_n,
 
     valid_i,
-                    first_i,
-                    last_i,
+    first_i,
+    last_i,
     revis_i,
     imvis_i,
 
@@ -40,9 +40,9 @@ module accumulator (
   input clock;
   input reset_n;
 
-input valid_i;
-input first_i;
-input last_i;
+  input valid_i;
+  input first_i;
+  input last_i;
   input [SSB:0] revis_i;
   input [SSB:0] imvis_i;
 
@@ -166,7 +166,7 @@ input last_i;
         end
       end
 
-      if (cnext == 0) begin     // todo: see 'sigsource' for better logic
+      if (cnext == 0) begin  // todo: see 'sigsource' for better logic
         valid <= 1'b1;
         revis <= r_acc;
         imvis <= i_acc;

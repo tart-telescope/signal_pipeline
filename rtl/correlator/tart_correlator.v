@@ -140,7 +140,7 @@ module tart_correlator (
   wire [HBITS-1:0] hnext = cnthi + 1;
   wire himax = hnext == LOOP1[HBITS-1:0];
 
-  wire cnext = lomax | buf_first_w; // todo: make synchronous ...
+  wire cnext = lomax | buf_first_w;  // todo: make synchronous ...
 
   always @(posedge vis_clock) begin
     if (!reset_n) begin
@@ -216,17 +216,17 @@ module tart_correlator (
   /**
    *  Accumulates each of the partial-sums into the full-width visibilities.
    */
-wire vis_first = 1'b0; // todo: ...
-wire vis_last = 1'b0;
+  wire vis_first = 1'b0;  // todo: ...
+  wire vis_last = 1'b0;
 
   wire [ACCUM-1:0] acc_revis, acc_imvis;
   wire acc_valid, acc_last;
 
   accumulator #(
-                .CORES(CORES),
-                .NBITS(UBITS),
-                .TRATE(TRATE),
-                .TBITS(TBITS),
+      .CORES(CORES),
+      .NBITS(UBITS),
+      .TRATE(TRATE),
+      .TBITS(TBITS),
       .WIDTH(ACCUM),
       .SBITS(SBITS)
   ) ACCUM0 (
@@ -235,8 +235,8 @@ wire vis_last = 1'b0;
 
       // Inputs
       .valid_i(vlds[CORES]),
-            .first_i(vis_first),
-            .last_i(vis_last),
+      .first_i(vis_first),
+      .last_i (vis_last),
       .revis_i(re_w[CORES]),
       .imvis_i(im_w[CORES]),
 
@@ -252,7 +252,7 @@ wire vis_last = 1'b0;
    *  Output SRAM's that store visibilities, while waiting to be sent to the
    *  host system.
    */
-localparam integer TOTAL = CORES * TRATE;
+  localparam integer TOTAL = CORES * TRATE;
   localparam integer OSIZE = BANKS * TOTAL;
   localparam integer OBITS = CBITS + TBITS;
   localparam integer OSB = OBITS - 1;

@@ -142,7 +142,7 @@ module correlator (
 
   // -- Cross-correlator -- //
 
-  wire auto = 1'b0; // todo: ...
+  wire auto = 1'b0;  // todo: ...
   wire cor_valid;
   wire [ASB:0] cor_revis, cor_imvis;
 

@@ -48,13 +48,13 @@ module correlate_tb;
   initial #6000 $finish;
 
   // Finishing criteria
-  reg cor_frame;
+  reg  cor_frame;
   wire cor_valid;
 
   always @(posedge clock) begin
     if (!reset_n) begin
       cor_frame <= 1'b0;
-      cor_done <= 1'b0;
+      cor_done  <= 1'b0;
     end else begin
       if (src_start) begin
         cor_frame <= 1'b1;
