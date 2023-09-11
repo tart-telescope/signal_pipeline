@@ -1,42 +1,55 @@
 `timescale 1ns / 100ps
-module sigbuffer_tb;
+module tart_correlator_tb;
 
-  localparam integer WIDTH = 4;  // 4x antennas
+  localparam integer WIDTH = 16;  // 16x antennas
+  localparam integer WBITS = 4;
   localparam integer MSB = WIDTH - 1;
+
+  // Source-signal multiplexor parameters
+  localparam integer MUX_N = 5;
+  localparam integer XBITS = 3;
+  localparam integer XSB = XBITS - 1;
+
+  localparam integer CORES = 18;  // Number of correlator cores
+  localparam integer UBITS = 5;  // Log2(#cores)
+  localparam integer USB = UBITS - 1;
 
   localparam integer TRATE = 5;  // 5x clock multiplier
   localparam integer TBITS = 3;
   localparam integer TSB = TBITS - 1;
 
   localparam integer LOOP0 = 3;  // Stage-1 loop count
+  localparam integer LBITS = 2;
   localparam integer LOOP1 = 5;  // Stage-2 loop count
+  localparam integer HBITS = 3;
   localparam integer COUNT = LOOP0 * LOOP1;
   localparam integer CBITS = 4;  // Bit-width of loop counter
   localparam integer CSB = CBITS - 1;
 
-  localparam integer BBITS = 1;  // Number of banks of signal data
-  localparam integer ABITS = BBITS + CBITS;  // Address width for signal SRAM
-  localparam integer ASB = ABITS - 1;
+  localparam integer ACCUM = 20;
+  localparam integer SBITS = 7;
 
 
   // -- Globals -- //
 
   reg sig_clock = 1'b1;
-  reg buf_clock = 1'b1;
+  reg vis_clock = 1'b1;
+  reg bus_clock = 1'b1;
   reg reset_n = 1'bx;
 
-  always #5 buf_clock <= ~buf_clock;
+  always #5 vis_clock <= ~vis_clock;
   always #25 sig_clock <= ~sig_clock;
+  always #15 bus_clock <= ~bus_clock;
 
   reg sig_start = 1'b0;
-  reg buf_done = 1'b0;
   reg sig_done = 1'b1;
+  reg tart_done = 1'b0;
 
 
   // -- Simulation stimulus -- //
 
   initial begin
-    $dumpfile("../vcd/sigbuffer_tb.vcd");
+    $dumpfile("../vcd/tart_correlator_tb.vcd");
     $dumpvars;
 
     #15 reset_n <= 1'b0;
@@ -45,7 +58,7 @@ module sigbuffer_tb;
     #20 sig_start <= 1'b1;
     #10 sig_start <= 1'b0;
 
-    #10 while (!buf_done) #10;
+    #10 while (!tart_done) #10;
 
     #80 $finish;
   end
@@ -61,12 +74,12 @@ module sigbuffer_tb;
   reg sig_last;
   reg [MSB:0] sig_idata, sig_qdata;
 
-  reg [ASB:0] count;
-
-  wire [ASB:0] cnext = count + 1;
+  reg [CBITS:0] count;
+  wire [CBITS:0] cnext = count + 1;
   wire cwrap = cnext[CSB:0] == COUNT[CSB:0];
   wire clast = cnext[CSB:0] == COUNT[CSB:0] - 1;
-  wire [ASB:CBITS] cbank = count[ASB:CBITS] + 1;
+  wire cbank = count[CBITS] + 1;
+
   wire go_w = sig_start || !sig_done;
 
   // Fills two banks with (fake) signal data
@@ -75,13 +88,13 @@ module sigbuffer_tb;
       sig_valid <= 1'b0;
       sig_first <= 1'b0;
       sig_last <= 1'b0;
-      count <= {ABITS{1'b0}};
+      count <= {1'b0, {CBITS{1'b0}}};
       sig_done <= 1'b1;
     end else begin
       // Sig_start/stop logic for the fake data
       if (sig_start) begin
         sig_done <= 1'b0;
-      end else if (count[ASB] && clast) begin
+      end else if (count[CBITS] && clast) begin
         sig_done <= 1'b1;
       end
 
@@ -99,7 +112,7 @@ module sigbuffer_tb;
       if (sig_start) begin
         sig_first <= 1'b1;
       end else begin
-        sig_first <= cwrap && !sig_done && !count[ASB];  // 1'b0;
+        sig_first <= cwrap && !sig_done && !count[CBITS];  // 1'b0;
       end
       sig_last <= clast && !sig_done;
 
@@ -111,54 +124,50 @@ module sigbuffer_tb;
     end
   end
 
-  // Finishing criteria
-  reg buf_frame;
-
-  always @(posedge buf_clock) begin
-    if (!reset_n) begin
-      buf_frame <= 1'b0;
-      buf_done  <= 1'b0;
-    end else begin
-      buf_frame <= buf_valid;
-
-      if (sig_done && buf_frame && !buf_valid) begin
-        buf_done <= 1'b1;
-      end else begin
-        buf_done <= 1'b0;
-      end
-
-    end
-  end
-
 
   // -- Module Under Test -- //
 
-  wire buf_valid, buf_first, buf_last;
-  wire [TSB:0] buf_addr;
-  wire [MSB:0] buf_idata, buf_qdata;
+  wire vis_start, vis_frame;
+  wire bus_valid, bus_last, bus_ready;
+  wire [ACCUM-1:0] bus_rdata, bus_idata;
 
-  sigbuffer #(
+  assign bus_ready = 1'b1;
+
+  tart_correlator #(
       .WIDTH(WIDTH),
+      .WBITS(WBITS),
+      .MUX_N(MUX_N),
+      .XBITS(XBITS),
+      .CORES(CORES),
+      .UBITS(UBITS),
       .TRATE(TRATE),
       .TBITS(TBITS),
-      .COUNT(COUNT),
+      .LOOP0(LOOP0),
+      .LBITS(LBITS),
+      .LOOP1(LOOP1),
+      .HBITS(HBITS),
       .CBITS(CBITS),
-      .BBITS(BBITS)
-  ) SIGBUF0 (
-      .sig_clk(sig_clock),
-      .vis_clk(buf_clock),
-      .reset_n(reset_n),
-      // Antenna/source signals
-      .valid_i(sig_valid),
-      .idata_i(sig_idata),
-      .qdata_i(sig_qdata),
-      // Delayed, up-rated, looped signals
-      .valid_o(buf_valid),
-      .first_o(buf_first),
-      .last_o (buf_last),
-      .taddr_o(buf_addr),
-      .idata_o(buf_idata),
-      .qdata_o(buf_qdata)
+      .ACCUM(ACCUM),
+      .SBITS(SBITS)
+  ) TARTCOR0 (
+      .sig_clock(sig_clock),
+      .vis_clock(vis_clock),
+      .bus_clock(bus_clock),
+      .reset_n  (reset_n),
+
+      .sig_valid_i(sig_valid),
+      .sig_last_i (sig_last),
+      .sig_idata_i(sig_idata),
+      .sig_qdata_i(sig_qdata),
+
+      .vis_start_o(vis_start),
+      .vis_frame_o(vis_frame),
+
+      .bus_valid_o(bus_valid),
+      .bus_ready_i(bus_ready),
+      .bus_last_o (bus_last),
+      .bus_revis_o(bus_rdata),
+      .bus_imvis_o(bus_idata)
   );
 
-endmodule  // sigbuffer_tb
+endmodule  // tart_correlator_tb

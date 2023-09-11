@@ -1,5 +1,17 @@
 `timescale 1ns / 100ps
+/**
+ * Input-buffering SRAM's for (antenna) signal IQ data.
+ *
+ * Every 'COUNT' input samples a full set of (partially-summed) visibility
+ * contributions are computed, and forwarded to the final-stage accumulators.
+ * The following buffer stores two (or more) banks of these 'COUNT' samples,
+ * and streams them (with the correct ordering) to the correlators, switching
+ * banks at the end of each block (of 'COUNT' samples).
+ */
 module sigbuffer (  /*AUTOARG*/
+    sig_clk,
+    vis_clk,
+    reset_n,
     // Outputs
     valid_o,
     first_o,
@@ -8,9 +20,6 @@ module sigbuffer (  /*AUTOARG*/
     idata_o,
     qdata_o,
     // Inputs
-    sig_clk,
-    vis_clk,
-    reset_n,
     valid_i,
     idata_i,
     qdata_i

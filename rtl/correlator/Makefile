@@ -15,15 +15,12 @@ VERLIB	:= $(filter-out %_tb.v, $(MISC) $(CORR))
 
 VERTOP	:= $(filter %_tb.v, $(CORR))
 VEROUT	:= $(VERTOP:%.v=../../build/%.out)
-#VERTOP	?= visfinal_tb
-#VEROUT	?= ../../build
 VCDOUT	?= ../../vcd
 
 sim:	$(VEROUT) build
 
 build:
 	echo $(VERINC)
-#	@mkdir -p $(VEROUT)
 	@mkdir -p $(VCDOUT)
 
 ../../build/%.out: %.v $(VERLIB)
