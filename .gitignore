@@ -1,3 +1,5 @@
 *.lock
 *.pdf
+*.vcd
+*.out
 target/
