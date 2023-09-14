@@ -81,6 +81,18 @@ The minimum number of correlators, $c_{\min} \in \mathbb{N}$, is the maximum of 
 \end{align*}
 because either the MUX width, $w$ (because each source is repeated at least $r_{\min}$ times, filling up one input of one of the two input MUXs), or the correlator operating frequency, $f_{\operatorname{correlator}}$ (in Hz), will determine the minimum number of correlators.
 
+## Outputs
+
+Need:
+
++ permutation vector
+
++ per-correlator *"taps"* from the full set of antenna signals, to each MUX
+
++ MUX '`sel`' values for each time-slice
+
++ auto-correlation flags
+
 \clearpage
 
 # Graph Theory

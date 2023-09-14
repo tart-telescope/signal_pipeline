@@ -18,8 +18,8 @@ PDF	:= $(DOC:.md=.pdf)
 
 # Include-files:
 INC	:= $(filter %.inc.md, $(MD))
-TMP	?= /home/patrick/texmf/tex/latex/consult.latex
-CLS	?= /home/patrick/texmf/tex/latex/consultreport.cls
+TMP	?= ../doc/tart.latex
+CLS	?= ../doc/tartreport.cls
 
 # Images:
 PNG	:= $(wildcard doc/images/*.png)
