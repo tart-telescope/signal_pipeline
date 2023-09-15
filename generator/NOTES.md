@@ -96,9 +96,3 @@ Need:
 + MUX '`sel`' values for each time-slice
 
 + auto-correlation flags
-
-\clearpage
-
-# Graph Theory
-
-A **matching** (or, **independent edge set**) in an undirected graph is a set of edges without common vertices.

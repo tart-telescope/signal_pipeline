@@ -22,9 +22,9 @@ TMP	?= ../doc/tart.latex
 CLS	?= ../doc/tartreport.cls
 
 # Images:
-PNG	:= $(wildcard doc/images/*.png)
-SVG	:= $(wildcard doc/images/*.svg)
-DOT	:= $(wildcard doc/images/*.dot)
+PNG	:= $(wildcard ../doc/images/*.png)
+SVG	:= $(wildcard ../doc/diagrams/*.svg)
+DOT	:= $(wildcard ../doc/images/*.dot)
 PIC	:= $(SVG:.svg=.pdf) $(DOT:.dot=.pdf)
 
 # Pandoc settings:

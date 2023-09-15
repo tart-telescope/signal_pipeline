@@ -37,6 +37,8 @@ for i in 0..TRATE {
 ```
 demonstrating the order that the antenna signals are read out of the buffer SRAMs.
 
+![Diagram](../../doc/diagrams/tart_correlator.pdf "salad")
+
 ## Theory of Operation
 
 Accumumates `COUNT` samples from each antenna, in order to efficiently batch-compute partially-summed visibilities. These are then forwarded onto a wider accumulator, to compute the sum of the desired number of cross-correlations.
