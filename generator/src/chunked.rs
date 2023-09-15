@@ -1,3 +1,5 @@
+use log::error;
+
 /**
  *  2D arrays with each subarray having up to 'stride' size.
  */
@@ -43,7 +45,8 @@ impl<T> Default for Chunked<T> {
 impl<T: Default + Clone> Chunked<T> {
     pub fn new(stride: usize, length: usize) -> Self {
         if stride < 1 {
-            panic!("idiot!");
+            error!("Number of MUX inputs must be > 0");
+            std::process::exit(1);
         }
         Self {
             stride,
@@ -56,7 +59,7 @@ impl<T: Default + Clone> Chunked<T> {
 impl<T> Chunked<T> {
     fn check_chunk_limit(&self, chunk: usize) -> bool {
         if chunk >= self.counts.len() {
-            eprintln!(
+            error!(
                 "out of bounds, ignoring, retard (chunk: {}, length: {})",
                 chunk,
                 self.counts.len()

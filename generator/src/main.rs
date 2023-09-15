@@ -1,6 +1,8 @@
 use clap::Parser;
 use tart_dsp::Context;
 
+use tart_dsp::logger;
+
 /// Command line options for configuring the TART DSP, based on the number of
 /// antennas, and the relative frequencies of the antenna source signals, vs
 /// that of the correlators. For example, the first TART DSP used 16.384 MHz as
@@ -29,6 +31,10 @@ struct Args {
     #[arg(short, long, value_name = "BOOL", default_value = "false")]
     no_means: bool,
 
+    // #[arg(short, long, value_name = "FILE", default_value = "params.txt")]
+    #[arg(short, long)]
+    output: bool,
+
     /// Number of extra MUX-width inputs, for more difficult configurations
     #[arg(short, long, value_name = "BITS", default_value = "0")]
     extra_bits: usize,
@@ -42,9 +48,12 @@ struct Args {
     verbose: u8,
 }
 
-fn main() {
+// fn main() -> Result<(), std::io::Error> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("TART DSP Generator Extreme\n");
     let args: Args = Args::parse();
+    let level: String = args.log_level.unwrap_or("info".to_string());
+    logger::configure(level.as_str(), args.verbose > 0)?;
 
     let mut context: Context = tart_dsp::Context::new(
         args.antennas,
@@ -75,8 +84,10 @@ fn main() {
 
             context.unit_scores();
         }
+    }
 
-        if let Some(edges) = context.assign_edges(true) {
+    if let Some(edges) = context.assign_edges(true) {
+        if args.output {
             println!("Visibility-calculation assignments:");
             println!("{}", edges);
             /*
@@ -85,19 +96,23 @@ fn main() {
             let nodes = context.means_set(edges.clone());
             println!("means set (len = {}): {:?}", nodes.len(), nodes);
             */
-
-            if let Some(means) = context.assign_means(edges.clone()) {
-                println!("{}", means);
-            }
-
-            if let Some(means) = context.means_another(edges.clone()) {
-                println!("{}", means);
-            }
-
-            if let Some(means) = context.means_assign(edges) {
-                println!("Signal-mean calculation assignments:");
-                println!("{}", means);
-            }
         }
     }
+
+    if !args.no_means {
+        if let Some(means) = context.assign_means(edges.clone()) {
+            println!("{}", means);
+        }
+
+        if let Some(means) = context.means_another(edges.clone()) {
+            println!("{}", means);
+        }
+
+        if let Some(means) = context.means_assign(edges) {
+            println!("Signal-mean calculation assignments:");
+            println!("{}", means);
+        }
+    }
+
+    Ok(())
 }

@@ -1,5 +1,7 @@
-use crate::chunked::Chunked;
+use log::{debug, error, info, trace, warn};
 use std::fmt;
+
+use crate::chunked::Chunked;
 
 /**
  * Stores the working data for partitioning the set of visibility calculations
@@ -538,7 +540,7 @@ impl Context {
         for u in 0..self.num_units {
             scores.push(self.improve_unit_score(u));
         }
-        println!("Scores: {:?}", scores);
+        info!("Scores: {:?}", scores);
     }
 
     /**
@@ -612,7 +614,7 @@ impl Context {
         &self,
         unit: usize,
         node: usize,
-        next: usize,
+        _next: usize,
     ) -> usize {
         // Compute score for removing an unnecessary node
         let score = if self.a_mux_array[unit].contains(&node) {
@@ -723,18 +725,16 @@ impl Context {
     pub fn assign_edges(&mut self, cont: bool) -> Option<Chunked<usize>> {
         let ranks = self.sorted_edges();
         if self.edges_count[ranks[0]] == 0 {
-            eprintln!("Not all edges have been covered!");
+            error!("Not all edges have been covered!");
             let mut i = 0;
-            eprint!("Missing: ");
+            let mut missing: Vec<String> = Vec::new();
             while self.edges_count[ranks[i]] == 0 {
                 let (a, b) = self.edges_array[ranks[i]];
-                if i > 0 {
-                    eprint!(", ");
-                }
-                eprint!("{} -> {}", a, b);
+                missing.push(format!("{} -> {}", a, b));
                 i += 1;
             }
-            eprintln!("  (num = {})", i);
+            let edges = missing.join(", ");
+            error!("Missing: {}  (num = {})", edges, i);
             return None;
         }
 
@@ -768,11 +768,11 @@ impl Context {
             {
                 units.push(u, k);
             } else if !cont {
-                eprintln!("No solution, as there is no free correlator!\n");
+                error!("No solution, as there is no free correlator!\n");
                 return None;
             } else {
                 let (a, b) = self.edges_array[k];
-                println!("Failed to route edge: {} -> {}", a, b);
+                warn!("Failed to route edge: {} -> {}", a, b);
             }
         }
 
@@ -795,7 +795,7 @@ impl Context {
         let mut freqs = self.means_set(units.clone());
         freqs.sort_unstable_by_key(|(_, c)| *c);
         if freqs.len() < self.num_antennas {
-            eprintln!("Cannot place all signal-means calculations!\n  {:?} (len = {})", freqs.clone(), freqs.len());
+            error!("Cannot place all signal-means calculations!\n  {:?} (len = {})", freqs.clone(), freqs.len());
             return None;
         }
         let mut nodes = freqs
@@ -862,9 +862,9 @@ impl Context {
 
             if nodes.len() == prev {
                 // No nodes placed on this pass, so no solution
-                eprintln!("Cannot place all signal-means calculations!");
-                eprintln!("Remaining signal-means calculations to place:");
-                eprintln!("  {:?} (len = {})", nodes.clone(), nodes.len());
+                error!("Cannot place all signal-means calculations!");
+                error!("Remaining signal-means calculations to place:");
+                error!("  {:?} (len = {})", nodes.clone(), nodes.len());
                 return None;
             }
             prev = nodes.len();
@@ -902,11 +902,11 @@ impl Context {
         let mut freqs = self.means_set(units.clone());
         freqs.sort_unstable_by_key(|(_, c)| *c);
         if freqs.len() < self.num_antennas {
-            eprintln!("Cannot place all signal-means calculations!");
-            eprintln!("  {:?} (len = {})", freqs.clone(), freqs.len());
+            error!("Cannot place all signal-means calculations!");
+            error!("  {:?} (len = {})", freqs.clone(), freqs.len());
             return None;
         }
-        println!("freqs: {:?}", freqs);
+        debug!("freqs: {:?}", freqs);
         let mut nodes = freqs
             .clone()
             .into_iter()
@@ -1006,13 +1006,10 @@ impl Context {
                 let bsu: usize = bnum.iter().sum();
                 let rem: usize = nodes.len() >> 1;
                 if asu < rem || bsu < rem {
-                    println!(
-                        "asum: {}, bsum: {} (remaining: {})",
-                        asu, bsu, rem
-                    );
+                    debug!("asum: {}, bsum: {} (remaining: {})", asu, bsu, rem);
                     continue;
                 } else {
-                    println!(
+                    debug!(
                         "nodes: ({}, {:?}) => asum: {}, bsum: {} (remaining: {})",
                         node, nodes.clone(), asu, bsu, rem
                     );
@@ -1029,7 +1026,7 @@ impl Context {
                 }
 
                 if others.len() > 1 && sols < 2 {
-                    eprintln!(
+                    error!(
                         "No means solution for 'unit: {}' and 'node: {}'",
                         i, node
                     );
@@ -1078,8 +1075,8 @@ impl Context {
                 nodes.retain(|&x| x != pair);
             } else {
                 nodes.push(node);
-                println!("{}", means);
-                println!("No solution, and remaining nodes: {:?}", nodes);
+                warn!("{}", means);
+                warn!("No solution, and remaining nodes: {:?}", nodes);
                 return None;
             }
         }
@@ -1094,11 +1091,11 @@ impl Context {
         let mut freqs = self.means_set(units.clone());
         freqs.sort_unstable_by_key(|(_, c)| *c);
         if freqs.len() < self.num_antennas {
-            eprintln!("Cannot place all signal-means calculations!");
-            eprintln!("  {:?} (len = {})", freqs.clone(), freqs.len());
+            error!("Cannot place all signal-means calculations!");
+            error!("  {:?} (len = {})", freqs.clone(), freqs.len());
             return None;
         }
-        println!("freqs: {:?}", freqs);
+        debug!("freqs: {:?}", freqs);
         let mut nodes = freqs
             .clone()
             .into_iter()
@@ -1204,13 +1201,10 @@ impl Context {
                 };
                 let rem: usize = nodes.len() >> 1;
                 if asu < rem || bsu < rem {
-                    println!(
-                        "asum: {}, bsum: {} (remaining: {})",
-                        asu, bsu, rem
-                    );
+                    debug!("asum: {}, bsum: {} (remaining: {})", asu, bsu, rem);
                     continue;
                 } else {
-                    println!(
+                    trace!(
                         "nodes: ({}, {:?}) => asum: {}, bsum: {} (remaining: {})",
                         node, nodes.clone(), asu, bsu, rem
                     );
@@ -1251,8 +1245,8 @@ impl Context {
                 nodes.retain(|&x| x != pair);
             } else {
                 nodes.push(node);
-                println!("{}", means);
-                println!("No solution, and remaining nodes: {:?}", nodes);
+                warn!("{}", means);
+                warn!("No solution, and remaining nodes: {:?}", nodes);
                 return None;
             }
         }
@@ -1276,7 +1270,7 @@ impl Context {
         if !self.no_means {
             self.place_means();
         } else if verbose {
-            println!("Skipping means ...");
+            info!("Skipping means ...");
         }
 
         // Filling both input MUXs of each correlator unit.
