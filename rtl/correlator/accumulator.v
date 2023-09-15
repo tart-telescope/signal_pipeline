@@ -2,19 +2,18 @@
 // `include "tartcfg.v"
 
 module accumulator (
-    clock_i,
-    reset_ni,
-    enable_i,
+    clock,
+    reset_n,
 
+    valid_i,
+    first_i,
+    last_i,
     revis_i,
     imvis_i,
-    valid_i,
-    ready_o,
 
     revis_o,
     imvis_o,
     valid_o,
-    ready_i,
     last_o
 );
 
@@ -38,16 +37,17 @@ module accumulator (
   // localparam integer COUNT = (1 << CBITS) - 1;
   localparam integer CSB = CBITS - 1;
 
-  input clock_i;
-  input reset_ni;
-  input enable_i;
+  input clock;
+  input reset_n;
 
+  input valid_i;
+  input first_i;
+  input last_i;
   input [SSB:0] revis_i;
   input [SSB:0] imvis_i;
 
   output [MSB:0] revis_o;
   output [MSB:0] imvis_o;
-  input ready_i;
   output valid_o;
   output last_o;
 
@@ -68,11 +68,11 @@ module accumulator (
   reg          accum = 1'b0;
 
   // todo:
-  always @(posedge clock_i) begin
-    if (!reset_ni) begin
+  always @(posedge clock) begin
+    if (!reset_n) begin
       raddr <= {PBITS{1'b0}};
       accum <= 1'b0;
-    end else if (enable_i) begin
+    end else if (valid_i) begin
       if (rnext == PAIRS) begin
         raddr <= {PBITS{1'b0}};
       end else begin
@@ -95,8 +95,8 @@ module accumulator (
   reg [MSB:0] r_acc, i_acc;
   reg write = 1'b0;
 
-  always @(posedge clock_i) begin
-    if (!reset_ni) begin
+  always @(posedge clock) begin
+    if (!reset_n) begin
       write <= 1'b0;
     end else if (accum) begin
       r_acc <= r_dat + revis_i;
@@ -115,8 +115,8 @@ module accumulator (
   wire [PSB:0] wnext = waddr + 1;
   reg          wlast = 1'b0;
 
-  always @(posedge clock_i) begin
-    if (!reset_ni) begin
+  always @(posedge clock) begin
+    if (!reset_n) begin
       waddr <= {PBITS{1'b0}};
       wlast <= 1'b0;
     end else if (write) begin
@@ -152,8 +152,8 @@ module accumulator (
   assign valid_o = valid;
   assign last_o  = rlast;
 
-  always @(posedge clock_i) begin
-    if (!reset_ni) begin
+  always @(posedge clock) begin
+    if (!reset_n) begin
       count <= {CBITS{1'b0}};
       valid <= 1'b0;
       rlast <= 1'b0;  // todo: logic for this signal
@@ -166,11 +166,11 @@ module accumulator (
         end
       end
 
-      if (cnext == 0) begin
+      if (cnext == 0) begin  // todo: see 'sigsource' for better logic
         valid <= 1'b1;
         revis <= r_acc;
         imvis <= i_acc;
-      end else if (ready_i) begin
+      end else begin
         valid <= 1'b0;
       end
     end

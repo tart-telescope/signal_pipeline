@@ -1,0 +1,73 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Mon Sep 11 02:57:42 2023
+[*]
+[dumpfile] "/home/patrick/dev/signal_pipeline/vcd/sigsource_tb.vcd"
+[dumpfile_mtime] "Mon Sep 11 02:57:07 2023"
+[dumpfile_size] 15202
+[savefile] "/home/patrick/dev/signal_pipeline/vcd/sigsource_tb.gtkw"
+[timestart] 0
+[size] 2560 1376
+[pos] -1 -1
+*-16.653790 1000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] sigsource_tb.
+[sst_width] 233
+[signals_width] 150
+[sst_expanded] 1
+[sst_vpaned_height] 414
+@28
+sigsource_tb.clock
+sigsource_tb.reset_n
+@800200
+-bench
+@28
+sigsource_tb.src_frame
+sigsource_tb.src_start
+sigsource_tb.src_done
+@22
+sigsource_tb.count[3:0]
+@28
+sigsource_tb.taddr[2:0]
+sigsource_tb.mux_frame
+sigsource_tb.mux_done
+@1000200
+-bench
+@800200
+-source
+@28
+sigsource_tb.src_valid
+sigsource_tb.src_first
+sigsource_tb.src_last
+sigsource_tb.src_taddr[2:0]
+@22
+sigsource_tb.src_idata[11:0]
+sigsource_tb.src_qdata[11:0]
+@1000200
+-source
+@800200
+-mux
+@28
+sigsource_tb.mux_valid
+sigsource_tb.mux_first
+sigsource_tb.mux_last
+sigsource_tb.ai
+sigsource_tb.aq
+sigsource_tb.bi
+sigsource_tb.bq
+@800200
+-internal
+@28
+sigsource_tb.SIGSRC0.taddr_i[2:0]
+sigsource_tb.SIGSRC0.asel[2:0]
+sigsource_tb.SIGSRC0.bsel[2:0]
+@22
+sigsource_tb.SIGSRC0.ai_src[4:0]
+sigsource_tb.SIGSRC0.aq_src[4:0]
+sigsource_tb.SIGSRC0.bi_src[4:0]
+@23
+sigsource_tb.SIGSRC0.bq_src[4:0]
+@1000200
+-internal
+-mux
+[pattern_trace] 1
+[pattern_trace] 0

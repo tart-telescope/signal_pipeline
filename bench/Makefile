@@ -13,17 +13,18 @@ MISC	= $(wildcard $(RTL)/misc/*.v)
 CORR	= $(wildcard $(RTL)/correlator/*.v)
 VERLIB	= $(MISC) $(CORR)
 
-VERTOP	?= top_tb
-VEROUT	?= ../build
+VERTOP	?= $(wildcard *_tb.v)
+VEROUT	?= $(VERTOP:%.v=../build/%.out)
+VCDOUT	?= ../vcd
 
-sim:	$(VEROUT)/$(VERTOP).out build
+sim:	$(VEROUT) build
 
 build:
 	echo $(VERINC)
-	@mkdir -p $(VEROUT)
+	@mkdir -p $(VCDOUT)
 
 ../build/%.out: %.v $(VERLIB)
-	$(IVC) $(VEROPT) -o $@ -s $* $^
+	$(IVC) $(VEROPT) -o $@ -s $(*F) $^
 
 
 #

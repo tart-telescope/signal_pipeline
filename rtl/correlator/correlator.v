@@ -2,122 +2,193 @@
 // `include "tartcfg.v"
 
 module correlator (
-    clock_i,
-    reset_ni,
-    enable_i,
+    clock,
+    reset_n,
 
+    valid_i,
+    first_i,
+    next_i,
+    last_i,
+    taddr_i,
     idata_i,
     qdata_i,
 
+    prevs_i,
     revis_i,
     imvis_i,
 
     revis_o,
     imvis_o,
     valid_o,
-    ready_i
+    first_o,
+    last_o
 );
+
+  // TODO:
+  //  - figure out how to parameterise the input MUXs
+  //  - 'sigsource.v' for input MUXs
+  //  - 'viscalc.v' for first-stage correlation
 
   parameter integer WIDTH = 32;  // Number of antennas/signals
   parameter integer SBITS = 5;
-  parameter integer COUNT = 15;  // Number of terms for partial sums
-  parameter integer CBITS = 4;
+  parameter integer ABITS = 4;  // Adder bit-width
+
   parameter integer XBITS = 3;  // Input MUX bits
+  parameter integer MUX_N = 7;
+
+  parameter integer TRATE = 30;  // Time-multiplexing rate
+  parameter integer TBITS = 5;
 
   localparam integer MSB = WIDTH - 1;
-  localparam integer SSB = SBITS - 1;
-  localparam integer CSB = CBITS - 1;
   localparam integer XSB = XBITS - 1;
-  localparam integer ABITS = CBITS + 2;
+  localparam integer TSB = TBITS - 1;
   localparam integer ASB = ABITS - 1;
 
-  input clock_i;
-  input reset_ni;
-  input enable_i;
+  localparam integer PBITS = SBITS * MUX_N;  // Signal taps for A-/B- MUX inputs
+  localparam integer PSB = PBITS - 1;
 
+  localparam integer QBITS = TRATE * XBITS;  // Time-interval to MUX-sel bits
+  localparam integer QSB = QBITS - 1;
+
+  // todo: produce these values using the 'generator' utility
+  parameter unsigned [PSB:0] ATAPS = {PBITS{1'bx}};
+  parameter unsigned [PSB:0] BTAPS = {PBITS{1'bx}};
+
+  parameter unsigned [QSB:0] ASELS = {QBITS{1'bx}};
+  parameter unsigned [QSB:0] BSELS = {QBITS{1'bx}};
+
+
+  input clock;
+  input reset_n;
+
+  input valid_i;
+  input first_i;
+  input next_i;
+  input last_i;
+  input [TSB:0] taddr_i;
   input [MSB:0] idata_i;
   input [MSB:0] qdata_i;
 
+  input prevs_i;
   input [ASB:0] revis_i;  // Inputs of each stage are outputs of the previous
   input [ASB:0] imvis_i;
 
   output [ASB:0] revis_o;
   output [ASB:0] imvis_o;
   output valid_o;
-  input ready_i;
+  output first_o;
+  output last_o;
 
 
-  /**
-   *  Select source signals for visibility calculations.
-   */
-  reg [MSB:0] idata, qdata;
-  reg [MSB:0] idatb, qdatb;
-  reg          first = 1'b1;
-  reg  [CSB:0] count = {CBITS{1'b0}};
-  wire [CSB:0] cnext = count + 1;
+  // -- Pipelined control-signals -- //
 
-  // Input MUXs, using pre-calculated signal indices
-  reg  [XSB:0] index = {XBITS{1'b0}};
-  wire [SSB:0] sel_a = xpairs_a[index];
-  wire [SSB:0] sel_b = xpairs_b[index];
+  reg last, next, valid;
 
-  always @(posedge clock_i) begin
-    if (!reset_ni) begin
-      index <= {SBITS{1'b0}};
-      count <= {CBITS{1'b0}};
-      first <= 1'b1;
-    end else if (enable_i) begin
-      if (cnext == COUNT) begin
-        count <= {CBITS{1'b0}};
-        index <= src_a + 1;
-        first <= 1'b1;
-      end else begin
-        count <= cnext;
-        first <= 1'b0;
-      end
-
-      idata <= idata_i[sel_a];
-      qdata <= qdata_i[sel_a];
-
-      idatb <= idata_i[sel_b];
-      qdatb <= qdata_i[sel_b];
-    end
-  end
-
-  /**
-   *  Calculation of visibilty partial-sums.
-   */
-  // todo:
-  wire [1:0] re_calc = idata * idatb - qdata * qdatb;
-  wire [1:0] im_calc = idata * qdatb + qdata * idatb;
-  reg [ASB:0] re, im;
-
-  always @(posedge clock_i) begin
-    if (first) begin
-      re <= re_calc;
-      im <= im_calc;
+  always @(posedge clock) begin
+    if (!reset_n) begin
+      valid <= 1'b0;
+      last  <= 1'b0;
+      next  <= 1'b0;
     end else begin
-      re <= re + re_calc;
-      im <= im + re_calc;
+      valid <= valid_i;
+
+      if (valid) begin
+        last <= next_i;
+        next <= last;
+      end else begin
+        last <= 1'b0;
+        next <= 1'b0;
+      end
     end
   end
 
-  /**
-   *  Output pipeline.
-   */
+
+  // -- Antenna signal source-select -- //
+
+  wire mux_valid;
+  wire mux_ai, mux_aq, mux_bi, mux_bq;
+
+  sigsource #(
+      .WIDTH(WIDTH),
+      .SBITS(SBITS),
+      .XBITS(XBITS),
+      .MUX_N(MUX_N),
+      .TRATE(TRATE),
+      .TBITS(TBITS),
+      .ATAPS(ATAPS),
+      .BTAPS(BTAPS),
+      .ASELS(ASELS),
+      .BSELS(BSELS)
+  ) SIGSRC0 (
+      .clock(clock),
+      .reset_n(reset_n),
+      // Inputs
+      .valid_i(valid_i),
+      .first_i(first_i),
+      .last_i(last_i),
+      .taddr_i(taddr_i),
+      .idata_i(idata_i),
+      .qdata_i(qdata_i),
+      // Outputs
+      .valid_o(mux_valid),
+      .first_o(),
+      .last_o(),
+      .ai_o(mux_ai),
+      .aq_o(mux_aq),
+      .bi_o(mux_bi),
+      .bq_o(mux_bq)
+  );
+
+
+  // -- Cross-correlator -- //
+
+  wire auto = 1'b0;  // todo: ...
+  wire cor_valid;
+  wire [ASB:0] cor_revis, cor_imvis;
+
+  correlate #(
+      .WIDTH(ABITS)
+  ) CORRELATE0 (
+      .clock(clock),
+      .reset_n(reset_n),
+      // Inputs
+      .valid_i(mux_valid),
+      .first_i(next),
+      .last_i(last),
+      .auto_i(auto),
+      .ai_i(mux_ai),
+      .aq_i(mux_aq),
+      .bi_i(mux_bi),
+      .bq_i(mux_bq),
+      // Outputs
+      .valid_o(cor_valid),
+      .re_o(cor_revis),
+      .im_o(cor_imvis)
+  );
+
+
+  // -- Output select & pipeline -- //
+
+  reg succs;
   reg [ASB:0] revis, imvis;
 
+  assign valid_o = succs;
+  assign first_o = 1'bx;  // todo: ...
+  assign last_o  = 1'bx;  // todo: ...
   assign revis_o = revis;
   assign imvis_o = imvis;
 
-  always @(posedge clock_i) begin
-    if (!reset_ni) begin
+  always @(posedge clock) begin
+    if (!reset_n) begin
+      succs <= 1'b0;
       revis <= {ABITS{1'bx}};
       imvis <= {ABITS{1'bx}};
-    end else if (enable_i) begin
-      if (first) begin
-        revis <= re;
-        imvis <= im;
+    end else begin
+      succs <= cor_valid | prevs_i;
+
+      if (cor_valid) begin
+        revis <= cor_revis;
+        imvis <= cor_imvis;
       end else begin
         revis <= revis_i;
         imvis <= imvis_i;

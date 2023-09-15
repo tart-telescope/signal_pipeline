@@ -1,4 +1,41 @@
+---
+title: "*Overview and Design Notes for the Correlator Core*"
+author:
+ - Patrick Suggate
+ - Timothy Molteno
+date: 8^th^ September, 2023
+pagesize: a4
+geometry: margin:2cm
+fontsize: 11pt
+colorlinks: true
+---
+
 # README for the TART Correlator
+
+Pseudocode:
+```rust
+for i in 0..TRATE {
+  // Select the timeseries (arrays) for the subsequent correlations
+  let ai = i[muxa[i]];
+  let aq = q[muxa[i]];
+  let bi = i[muxa[i]];
+  let bq = q[muxa[i]];
+  
+  // Accumulate in two stages, and forward partial-sums to the accumulator
+  for j in 0..COUNT[1] {
+    let mut vr = 0;
+    let mut vi = 0;
+    
+    for k in 0..COUNT[0] {
+      let l = j*COUNT[0] + k;
+      vr += ai[l] * bi[l] + aq[l] * bq[l];
+      vi += aq[l] * bi[l] - ai[l] * bq[l];
+    }
+    out.send((vr, vi))?;
+  }
+}
+```
+demonstrating the order that the antenna signals are read out of the buffer SRAMs.
 
 ## Theory of Operation
 
@@ -40,3 +77,7 @@ where the $\mathcal{R,I}$ columns include 3-bit, twos-complement (binary) values
 Todo:
 
 1. Instead of using two's-complement, just add two to each value (and account for it at the end)?
+
+## Partial-Sum Output Chain (PSOC)
+
+Every `COUNT` cycles, each correlator unit produces a complex, partially-summed visibility. Accumulating each of these requires two additions (one each for the real and imaginary components), and these are full-width accumulators (for the two-stage-accumulator designs). Therefore, `CORES` correlator units requires `2*CORES` additions every `COUNT` cycles.
