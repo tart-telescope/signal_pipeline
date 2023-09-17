@@ -1,0 +1,369 @@
+// Use C++ highlighter.
+
+mywidth	= 0.5
+scale	= 0.2
+fwidth	= mywidth*0.2*scale
+
+
+// Draw a DFF.
+dff = Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[(-30, -45)*scale, (-30, 45)*scale, (30, 45)*scale, (30, -45)*scale]
+	\ .Hot[	"d", t.Get[1.75], "q", t.Get[3.25], "c", t.Get[1.2],
+		"ce", t.Get[1.5], "r", t.Get[4.5], "s", t.Get[2.5],
+		"top", t.Get[(2.5, 0.3)], "bot", t.Get[(4.5, 0.3)]
+		
+	]
+	Style[.Border[mywidth*0.5*scale, color.black]]
+	\ .Poly[t.Get[(1.125, -0.0025)], t.Get[(1.275, -0.0025)], t.Get[(1.2, -0.15)]]
+	
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font["Helvetica", 10*scale], color.black,
+		"D", t.Get[(1.75, -0.10)];
+		"Q", t.Get[(3.25, -0.10)];
+		"CE", t.Get[(1.5, -0.13)];
+		"R", t.Get[(4.5, -0.16)];
+		"S", t.Get[(2.5, -0.16)];
+	]
+]
+
+
+// Big, tall column register (DFF).
+column_reg	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.grey]
+	t = .Poly[(-10, -60)*scale, (-10, 60)*scale, (10, 60)*scale, (10, -60)*scale]
+	\ .Hot[	"ai", t.Get[1.75], "bi", t.Get[1.5], "ci", t.Get[1.25],
+		"ao", t.Get[3.25], "bo", t.Get[3.5], "co", t.Get[3.75],
+		"top", t.Get[(2.5, 1)], "bot", t.Get[(4.5, 1)]
+	]
+	Style[.Border[mywidth*0.5*scale, color.black]]
+	\ .Poly[t.Get[(1.05, -0.0025)], t.Get[(1.1, -0.0025)], t.Get[(1.075, -0.05)]]
+]
+
+
+// A simple box.
+plain_box = Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[(-30, -45)*scale, (-30, 45)*scale, (30, 45)*scale, (30, -45)*scale]
+	\ .Hot[	"in", t.Get[1.5], "out", t.Get[3.5],
+		"top", t.Get[(2.5, 0.3)], "bot", t.Get[(4.5, 0.3)]
+		
+	]
+]
+
+
+// Xilinx 4-input LUT.
+lut4	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	off	= 25*scale
+	t = .Poly[(-30, -45)*scale, (-30, 45)*scale, (30, 45)*scale, (30, -45)*scale]
+	\ .Hot[	"i0", t.Get[1.8]-(off, 0), "i1", t.Get[1.6]-(off, 0),
+		"i2", t.Get[1.4]-(off, 0), "i3", t.Get[1.2]-(off, 0),
+		"out", t.Get[3.5]+(off, 0),
+		"top", t.Get[(2.5, 0.3)], "bot", t.Get[(4.5, 0.3)]
+	]
+	a	= 1.2
+	w	= 1*scale
+	Color[color.black]
+	\ .Line[w, t.Get[a], t.Get[a]-(off, 0); For[(a += 0.2) < 1.8]]
+	\ .Line[t.Get[3.5], t.Get[3.5]+(off, 0)]
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font["Helvetica", 16*scale], color.black,
+		"LUT4", t.Get[(1.5, -0.3333)]
+	]
+]
+
+
+// Xilinx carry-mux.
+cymux	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[	(-25, -8)*scale, (-15, 8)*scale,
+			(15, 8)*scale, (25, -8)*scale
+	]
+	\ .Hot[	"b", t.Get[4.3], "a", t.Get[4.7], "s", t.Get[1.5],
+		"out", t.Get[2.5], "label", t.Get[(3.5, 1)]
+	]
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font["Helvetica", 12*scale], color.black,
+		"0", t.Get[(4.7, -0.17)];
+		"1", t.Get[(4.3, -0.17)];
+	]
+]
+
+
+// A memory chip.
+mem = Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[(-30, -45)*scale, (-30, 45)*scale, (30, 45)*scale, (30, -45)*scale]
+	Color[color.black]
+	\ .Circle[5*scale, t.Get[1.1]; t.Get[1.3]; t.Get[1.5]; t.Get[1.7]; t.Get[1.9]]
+	\ .Circle[5*scale, t.Get[3.1]; t.Get[3.3]; t.Get[3.5]; t.Get[3.7]; t.Get[3.9]]
+	
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white, .a=1.0]
+	\ .Poly[t.Get[1], t.Get[2], t.Get[3], t.Get[4]]
+	Color[color.white, .a=0.0]
+	\ .Circle[t.Get[(1.85, -0.15)], 5*scale]
+	
+	\ .Hot[	"in", t.Get[(1.5, 0.1)], "out", t.Get[(3.5, 0.1)],
+		"top", t.Get[(2.5, 0.3)], "bot", t.Get[(4.5, 0.3)]
+	]
+]
+
+
+// Register File
+rf = Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[(-30, -45)*scale, (-30, 45)*scale, (30, 45)*scale, (30, -45)*scale]
+	Style[.Border[mywidth*0.25*scale, color.black]]
+	Color[color.black, .a=1.0]
+	w	= mywidth*0.25*scale
+	\ .Line[w, t.Get[(1.2, -0.05)], t.Get[(3.8, -0.05)]]
+	\ .Line[w, t.Get[(1.4, -0.05)], t.Get[(3.6, -0.05)]]
+	\ .Line[w, t.Get[(1.6, -0.05)], t.Get[(3.4, -0.05)]]
+	\ .Line[w, t.Get[(1.8, -0.05)], t.Get[(3.2, -0.05)]]
+	\ .Hot[	"a", t.Get[1.8], "we", t.Get[1.6], "din", t.Get[1.4], "clk", t.Get[1.2],
+		"r0", t.Get[3.2], "r1", t.Get[3.4],
+		"label", t.Get[(4.5, 0.3)], "top", t.Get[(2.5, 0.3)], "bot", t.Get[(4.5, 0.3)]
+	]
+]
+
+
+// Buffer
+buffer	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[(-30, -30)*scale, (-30, 30)*scale, (30, 0)*scale]
+	\ .Hot[	"in", t.Get[1.5], "t", t.Get[2.5],
+		"out", t.Get[3], "label", t.Get[(1, 0.2)]
+	]
+]
+
+
+// 2-1 Multiplexer.
+mux2to1	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[	(-10, -40)*scale, (-10, 40)*scale,
+			(10, 25)*scale, (10, -25)*scale
+	]
+	\ .Hot[	"b", t.Get[1.3], "a", t.Get[1.7], "s", t.Get[2.5],
+		"out", t.Get[3.5], "label", t.Get[(4.5, 1)],
+		"label_top", t.Get[(2.5, 1)], "s_bot", t.Get[4.5]
+	]
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font[	"Helvetica", 12*scale], color.black
+			"0", t.Get[(1.3, -0.12)];
+			"1", t.Get[(1.7, -0.12)];
+	]
+]
+
+mux2to1_normal	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[	(-10, -40)*scale, (-10, 40)*scale,
+			(10, 25)*scale, (10, -25)*scale
+	]
+	\ .Hot[	"b", t.Get[1.3], "a", t.Get[1.7], "s", t.Get[2.5],
+		"out", t.Get[3.5], "label", t.Get[(4.5, 1)],
+		"label_top", t.Get[(2.5, 1)], "s_bot", t.Get[4.5]
+	]
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font[	"Helvetica", 12*scale], color.black
+			"0", t.Get[(1.7, -0.12)];
+			"1", t.Get[(1.3, -0.12)];
+	]
+]
+
+
+// 4-1 Multiplexer.
+mux4to1	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[	(-10, -40)*scale, (-10, 40)*scale,
+			(10, 25)*scale, (10, -25)*scale
+	]
+	\ .Hot[	"d", t.Get[1.2], "c", t.Get[1.4], "b", t.Get[1.6], "a", t.Get[1.8],
+		"s", t.Get[2.5], "out", t.Get[3.5], "label", t.Get[(1, 0.5)]
+	]
+]
+
+
+// Comparator
+comparator = Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[(-40, -40)*scale, (-40, 40)*scale, (40, 0)*scale]
+	Style[.Border[mywidth*0.5*scale, color.black]]
+	Color[color.white, .a=0.0]
+	\ .Hot[	"out", t.Get[3], "a", t.Get[1.3], "b", t.Get[1.7], "label", t.Get[(1, 0.5)]]
+	
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font["Helvetica", 12*scale], color.black, "==", t.Get[(1.5, -0.3)];]
+]
+
+
+// Unary function
+unary	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[(-30, -30)*scale, (-30, 30)*scale, (30, 0)*scale]
+	\ .Hot[	"in", t.Get[1.5], "out", t.Get[3],
+		"fn", t.Get[(1.5, -0.3)], "label", t.Get[(1, 0.2)]
+	]
+]
+
+
+// Unary function
+unary_r	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[(30, 30)*scale, (30, -30)*scale, (-30, 0)*scale]
+// 	t = .Poly[(-30, -30)*scale, (-30, 30)*scale, (30, 0)*scale]
+	\ .Hot[	"in", t.Get[1.5], "out", t.Get[3],
+		"fn", t.Get[(1.5, -0.3)], "label", t.Get[(1, 0.2)]
+	]
+]
+
+
+// Nodes
+sig_in	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	\ .Circle[(0.0, 0.0), 5.0*scale]
+	\ .Hot["out", (5, 0)*scale, "label", (-20, 0)*scale]
+]
+
+sig_out	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	\ .Circle[(0.0, 0.0), 5.0*scale]
+	\ .Hot["in", (-5, 0)*scale, "label", (20, 0)*scale]
+]
+
+
+// ALU
+alu = Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	t = .Poly[(-50, -80)*scale, (-50, -20)*scale, (-20, -10)*scale, (-20, 10)*scale, (-50, 20)*scale, (-50, 80)*scale, (50, 40)*scale, (50, -40)*scale]
+	Style[.Border[mywidth*0.5*scale, color.black]]
+	Color[color.white, .a=0.0]
+	\ .Hot["a", t.Get[5.5], "b", t.Get[1.5], "x", t.Get[7.5]]
+	
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font["Helvetica", 12*scale], color.black, "ALU", t.Get[(3.5, -1.3)];]
+]
+
+
+// Subtract
+subtract = Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	sc	= scale*0.7
+	t = .Poly[(-50, -80)*sc, (-50, -20)*sc, (-20, -10)*sc, (-20, 10)*sc, (-50, 20)*sc, (-50, 80)*sc, (50, 40)*sc, (50, -40)*sc]
+	Style[.Border[mywidth*0.5*scale, color.black]]
+	Color[color.white, .a=0.0]
+	\ .Hot[	"a", t.Get[5.5], "b", t.Get[1.5], "x", t.Get[7.5],
+		"top", t.Get[(6.4, 0.3)], "bot", t.Get[(8.6, 0.3)]
+	]
+	
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font["Helvetica", 24*scale], color.black, "-", t.Get[(3.5, -1.3)];]
+]
+
+
+// Multiplier
+mult = Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	c = (0, 0)*scale
+	\ .Circle[c, 50.0*scale]
+	\ .Hot["top", (0, 65)*scale, "bot", (0, -65)*scale]
+	
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font["Helvetica", 16*scale], color.black, "X", c;]
+]
+
+
+// Binary Fn
+binary = Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	c = (0, 0)*scale
+	\ .Circle[c, 50.0*scale]
+	\ .Hot[	"top", (0, 65)*scale, "bot", (0, -65)*scale,
+		"label", (0, 0)
+	]
+]
+
+
+// Junction
+junc = Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.black]
+	\ .Circle[(0.0, 0.0), 4.0*scale]
+	\ .Hot["c", (0.0, 0.0)]
+]
+
+
+// Bitwise complement symbol (circle).
+negate	= Window[][
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	\ .Circle[4*scale, (-4, 0)*scale]
+	\ .Hot["l", (-8, 0)*scale, "r", (0, 0)*scale]
+]
+
+
+// Xilinx dual-port block RAM.
+bram	= Window[][
+	// Border
+	dx	= 150*scale
+        dy	= 250*scale
+	bx	= PointList[(-dx/2, 0), (dx/2, 0)]
+	by	= PointList[(0, -dy/2), (0, dy/2)]
+	bb	= PointList[(-dx/2, -dy/2), (-dx/2, dy/2), (dx/2, dy/2), (dx/2, -dy/2)]
+	cd	= 0.05 // Corner depth
+	ch	= 0.05*(dy/dx)
+	
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.white]
+	\ .Poly[
+			bb.Get[1+cd], bb.Get[1.5-cd/2], bb.Get[(1.5-cd/2, -cd)],
+			bb.Get[(1.5+cd/2, -cd)], bb.Get[1.5+cd/2], bb.Get[2-cd],
+			bb.Get[(2-cd, -cd)], bb.Get[2+ch], bb.Get[3-ch],
+			bb.Get[(3-ch, -ch)], bb.Get[3+cd], bb.Get[3.5-cd/2],
+			bb.Get[(3.5-cd/2, -cd)], bb.Get[(3.5+cd/2, -cd)], bb.Get[3.5+cd/2],
+			bb.Get[4-cd], bb.Get[(4-cd, -cd)], bb.Get[4+ch, -ch],
+			bb.Get[5-ch], bb.Get[(5-ch, -ch)]
+	]
+	
+	\ .Hot[	"addra", bb.Get[1.9], "dia", bb.Get[1.8], "wea", bb.Get[1.7],
+		"clka", bb.Get[1.6], "doa", bb.Get[3.2], "addrb", bb.Get[1.4],
+		"dib", bb.Get[1.3], "web", bb.Get[1.27], "clkb", bb.Get[1.1],
+		"dob", bb.Get[3.7],
+		"top", bb.Get[(2.5, 0.1)], "bot", bb.Get[(4.5, 0.1)]
+	]
+	
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font["Helvetica", 10*scale], color.black,
+		"ADDRA", bb.Get[(1.9, -0.10)];
+		"DIA", bb.Get[(1.8, -0.06)];
+		"WEA", bb.Get[(1.7, -0.07)];
+		"CLKA", bb.Get[(1.6, -0.08)];
+		"DOA", bb.Get[(3.2, -0.06)];
+		"ADDRB", bb.Get[(1.4, -0.10)];
+		"DIB", bb.Get[(1.3, -0.06)];
+		"WEB", bb.Get[(1.2, -0.07)];
+		"CLKB", bb.Get[(1.1, -0.08)];
+		"DOB", bb.Get[(3.7, -0.06)];
+	]
+]

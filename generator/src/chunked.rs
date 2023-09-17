@@ -1,9 +1,10 @@
 use log::error;
+use serde::{Deserialize, Serialize};
 
 /**
  *  2D arrays with each subarray having up to 'stride' size.
  */
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Chunked<T> {
     stride: usize,
     counts: Vec<usize>,
@@ -272,6 +273,9 @@ impl<T> core::ops::IndexMut<usize> for Chunked<T> {
     }
 }
 
+/**
+ * Iterators for 'Chunked<T>' data.
+ */
 pub struct ChunkedIter<'a, T: Sized> {
     current: usize,
     chunked: &'a Chunked<T>,
@@ -282,33 +286,27 @@ impl<'a, T> Iterator for ChunkedIter<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let curr = self.current;
-        if self.chunked.counts.len() > curr + 1 {
+
+        if self.chunked.counts.len() > curr {
             self.current += 1;
+
             let num = self.chunked.counts[curr];
-            Some(&self.chunked.values[curr..curr + num])
+            let off = curr * self.chunked.stride;
+            Some(&self.chunked.values[off..off + num])
         } else {
             None
         }
     }
 }
 
-/*
 impl<'a, T> IntoIterator for &'a Chunked<T> {
     type Item = &'a [T];
-    type IntoIter = std::slice::Iter<'a, [T]>;
+    type IntoIter = ChunkedIter<'a, T>;
 
-    fn into_iter(self) -> <&'a Chunked<T> as IntoIterator>::IntoIter {
-        self.iter()
+    fn into_iter(self) -> Self::IntoIter {
+        Self::IntoIter {
+            current: 0,
+            chunked: self,
+        }
     }
 }
- */
-
-/*
-impl<T> Iterator for Chunked<T> {
-    type Item = Vec<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-
-    }
-}
-*/

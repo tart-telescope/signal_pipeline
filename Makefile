@@ -1,4 +1,4 @@
-.PHONY:	all sim doc clean
+.PHONY:	all sim doc diagrams clean
 all:
 	@make -C bench all
 	@make -C generator all
@@ -30,13 +30,18 @@ SVG	:= $(wildcard doc/images/*.svg)
 DOT	:= $(wildcard doc/images/*.dot)
 PIC	:= $(SVG:.svg=.pdf) $(DOT:.dot=.pdf)
 
+BOX_RAW	:= $(wildcard doc/diagrams/*.box)
+
 # Pandoc settings:
 FLT	?= --citeproc
 # FLT	?= --filter=pandoc-include --filter=pandoc-fignos --filter=pandoc-citeproc
 #OPT	?= --number-sections --bibliography=$(REF)
 OPT	?= --number-sections
 
-doc:	$(PDF) $(PIC) $(PNG) $(INC)
+diagrams:
+	@make -C doc/diagrams all
+
+doc:	$(PDF) $(PIC) $(PNG) $(INC) diagrams
 	@make -C bench doc
 	@make -C generator doc
 	@make -C rtl doc
@@ -46,7 +51,7 @@ clean:
 	rm -f $(PDF) $(LTX) $(PIC)
 
 # Implicit rules:
-%.pdf: %.md $(PIC) $(PNG) $(TMP) $(INC)
+%.pdf: %.md $(PIC) $(PNG) $(TMP) $(INC) diagrams
 	+pandoc --template=$(TMP) $(FLT) $(OPT) -f markdown+tex_math_double_backslash -t latex -V papersize:a4 -V geometry:margin=2cm $< -o $@
 
 %.tex: %.md $(PIC) $(PNG) $(TMP)

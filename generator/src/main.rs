@@ -1,7 +1,6 @@
 use clap::Parser;
-use tart_dsp::Context;
-
-use tart_dsp::logger;
+use log::{debug, error, warn};
+use tart_dsp::{logger, Chunked, Context};
 
 /// Command line options for configuring the TART DSP, based on the number of
 /// antennas, and the relative frequencies of the antenna source signals, vs
@@ -48,7 +47,117 @@ struct Args {
     verbose: u8,
 }
 
-// fn main() -> Result<(), std::io::Error> {
+#[derive(Debug, Clone)]
+pub struct EdgesArray {
+    pub edges: Chunked<usize>,
+}
+
+fn mux_selects(
+    context: Context,
+    edges: Chunked<usize>,
+    means: Chunked<(usize, usize)>,
+) -> Chunked<(usize, usize)> {
+    let edge_num = context.edges_array.len();
+
+    // Create a LUT: Edge -> Core.
+    let mut edge_to_core: Vec<usize> = vec![usize::MAX; edge_num];
+
+    for (u, core) in edges.into_iter().enumerate() {
+        debug!("core[{}]: {:?}", u, core);
+        for &e in core.iter() {
+            edge_to_core[e] = u;
+        }
+    }
+
+    // warn!("Edge -> Core:\n{:?}", edge_to_core);
+
+    let mut selects = Chunked::new(context.clock_multiplier, context.num_units);
+
+    for (u, (a_mux, b_mux)) in context
+        .a_mux_array
+        .into_iter()
+        .zip(context.b_mux_array.into_iter())
+        .enumerate()
+    {
+        let mut i: usize = 0;
+        let mut j: usize = 0;
+
+        while i < a_mux.len() && j < b_mux.len() {
+            let a = a_mux[i];
+            let b = b_mux[j];
+
+            if a < b {
+                for k in j..b_mux.len() {
+                    let e = context.calc_edge_index(a, b_mux[k]);
+                    if edge_to_core[e] == u {
+                        selects.push(u, (i, k));
+                    }
+                }
+                if i < a_mux.len() {
+                    i += 1;
+                }
+            } else {
+                for k in i..a_mux.len() {
+                    let e = context.calc_edge_index(a_mux[k], b);
+                    if edge_to_core[e] == u {
+                        selects.push(u, (k, j));
+                    }
+                }
+                if j < b_mux.len() {
+                    j += 1;
+                }
+            }
+        }
+    }
+
+    // fixme: does not work because 'Chunked<T>' does not allow duplicates!
+    for (u, pairs) in means.into_iter().enumerate() {
+        warn!("pairs[{}]: {:?}", u, pairs);
+        let a_mux = &context.a_mux_array[u];
+        let b_mux = &context.b_mux_array[u];
+
+        for (a, b) in pairs {
+            if let Ok(i) = a_mux.binary_search(a) {
+                if let Ok(j) = b_mux.binary_search(b) {
+                    selects.push(u, (i, j));
+                }
+            }
+        }
+    }
+
+    selects
+}
+
+/// Assign the correlator-pairs, and the self-means, to each correlator unit.
+fn assign_calculations(context: &mut Context) -> String {
+    let mut result = Vec::new();
+    if let Some(edges) = context.assign_edges(true) {
+        result.push(format!("Visibility-calculation assignments:"));
+        result.push(format!("{}", edges));
+
+        result.push(format!("Signal-mean calculation assignments:"));
+        let means = if let Some(means) = context.assign_means(edges.clone()) {
+            result.push(format!("{}", means));
+            means
+        } else if let Some(means) = context.means_another(edges.clone()) {
+            result.push(format!("{}", means));
+            means
+        } else if let Some(means) = context.means_assign(edges.clone()) {
+            result.push(format!("{}", means));
+            means
+        } else {
+            result.push(format!("FAILED !!"));
+            Chunked::new(1, 0)
+        };
+        let selects = mux_selects(context.clone(), edges, means);
+        result.push(format!("{}", selects));
+    }
+    result.join("\n")
+}
+
+/**
+ * Main entry-point into the TART DSP correlator-pairs assignment procedure.
+ */
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("TART DSP Generator Extreme\n");
     let args: Args = Args::parse();
@@ -86,33 +195,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    if let Some(edges) = context.assign_edges(true) {
-        if args.output {
-            println!("Visibility-calculation assignments:");
-            println!("{}", edges);
-            /*
-            println!("{}", context.means_array);
-
-            let nodes = context.means_set(edges.clone());
-            println!("means set (len = {}): {:?}", nodes.len(), nodes);
-            */
-        }
-    }
-
-    if !args.no_means {
-        if let Some(means) = context.assign_means(edges.clone()) {
-            println!("{}", means);
-        }
-
-        if let Some(means) = context.means_another(edges.clone()) {
-            println!("{}", means);
-        }
-
-        if let Some(means) = context.means_assign(edges) {
-            println!("Signal-mean calculation assignments:");
-            println!("{}", means);
-        }
-    }
-
-    Ok(())
+    Ok(println!("{}", assign_calculations(&mut context)))
 }

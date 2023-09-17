@@ -1,0 +1,48 @@
+// Make KWrite use a C++ highlighter.
+
+Window.ConHVH	= (Point p0, p1, p2, p3, Real w)
+Real@Window.ConHVH[$$.w=$]
+PointList@Window.ConHVH[
+	$$.p0=$.Get[1],
+	$$.p1=($.Get[1.5].x, $.Get[1].y),
+	$$.p2=($.Get[1.5].x, $.Get[2].y),
+	$$.p3=$.Get[2],
+	l = $$$.Line[$$.w, $$.p0, $$.p1, $$.p2, $$.p3]
+]
+
+Window.ConVHV	= (Point p0, p1, p2, p3, Real w)
+Real@Window.ConVHV[$$.w=$]
+PointList@Window.ConVHV[
+	$$.p0=$.Get[1],
+	$$.p1=($.Get[1].x, $.Get[1.5].y),
+	$$.p2=($.Get[2].x, $.Get[1.5].y),
+	$$.p3=$.Get[2],
+	l = $$$.Line[$$.w, $$.p0, $$.p1, $$.p2, $$.p3]
+]
+
+Window.ConVH	= (Point p0, p1, p2, Real w)
+Real@Window.ConVH[$$.w=$]
+PointList@Window.ConVH[
+	$$.p0=$.Get[1],
+	$$.p1=($.Get[1].x, $.Get[2].y),
+	$$.p2=$.Get[2],
+	l = $$$.Line[$$.w, $$.p0, $$.p1, $$.p2]
+]
+
+Window.ConHV	= (Point p0, p1, p2, Real w)
+Real@Window.ConHV[$$.w=$]
+PointList@Window.ConHV[
+	$$.p0=$.Get[1],
+	$$.p1=($.Get[2].x, $.Get[1].y),
+	$$.p2=$.Get[2],
+	l = $$$.Line[$$.w, $$.p0, $$.p1, $$.p2]
+]
+
+
+Centre	= Point
+([)@Centre[$$.x=0.0, $$.y=0.0]
+Point@Centre[
+	$$.x	+= $.x
+	$$.y	+= $.y
+]
+(])@Centre[$$	= $$ / 2.0]
