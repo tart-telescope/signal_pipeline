@@ -87,8 +87,8 @@ fn mux_selects(
             let b = b_mux[j];
 
             if a < b {
-                for k in j..b_mux.len() {
-                    let e = context.calc_edge_index(a, b_mux[k]);
+                for (k, &b) in b_mux.iter().enumerate().skip(j) {
+                    let e = context.calc_edge_index(a, b);
                     if edge_to_core[e] == u {
                         selects.push(u, (i, k));
                     }
@@ -97,8 +97,8 @@ fn mux_selects(
                     i += 1;
                 }
             } else {
-                for k in i..a_mux.len() {
-                    let e = context.calc_edge_index(a_mux[k], b);
+                for (k, &a) in a_mux.iter().enumerate().skip(i) {
+                    let e = context.calc_edge_index(a, b);
                     if edge_to_core[e] == u {
                         selects.push(u, (k, j));
                     }
@@ -132,10 +132,10 @@ fn mux_selects(
 fn assign_calculations(context: &mut Context) -> String {
     let mut result = Vec::new();
     if let Some(edges) = context.assign_edges(true) {
-        result.push(format!("Visibility-calculation assignments:"));
+        result.push("Visibility-calculation assignments:".to_string());
         result.push(format!("{}", edges));
 
-        result.push(format!("Signal-mean calculation assignments:"));
+        result.push("Signal-mean calculation assignments:".to_string());
         let means = if let Some(means) = context.assign_means(edges.clone()) {
             result.push(format!("{}", means));
             means
@@ -146,7 +146,7 @@ fn assign_calculations(context: &mut Context) -> String {
             result.push(format!("{}", means));
             means
         } else {
-            result.push(format!("FAILED !!"));
+            result.push("FAILED !!".to_string());
             Chunked::new(1, 0)
         };
         let selects = mux_selects(context.clone(), edges, means);
