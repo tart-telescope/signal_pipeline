@@ -1,3 +1,4 @@
 *.lock
 *.pdf
 target/
+*.log
