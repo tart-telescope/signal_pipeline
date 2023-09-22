@@ -4,3 +4,4 @@
 *.out
 logs/
 target/
+*.log
