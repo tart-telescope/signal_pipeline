@@ -114,6 +114,68 @@ module top #(
 
   // -- Correlator -- //
 
+  wire vis_start, vis_frame;
+
+  wire spi_stb, spi_ack, spi_cyc, spi_we;
+  wire [15:0] spi_adr;
+  wire [31:0] spi_real, spi_imag;
+
+  reg spi_wat = 1'b0;
+  reg [7:0] spi_dtx;
+
+  always @(posedge clock_b) begin
+    case (spi_adr[15:13])
+      3'b000:  spi_dtx <= spi_real[31:24];
+      3'b001:  spi_dtx <= spi_real[23:16];
+      3'b010:  spi_dtx <= spi_real[15:8];
+      3'b011:  spi_dtx <= spi_real[7:0];
+      3'b100:  spi_dtx <= spi_imag[31:24];
+      3'b101:  spi_dtx <= spi_imag[23:16];
+      3'b110:  spi_dtx <= spi_imag[15:8];
+      3'b111:  spi_dtx <= spi_imag[7:0];
+      default: $error("Yuck!");
+    endcase
+    spi_wat <= ~spi_ack;
+  end
+
+  tart_correlator #(
+      .WIDTH(ANTENNAS),
+      .WBITS(5),
+      .MUX_N(4),
+      .XBITS(2),
+      .CORES(24),
+      .UBITS(5),
+      .TRATE(12),
+      .TBITS(4),
+      .LOOP0(3),
+      .LBITS(2),
+      .LOOP1(5),
+      .HBITS(3),
+      .CBITS(4),
+      .ACCUM(32),
+      .SBITS(7)
+  ) tart_correlator_inst (
+      .sig_clock(CLK_16),
+      .vis_clock(axi_clk),
+      .bus_clock(clock_b),
+      .reset_n  (reset_n),
+
+      .sig_valid_i(axi_lock),
+      .sig_last_i (1'b0),
+      .sig_idata_i(I_data),
+      .sig_qdata_i(Q_data),
+
+      .vis_start_o(vis_start),
+      .vis_frame_o(vis_frame),
+
+      .bus_revis_o(spi_real),
+      .bus_imvis_o(spi_imag),
+      .bus_valid_o(spi_ack),
+      .bus_ready_i(spi_stb),
+      .bus_last_o ()
+  );
+
+
   // -- Output SRAM's -- //
 
 
@@ -122,21 +184,23 @@ module top #(
   localparam integer PIPED = 1;
   localparam integer CHECK = 1;
 
-  wire spi_cyc, spi_stb, sp_we, spi_ack, spi_wat, spi_rty, spi_err;
-  wire [15:0] spi_adr;
-  wire [7:0] spi_dtx, spi_drx;
+  wire spi_rty, spi_err;
+  wire [7:0] spi_drx;
 
   wire sys_status;
   wire spi_busy, spi_oflow, spi_uflow;
 
+  assign spi_rty = 1'b0;
+  assign spi_err = 1'b0;
+
   spi_slave_wb #(
       .WIDTH(8),
       .ASYNC(1),
-      .PIPED(1),
+      .PIPED(PIPED),
       .CHECK(CHECK)
   ) SPI0 (
       .clk_i(clock_b),
-      .rst_i(reset_spi),
+      .rst_i(spi_rst),
 
       //  Wishbone master interface.
       .cyc_o(spi_cyc),
