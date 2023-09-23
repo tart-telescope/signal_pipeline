@@ -47,10 +47,6 @@
  * 
  */
 
-`define SPI_IDLE 2'h0
-`define SPI_ADDR 2'h1
-`define SPI_BUSY 2'h2
-
 module spi_slave_wb
   #( // Bus bit-widths:
      parameter WIDTH = 8,       // TODO: currently must be `8`!
@@ -69,6 +65,7 @@ module spi_slave_wb
    ( // Wishbone (SPEC B4) interface:
      input          clk_i,
      input          rst_i,
+
      output         cyc_o,
      output         stb_o,
      output         we_o,
@@ -94,9 +91,15 @@ module spi_slave_wb
      );
 
 
+// -- SPI FSM states -- //
+localparam [1:0] SPI_IDLE = 2'h0;
+localparam [1:0] SPI_ADDR = 2'h1
+localparam [1:0] SPI_BUSY = 2'h2
+
+
    //-------------------------------------------------------------------------
    //  SPI FSM register:
-   reg [1:0]        spi = `SPI_IDLE;
+   reg [1:0]        spi = SPI_IDLE;
    reg              frame = 1'b0;
 
    //  SPI layer control signals:
@@ -135,25 +138,25 @@ module spi_slave_wb
    //-------------------------------------------------------------------------
    always @(posedge clk_i)
      if (!l_cyc)
-       spi <= #DELAY `SPI_IDLE;
+       spi <= #DELAY SPI_IDLE;
      else
        case (spi)
          // To begin a new SPI transaction beginning, the SPI layer module
          // requests the status-byte. Once this has been transferred, wait for
          // the register mode & address.
-         `SPI_IDLE:
-           spi <= #DELAY l_get && l_rdy ? `SPI_ADDR : spi;
+         SPI_IDLE:
+           spi <= #DELAY l_get && l_rdy ? SPI_ADDR : spi;
 
          // If the first byte from SPI has its MSB asserted, then the transfer
          // is a register-write, so change the state to waiting for data,
          // otherwise begin a register-read transaction. OR, if a read is
          // requested, by the SPI layer then??
-         `SPI_ADDR:
-           if (l_get) spi <= #DELAY `SPI_BUSY;
+         SPI_ADDR:
+           if (l_get) spi <= #DELAY SPI_BUSY;
 
          // Arriving data is to be put onto the Wishbone bus, and requested
          // data from the bus.
-         `SPI_BUSY:
+         SPI_BUSY:
            spi <= #DELAY spi;
 
          default:
@@ -164,7 +167,7 @@ module spi_slave_wb
    always @(posedge clk_i)
      if (!l_cyc)
        frame <= #DELAY 1'b0;
-     else if (spi == `SPI_IDLE && l_get && l_rdy)
+     else if (spi == SPI_IDLE && l_get && l_rdy)
        frame <= #DELAY 1'b1;
 
 
@@ -177,9 +180,9 @@ module spi_slave_wb
    //   a) register address received, and the command is READ;
    //   b) SPI layer requests another register READ; or
    //   c) register data received, to be written.
-   assign first = spi == `SPI_ADDR && !l_wat && !cmd_we;
-   assign fetch = spi == `SPI_BUSY &&  l_get && !we;
-   assign store = spi == `SPI_BUSY && !l_wat &&  we;
+   assign first = spi == SPI_ADDR && !l_wat && !cmd_we;
+   assign fetch = spi == SPI_BUSY &&  l_get && !we;
+   assign store = spi == SPI_BUSY && !l_wat &&  we;
 
    assign start = !busy && (first || fetch || store);
 
@@ -193,7 +196,7 @@ module spi_slave_wb
    always @(posedge clk_i)
      if (!l_cyc)
        we <= #DELAY 1'b1;
-     else if (!l_wat && spi == `SPI_ADDR)
+     else if (!l_wat && spi == SPI_ADDR)
        we <= #DELAY cmd_we;
      else
        we <= #DELAY we;
@@ -201,7 +204,7 @@ module spi_slave_wb
    //  Capture the Wishbone address from the first byte of the SPI
    //  transaction.
    always @(posedge clk_i)
-     if (!l_wat && spi == `SPI_ADDR) adr <= #DELAY cmd_adr;
+     if (!l_wat && spi == SPI_ADDR) adr <= #DELAY cmd_adr;
 
    //  Hold the data from `spi_layer` constant until the end of a `spi_layer`
    //  bus write cycle.
