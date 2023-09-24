@@ -25,13 +25,16 @@ module sigsource (  /*AUTOARG*/
 );
 
   parameter integer WIDTH = 32;  // Number of antennas/signals
-  parameter integer SBITS = 5;
+  // parameter integer SBITS = 5;
+  localparam integer SBITS = $clog2(WIDTH);
 
-  parameter integer XBITS = 3;  // Input MUX source-select bit-width
   parameter integer MUX_N = 7;  // Number of assigned A-/B- MUX inputs
+  // parameter integer XBITS = 3;  // Input MUX source-select bit-width
+  localparam integer XBITS = $clog2(MUX_N);  // Input MUX source-select bit-width
 
   parameter integer TRATE = 30;  // Time-multiplexing rate
-  parameter integer TBITS = 5;
+  // parameter integer TBITS = 5;  // Input MUX bits
+  localparam integer TBITS = $clog2(TRATE);  // Input MUX bits
 
   localparam integer MSB = WIDTH - 1;
   localparam integer SSB = SBITS - 1;
@@ -87,8 +90,8 @@ module sigsource (  /*AUTOARG*/
     for (ii = 0; ii < TRATE; ii = ii + 1) begin : gen_mux_sels
 
       initial begin
-        a_sels[ii] = ASELS[ii*TBITS+TSB:ii*TBITS];
-        b_sels[ii] = BSELS[ii*TBITS+TSB:ii*TBITS];
+        a_sels[ii] = ASELS[ii*XBITS+XSB:ii*XBITS];
+        b_sels[ii] = BSELS[ii*XBITS+XSB:ii*XBITS];
       end
 
     end  // gen_mux_sels

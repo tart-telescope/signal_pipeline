@@ -1,5 +1,30 @@
 `timescale 1ns / 100ps
-module toy_correlator (  /*AUTOARG*/);
+module toy_correlator (
+    sig_clock,
+
+    bus_clock,
+    bus_rst_n,
+
+    vis_clock,
+    vis_rst_n,
+
+    // Status signals
+    vis_start_o,
+    vis_frame_o,
+
+    // AXI4 Stream of antenna data
+    sig_valid_i,
+    sig_last_i,
+    sig_idata_i,
+    sig_qdata_i,
+
+    // AXI4 Stream of visibilities data
+    bus_revis_o,
+    bus_imvis_o,
+    bus_valid_o,
+    bus_ready_i,
+    bus_last_o
+);
 
   parameter integer WIDTH = 4;  // Number of antennas/signals
   localparam WBITS = $clog2(WIDTH);
@@ -15,7 +40,7 @@ module toy_correlator (  /*AUTOARG*/);
   localparam integer USB = UBITS - 1;
 
   // Time-multiplexing rate; i.e., clock multiplier
-  parameter integer TRATE = 30;
+  parameter integer TRATE = 15;
   localparam integer TBITS = $clog2(TRATE);  // ceil(Log2(TRATE))
   localparam integer TSB = TBITS - 1;
 
@@ -25,7 +50,7 @@ module toy_correlator (  /*AUTOARG*/);
   parameter integer LOOP1 = 5;
   localparam integer HBITS = $clog2(LOOP1);
   localparam integer COUNT = LOOP0 * LOOP1;  // Number of terms in partial sums
-  localparam integer CBITS = $clog2(LOOP0 * LOOP1);  // Bit-width of loop-counter
+  localparam integer CBITS = $clog2(COUNT);  // Bit-width of loop-counter
   localparam integer CSB = CBITS - 1;
 
   parameter integer ACCUM = 32;  // Bit-width of accumulators
@@ -42,7 +67,10 @@ module toy_correlator (  /*AUTOARG*/);
 
 
   input sig_clock;
+
   input bus_clock;
+  input bus_rst_n;
+
   input vis_clock;
   input vis_rst_n;
 
@@ -80,14 +108,12 @@ module toy_correlator (  /*AUTOARG*/);
   sigbuffer #(
       .WIDTH(WIDTH),
       .TRATE(TRATE),
-      .TBITS(TBITS),
       .COUNT(COUNT),
-      .CBITS(CBITS),
       .BBITS(BBITS)
   ) SIGBUF0 (
       .sig_clk(sig_clock),
       .vis_clk(vis_clock),
-      .reset_n(reset_n),
+      .reset_n(vis_rst_n),
       // Antenna/source signals
       .valid_i(sig_valid_i),
       .idata_i(sig_idata_i),
@@ -118,7 +144,7 @@ module toy_correlator (  /*AUTOARG*/);
   wire cnext = lomax | buf_first_w;  // todo: make synchronous ...
 
   always @(posedge vis_clock) begin
-    if (!reset_n) begin
+    if (!vis_rst_n) begin
       cntlo <= LZERO;
       cnthi <= HZERO;
     end else if (buf_valid_w) begin
@@ -154,30 +180,39 @@ module toy_correlator (  /*AUTOARG*/);
 
   // -- Antenna signal source-select -- //
 
+localparam [7:0] ATAPS = {2'b00, 2'b01, 2'b10, 2'b11};
+localparam [7:0] BTAPS = {2'b00, 2'b01, 2'b10, 2'b11};
+
+localparam [29:0] ASELS = {2'b00, 2'b00, 2'b00, 2'b00,
+                           2'b01, 2'b01, 2'b01, 2'b01,
+                           2'b10, 2'b10, 2'b10, 2'b10,
+                           2'b11, 2'b11, 2'b11};
+localparam [29:0] BSELS = {2'b00, 2'b01, 2'b10, 2'b11,
+                           2'b00, 2'b01, 2'b10, 2'b11,
+                           2'b00, 2'b01, 2'b10, 2'b11,
+                           2'b00, 2'b01, 2'b10};
+
   wire mux_valid;
   wire mux_ai, mux_aq, mux_bi, mux_bq;
 
   sigsource #(
       .WIDTH(WIDTH),
-      .SBITS(SBITS),
-      .XBITS(XBITS),
       .MUX_N(MUX_N),
       .TRATE(TRATE),
-      .TBITS(TBITS),
       .ATAPS(ATAPS),
       .BTAPS(BTAPS),
       .ASELS(ASELS),
       .BSELS(BSELS)
   ) SIGSRC0 (
-      .clock(clock),
-      .reset_n(reset_n),
+      .clock(vis_clock),
+      .reset_n(vis_rst_n),
       // Inputs
-      .valid_i(valid_i),
-      .first_i(first_i),
-      .last_i(last_i),
-      .taddr_i(taddr_i),
-      .idata_i(idata_i),
-      .qdata_i(qdata_i),
+      .valid_i(buf_valid_w),
+      .first_i(buf_first_w),
+      .last_i(buf_last_w),
+      .taddr_i(buf_taddr_w),
+      .idata_i(buf_idata_w),
+      .qdata_i(buf_qdata_w),
       // Outputs
       .valid_o(mux_valid),
       .first_o(),
@@ -191,15 +226,17 @@ module toy_correlator (  /*AUTOARG*/);
 
   // -- Cross-correlator -- //
 
+  localparam ABITS = 1 << LBITS;
+
   wire auto = 1'b0;  // todo: ...
   wire cor_valid;
-  wire [ASB:0] cor_revis, cor_imvis;
+  wire [VSB:0] cor_revis, cor_imvis;
 
   correlate #(
       .WIDTH(ABITS)
   ) CORRELATE0 (
-      .clock(clock),
-      .reset_n(reset_n),
+      .clock(vis_clock),
+      .reset_n(vis_rst_n),
       // Inputs
       .valid_i(mux_valid),
       .first_i(next),
@@ -219,7 +256,7 @@ module toy_correlator (  /*AUTOARG*/);
   // -- Output select & pipeline -- //
 
   reg succs;
-  reg [ASB:0] revis, imvis;
+  reg [VSB:0] revis, imvis;
 
   assign valid_o = succs;
   assign first_o = 1'bx;  // todo: ...
@@ -228,7 +265,7 @@ module toy_correlator (  /*AUTOARG*/);
   assign imvis_o = imvis;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (!vis_rst_n) begin
       succs <= 1'b0;
       revis <= {ABITS{1'bx}};
       imvis <= {ABITS{1'bx}};
@@ -257,14 +294,12 @@ module toy_correlator (  /*AUTOARG*/);
 
   accumulator #(
       .CORES(CORES),
-      .NBITS(UBITS),
       .TRATE(TRATE),
-      .TBITS(TBITS),
       .WIDTH(ACCUM),
       .SBITS(SBITS)
   ) ACCUM0 (
       .clock  (vis_clock),
-      .reset_n(reset_n),
+      .reset_n(vis_rst_n),
 
       // Inputs
       .valid_i(vlds[CORES]),
@@ -285,85 +320,73 @@ module toy_correlator (  /*AUTOARG*/);
    *  Output SRAM's that store visibilities, while waiting to be sent to the
    *  host system.
    */
-  localparam integer TOTAL = CORES * TRATE;
-  localparam integer OSIZE = BANKS * TOTAL;
-  localparam integer OBITS = CBITS + TBITS;
-  localparam integer OSB = OBITS - 1;
 
-  // -- Write port -- //
+  wire acc_ready;
+  wire [ACCUM+VSB:0] acc_tdata, bus_tdata;
 
-  reg [ACCUM-1:0] reram[OSIZE];
-  reg [ACCUM-1:0] imram[OSIZE];
-  reg [OSB:0] oaddr = {OBITS{1'b0}};
-  wire [OSB:0] onext = oaddr + 1;
-  reg [BSB:0] obank = {BBITS{1'b0}};
+  assign acc_tdata   = {acc_revis, acc_imvis};
+
+  assign bus_revis_o = bus_tdata[ACCUM+VSB:ACCUM];
+  assign bus_imvis_o = bus_tdata[VSB:0];
+
+  axis_async_fifo #(
+      .DEPTH(16),
+      .DATA_WIDTH(WIDTH + WIDTH),
+      .LAST_ENABLE(1),
+      .ID_ENABLE(0),
+      .DEST_ENABLE(0),
+      .USER_ENABLE(0),
+      .RAM_PIPELINE(1),
+      .OUTPUT_FIFO_ENABLE(0),
+      .FRAME_FIFO(1)
+  ) axis_async_fifo_inst (
+      .s_clk(vis_clock),
+      .s_rst(~vis_rst_n),
+      .s_axis_tdata(acc_tdata),
+      .s_axis_tkeep('bx),
+      .s_axis_tvalid(acc_valid),
+      .s_axis_tready(acc_ready),
+      .s_axis_tlast(acc_last),
+      .s_axis_tid('bx),
+      .s_axis_tdest('bx),
+      .s_axis_tuser('bx),
+
+      .m_clk(bus_clock),
+      .m_rst(~bus_rst_n),
+      .m_axis_tdata(bus_tdata),
+      .m_axis_tkeep(),
+      .m_axis_tvalid(bus_valid_o),
+      .m_axis_tready(bus_ready_i),
+      .m_axis_tlast(bus_last_o),
+      .m_axis_tid(),
+      .m_axis_tdest(),
+      .m_axis_tuser(),
+
+      .s_pause_req(1'b0),
+      .s_pause_ack(),
+      .m_pause_req(1'b0),
+      .m_pause_ack(),
+
+      .s_status_depth(),
+      .s_status_depth_commit(),
+      .s_status_overflow(),
+      .s_status_bad_frame(),
+      .s_status_good_frame(),
+
+      .m_status_depth(),
+      .m_status_depth_commit(),
+      .m_status_overflow(),
+      .m_status_bad_frame(),
+      .m_status_good_frame()
+  );
+
+
+  // -- Simulation sanitisers -- //
 
   always @(posedge vis_clock) begin
-    if (!reset_n) begin
-      oaddr <= {OBITS{1'b0}};
-      obank <= {BBITS{1'b0}};
-    end else begin
-      // todo: handle case when all banks full?
-
-      if (acc_valid) begin
-        // todo: there are some edge-cases to handle, when 'onext == 0'?
-        if (onext == TOTAL) begin
-          oaddr <= {OBITS{1'b0}};
-          obank <= obank + 1;
-        end else begin
-          oaddr <= onext;
-        end
-
-        // todo:
-        reram[{obank, oaddr}] <= acc_revis;
-        imram[{obank, oaddr}] <= acc_imvis;
-      end
-    end
-  end
-
-  // todo: cross-domain signals for indicating that data is ready ...
-
-  // -- AXI4-Stream Read Port -- //
-
-  reg [ACCUM-1:0] revis;
-  reg [ACCUM-1:0] imvis;
-  reg [OSB:0] baddr = {OBITS{1'b0}};
-  wire [OSB:0] bnext = baddr + 1;
-  reg [BSB:0] bbank = {BBITS{1'b0}};
-  reg b_vld = 1'b0;
-  reg b_lst = 1'b0;
-
-  assign bus_valid_o = b_vld;
-  assign bus_last_o  = b_lst;
-  assign bus_revis_o = revis;
-  assign bus_imvis_o = imvis;
-
-  always @(posedge bus_clock) begin
-    if (!reset_n) begin
-      baddr <= {OBITS{1'b0}};
-      bbank <= {BBITS{1'b0}};
-      b_vld <= 1'b0;
-      b_lst <= 1'b0;
-    end else begin
-      // todo: 'b_vld' logic
-
-      if (b_vld && bus_ready_i) begin
-        if (bnext == TOTAL) begin
-          baddr <= {OBITS{1'b0}};
-          bbank <= bbank + 1;
-        end else begin
-          baddr <= bnext;
-        end
-
-        // todo: correct?
-        if (bnext == TOTAL - 1) begin
-          b_lst <= 1'b1;
-        end else begin
-          b_lst <= 1'b0;
-        end
-
-        revis <= reram[{bbank, baddr}];
-        imvis <= imram[{bbank, baddr}];
+    if (vis_rst_n) begin
+      if (!acc_ready && acc_valid) begin
+        $error("Oh noes, the FIFO has overflowed!");
       end
     end
   end

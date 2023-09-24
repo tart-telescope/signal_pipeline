@@ -18,13 +18,15 @@ module accumulator (
 );
 
   parameter integer CORES = 18;
-  parameter integer NBITS = 5;
+  // parameter integer NBITS = 5;
+  localparam integer NBITS = $clog2(CORES);
 
   parameter integer TRATE = 30;
-  parameter integer TBITS = 5;  // Input MUX bits
+  // parameter integer TBITS = 5;  // Input MUX bits
+  localparam integer TBITS = $clog2(TRATE);  // Input MUX bits
 
   parameter integer WIDTH = 36;  // Accumulator bit-width
-  parameter integer SBITS = 6;  // Partial-sums bit-width
+  parameter integer SBITS = 7;  // Partial-sums bit-width
 
   localparam integer MSB = WIDTH - 1;
   localparam integer SSB = SBITS - 1;

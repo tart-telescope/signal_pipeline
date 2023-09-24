@@ -31,13 +31,15 @@ module sigbuffer (  /*AUTOARG*/
 
   // Time-multiplexing is used, so used to map from timeslice to MUX indices
   parameter integer TRATE = 30;
-  parameter integer TBITS = 5;
+  // parameter integer TBITS = 5;  // Input MUX bits
+  localparam integer TBITS = $clog2(TRATE);  // Input MUX bits
   localparam integer TSB = TBITS - 1;
 
   // For each antenna-pair, partial (visibility) sums are computed from COUNT
   // cross-correlations
-  parameter integer CBITS = 4;
   parameter integer COUNT = 15;
+  // parameter integer CBITS = 4;
+  localparam integer CBITS = $clog2(COUNT);
   localparam integer CSB = CBITS - 1;
 
   // At least two banks are required, so that one can be filled, while the other

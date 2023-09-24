@@ -108,6 +108,17 @@ module top #(
       .clkout(clock_b)
   );
 
+  // Synchronous reset (active 'LO') for the SPI unit.
+  wire bus_rst_n;
+
+  sync_reset #(
+      .N(2)
+  ) bus_sync_reset (
+      .clk(clock_b),
+      .rst(rst_n),
+      .out(bus_rst_n)
+  );
+
 
   // -- Acquisition -- //
 
@@ -178,6 +189,8 @@ module top #(
   ) tart_correlator_inst (
       .sig_clock(CLK_16),
       .bus_clock(clock_b),
+      .bus_rst_n(bus_rst_n),
+
       .vis_clock(vis_clk),
       .vis_rst_n(vis_rst_n),
 
@@ -210,6 +223,8 @@ module top #(
 
   wire sys_status;
   wire spi_busy, spi_oflow, spi_uflow;
+
+  wire spi_rst = ~bus_rst_n;
 
   assign spi_rty = 1'b0;
   assign spi_err = 1'b0;
@@ -282,7 +297,7 @@ module top #(
       .ulpi_data_o(ulpi_data_o),
 
       .aclk(axi_clk),
-      .aresetn(reset_n),
+      .aresetn(~axi_rst),
 
       .s_axis_tvalid_i(s_tvalid),
       .s_axis_tready_o(s_tready),

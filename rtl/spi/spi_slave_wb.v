@@ -93,8 +93,8 @@ module spi_slave_wb
 
 // -- SPI FSM states -- //
 localparam [1:0] SPI_IDLE = 2'h0;
-localparam [1:0] SPI_ADDR = 2'h1
-localparam [1:0] SPI_BUSY = 2'h2
+localparam [1:0] SPI_ADDR = 2'h1;
+localparam [1:0] SPI_BUSY = 2'h2;
 
 
    //-------------------------------------------------------------------------
