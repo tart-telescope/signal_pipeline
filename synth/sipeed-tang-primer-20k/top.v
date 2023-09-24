@@ -46,6 +46,7 @@ module top #(
 
   wire axi_clk, axi_lock;
   wire usb_clk, usb_rst_n;
+  wire vis_clk, vis_lock;
 
   // So 27.0 MHz divided by 9, then x40 = 120 MHz.
   gowin_rpll #(
@@ -53,21 +54,48 @@ module top #(
       .IDIV_SEL(8),  // ~=  9
       .FBDIV_SEL(39),  // ~= 40
       .ODIV_SEL(8)
-  ) gowin_rpll_inst (
+  ) axi_rpll_inst (
       .clkout(axi_clk),   // 120 MHz
       .lock  (axi_lock),
       .clkin (clk_26)
   );
 
+  // Correlator clock domain runs at 15x the global clock for the radios.
+  gowin_rpll #(
+      .FCLKIN("16.368"),
+      .IDIV_SEL(0),  // ~=  1
+      .FBDIV_SEL(14),  // ~= 15
+      .ODIV_SEL(8)
+  ) vis_rpll_inst (
+      .clkout(vis_clk),   // 245.52 MHz
+      .lock  (vis_lock),
+      .clkin (CLK_16)
+  );
+
 
   // -- Globalists -- //
 
-  reg reset_n;
-  reg rst_n2, rst_n1, rst_n0;
+  // Synchronous reset signal (when 'HI'), for the AXI clock-domain.
+  wire axi_rst;
 
-  always @(posedge axi_clk) begin
-    {reset_n, rst_n2, rst_n1, rst_n0} <= {rst_n2, rst_n1, rst_n0, rst_n};
-  end
+  sync_reset #(
+      .N(2)
+  ) axi_sync_reset (
+      .clk(axi_clk),
+      .rst(~rst_n),
+      .out(axi_rst)
+  );
+
+  // Synchronous reset (active 'LO') for the correlator unit.
+  wire vis_rst_n;
+
+  sync_reset #(
+      .N(2)
+  ) vis_sync_reset (
+      .clk(vis_clk),
+      .rst(rst_n),
+      .out(vis_rst_n)
+  );
 
   // SPI clock, 24.0 MHz.
   wire clock_b;
@@ -76,7 +104,7 @@ module top #(
       .DIV_MODE("5")
   ) gowin_clkdiv_inst (
       .hclkin(axi_clk),
-      .resetn(reset_n),
+      .resetn(axi_lock),
       .clkout(clock_b)
   );
 
@@ -138,27 +166,20 @@ module top #(
     spi_wat <= ~spi_ack;
   end
 
-  tart_correlator #(
-      .WIDTH(ANTENNAS),
-      .WBITS(5),
+  // Calculate visibilities for 4 antennas, with fixed MUX-inputs, for testing.
+  toy_correlator #(
+      .WIDTH(4),
       .MUX_N(4),
-      .XBITS(2),
-      .CORES(24),
-      .UBITS(5),
-      .TRATE(12),
-      .TBITS(4),
+      .TRATE(30),
       .LOOP0(3),
-      .LBITS(2),
       .LOOP1(5),
-      .HBITS(3),
-      .CBITS(4),
       .ACCUM(32),
       .SBITS(7)
   ) tart_correlator_inst (
       .sig_clock(CLK_16),
-      .vis_clock(axi_clk),
       .bus_clock(clock_b),
-      .reset_n  (reset_n),
+      .vis_clock(vis_clk),
+      .vis_rst_n(vis_rst_n),
 
       .sig_valid_i(axi_lock),
       .sig_last_i (1'b0),
@@ -277,6 +298,59 @@ module top #(
 
   // -- Just echo/loop IN <-> OUT -- //
 
+  // todo: switch to the synchronous FIFO core, and use a BSRAM for the memory.
+  axis_async_fifo #(
+      .DEPTH(16),
+      .DATA_WIDTH(8),
+      .LAST_ENABLE(1),
+      .ID_ENABLE(0),
+      .DEST_ENABLE(0),
+      .USER_ENABLE(0),
+      .RAM_PIPELINE(1),
+      .OUTPUT_FIFO_ENABLE(0),
+      .FRAME_FIFO(0)
+  ) axis_async_fifo_inst (
+      .s_clk(axi_clk),
+      .s_rst(axi_rst),
+      .s_axis_tdata(m_tdata),
+      .s_axis_tkeep('bx),
+      .s_axis_tvalid(m_tvalid),
+      .s_axis_tready(m_tready),
+      .s_axis_tlast(m_tlast),
+      .s_axis_tid('bx),
+      .s_axis_tdest('bx),
+      .s_axis_tuser('bx),
+
+      .m_clk(axi_clk),
+      .m_rst(axi_rst),
+      .m_axis_tdata(s_tdata),
+      .m_axis_tkeep(),
+      .m_axis_tvalid(s_tvalid),
+      .m_axis_tready(s_tready),
+      .m_axis_tlast(s_tlast),
+      .m_axis_tid(),
+      .m_axis_tdest(),
+      .m_axis_tuser(),
+
+      .s_pause_req(1'b0),
+      .s_pause_ack(),
+      .m_pause_req(1'b0),
+      .m_pause_ack(),
+
+      .s_status_depth(),
+      .s_status_depth_commit(),
+      .s_status_overflow(),
+      .s_status_bad_frame(),
+      .s_status_good_frame(),
+
+      .m_status_depth(),
+      .m_status_depth_commit(),
+      .m_status_overflow(),
+      .m_status_bad_frame(),
+      .m_status_good_frame()
+  );
+
+`ifdef __COMMUNIST_REVOLUTION_HAS_BEGUN
   axis_afifo #(
       .WIDTH(8),
       .ABITS(4)
@@ -295,6 +369,6 @@ module top #(
       .m_tlast_o (s_tlast),
       .m_tdata_o (s_tdata)
   );
-
+`endif
 
 endmodule  // top

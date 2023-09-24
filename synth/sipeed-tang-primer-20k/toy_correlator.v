@@ -1,61 +1,36 @@
 `timescale 1ns / 100ps
-module tart_correlator (
-    sig_clock,
-    vis_clock,
-    bus_clock,
-    reset_n,
+module toy_correlator (  /*AUTOARG*/);
 
-    sig_valid_i,
-    sig_last_i,
-    sig_idata_i,
-    sig_qdata_i,
-
-    vis_start_o,
-    vis_frame_o,
-
-    bus_revis_o,
-    bus_imvis_o,
-    bus_valid_o,
-    bus_ready_i,
-    bus_last_o
-);
-
-  // FIXME: The `COUNT` parameter has to be the same as `CORES`, due to the way
-  //   that results are pipelined? Explicitly, after summing `COUNT` values,
-  //   this partial-sum is output onto the pipelined "MUX", to be sent to the
-  //   accumulator FU?
-
-  parameter integer WIDTH = 32;  // Number of antennas/signals
-  parameter integer WBITS = 5;  // Log2(#width)
-  localparam integer MSB = WIDTH - 1;
+  parameter integer WIDTH = 4;  // Number of antennas/signals
+  localparam WBITS = $clog2(WIDTH);
+  localparam MSB = WIDTH - 1;
 
   // Source-signal multiplexor parameters
-  parameter integer MUX_N = 7;
-  parameter integer XBITS = 3;
+  parameter integer MUX_N = 4;
+  localparam integer XBITS = $clog2(MUX_N);
   localparam integer XSB = XBITS - 1;
 
-  parameter integer CORES = 18;  // Number of correlator cores
-  // parameter integer UBITS = 5;  // Log2(#cores)
+  parameter integer CORES = 1;  // Number of correlator cores
   localparam integer UBITS = $clog2(CORES);  // Log2(#cores)
   localparam integer USB = UBITS - 1;
 
   // Time-multiplexing rate; i.e., clock multiplier
   parameter integer TRATE = 30;
-  parameter integer TBITS = 5;  // ceil(Log2(TRATE))
+  localparam integer TBITS = $clog2(TRATE);  // ceil(Log2(TRATE))
   localparam integer TSB = TBITS - 1;
 
   // Every 'COUNT' samples, compute partial-visibilities to accumumlate
   parameter integer LOOP0 = 3;
-  parameter integer LBITS = 2;
+  localparam integer LBITS = $clog2(LOOP0);
   parameter integer LOOP1 = 5;
-  parameter integer HBITS = 3;
+  localparam integer HBITS = $clog2(LOOP1);
   localparam integer COUNT = LOOP0 * LOOP1;  // Number of terms in partial sums
-  parameter integer CBITS = 4;  // Bit-width of loop-counter
+  localparam integer CBITS = $clog2(LOOP0 * LOOP1);  // Bit-width of loop-counter
   localparam integer CSB = CBITS - 1;
 
-  // parameter integer ADDR = 4;
-  // localparam integer ASB = ADDR - 1;
-  parameter integer ACCUM = 36;  // Bit-width of accumulators
+  parameter integer ACCUM = 32;  // Bit-width of accumulators
+  localparam integer VSB = ACCUM - 1;
+
   parameter integer SBITS = 7;  // Bit-width of partial-sums
   localparam integer SSB = SBITS - 1;
 
@@ -66,27 +41,26 @@ module tart_correlator (
   localparam integer BSB = BBITS - 1;
 
 
-  input sig_clock;  // note: the clock from the radio RX ADC's
-  input vis_clock;  // note: must be (integer multiple) sync to 'sig_clock'
-  input bus_clock;  // note: typically ascynchronous, relative to the above
-  input reset_n;
+  input sig_clock;
+  input bus_clock;
+  input vis_clock;
+  input vis_rst_n;
 
-  // AXI4-Stream input for the visibilities
-  input [MSB:0] sig_idata_i;
-  input [MSB:0] sig_qdata_i;
-  input sig_valid_i;
-  input sig_last_i;  // todo: not useful?
-  output sig_ready_o;
-
-  // Control and status signals
+  // Status signals
   output vis_start_o;
   output vis_frame_o;
 
-  // AXI4-Stream output for the visibilities
-  output [ACCUM-1:0] bus_revis_o;
-  output [ACCUM-1:0] bus_imvis_o;
-  input bus_ready_i;
+  // AXI4 Stream of antenna data
+  input sig_valid_i;
+  input sig_last_i;
+  input [MSB:0] sig_idata_i;
+  input [MSB:0] sig_qdata_i;
+
+  // AXI4 Stream of visibilities data
+  output [VSB:0] bus_revis_o;
+  output [VSB:0] bus_imvis_o;
   output bus_valid_o;
+  output bus_ready_i;
   output bus_last_o;
 
 
@@ -177,41 +151,99 @@ module tart_correlator (
   assign acc_re  = re_w[CORES];
   assign acc_im  = im_w[CORES];
 
-  genvar ii;
-  generate
-    for (ii = 0; ii < CORES; ii = ii + 1) begin : gen_corr_inst
-      correlator #(
-          .WIDTH(WIDTH),
-          .SBITS(WBITS),
-          .ABITS(SBITS),
-          .XBITS(XBITS),
-          .MUX_N(MUX_N),
-          .TRATE(TRATE),
-          .TBITS(TBITS)
-      ) CORR (
-          // Inputs
-          .clock  (vis_clock),
-          .reset_n(reset_n),
 
-          .valid_i(buf_valid_w),
-          .first_i(buf_first_w),
-          .next_i (cnext),
-          .last_i (buf_last_w),
-          .taddr_i(buf_taddr_w),
-          .idata_i(buf_idata_w),
-          .qdata_i(buf_qdata_w),
+  // -- Antenna signal source-select -- //
 
-          .prevs_i(vlds[ii]),
-          .revis_i(re_w[ii]),
-          .imvis_i(im_w[ii]),
+  wire mux_valid;
+  wire mux_ai, mux_aq, mux_bi, mux_bq;
 
-          // Outputs
-          .revis_o(re_w[ii+1]),
-          .imvis_o(im_w[ii+1]),
-          .valid_o(vlds[ii+1])
-      );
-    end  // gen_corr_inst
-  endgenerate
+  sigsource #(
+      .WIDTH(WIDTH),
+      .SBITS(SBITS),
+      .XBITS(XBITS),
+      .MUX_N(MUX_N),
+      .TRATE(TRATE),
+      .TBITS(TBITS),
+      .ATAPS(ATAPS),
+      .BTAPS(BTAPS),
+      .ASELS(ASELS),
+      .BSELS(BSELS)
+  ) SIGSRC0 (
+      .clock(clock),
+      .reset_n(reset_n),
+      // Inputs
+      .valid_i(valid_i),
+      .first_i(first_i),
+      .last_i(last_i),
+      .taddr_i(taddr_i),
+      .idata_i(idata_i),
+      .qdata_i(qdata_i),
+      // Outputs
+      .valid_o(mux_valid),
+      .first_o(),
+      .last_o(),
+      .ai_o(mux_ai),
+      .aq_o(mux_aq),
+      .bi_o(mux_bi),
+      .bq_o(mux_bq)
+  );
+
+
+  // -- Cross-correlator -- //
+
+  wire auto = 1'b0;  // todo: ...
+  wire cor_valid;
+  wire [ASB:0] cor_revis, cor_imvis;
+
+  correlate #(
+      .WIDTH(ABITS)
+  ) CORRELATE0 (
+      .clock(clock),
+      .reset_n(reset_n),
+      // Inputs
+      .valid_i(mux_valid),
+      .first_i(next),
+      .last_i(last),
+      .auto_i(auto),
+      .ai_i(mux_ai),
+      .aq_i(mux_aq),
+      .bi_i(mux_bi),
+      .bq_i(mux_bq),
+      // Outputs
+      .valid_o(cor_valid),
+      .re_o(cor_revis),
+      .im_o(cor_imvis)
+  );
+
+
+  // -- Output select & pipeline -- //
+
+  reg succs;
+  reg [ASB:0] revis, imvis;
+
+  assign valid_o = succs;
+  assign first_o = 1'bx;  // todo: ...
+  assign last_o  = 1'bx;  // todo: ...
+  assign revis_o = revis;
+  assign imvis_o = imvis;
+
+  always @(posedge clock) begin
+    if (!reset_n) begin
+      succs <= 1'b0;
+      revis <= {ABITS{1'bx}};
+      imvis <= {ABITS{1'bx}};
+    end else begin
+      succs <= cor_valid | prevs_i;
+
+      if (cor_valid) begin
+        revis <= cor_revis;
+        imvis <= cor_imvis;
+      end else begin
+        revis <= revis_i;
+        imvis <= imvis_i;
+      end
+    end
+  end
 
 
   /**
@@ -336,4 +368,5 @@ module tart_correlator (
     end
   end
 
-endmodule  // tart_correlator
+
+endmodule  // toy_correlator

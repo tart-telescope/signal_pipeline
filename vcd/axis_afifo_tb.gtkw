@@ -1,0 +1,60 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Sat Sep 23 23:37:12 2023
+[*]
+[dumpfile] "./axis_afifo_tb.vcd"
+[dumpfile_mtime] "Sat Sep 23 23:36:22 2023"
+[dumpfile_size] 48507
+[savefile] "./axis_afifo_tb.gtkw"
+[timestart] 0
+[size] 2560 1376
+[pos] -1 -1
+*-16.733505 10160000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] axis_afifo_tb.
+[sst_width] 233
+[signals_width] 110
+[sst_expanded] 1
+[sst_vpaned_height] 414
+@28
+axis_afifo_tb.rst_n
+axis_afifo_tb.start
+axis_afifo_tb.done
+@22
+axis_afifo_tb.count[9:0]
+@800200
+-A
+@28
+axis_afifo_tb.a_clk
+axis_afifo_tb.a_vld
+axis_afifo_tb.a_rdy
+axis_afifo_tb.a_lst
+@22
+axis_afifo_tb.a_dat[7:0]
+@1000200
+-A
+@800200
+-B
+@28
+axis_afifo_tb.b_clk
+axis_afifo_tb.b_vld
+axis_afifo_tb.b_rdy
+axis_afifo_tb.b_lst
+@22
+axis_afifo_tb.b_dat[7:0]
+@1000200
+-B
+@800200
+-C
+@29
+axis_afifo_tb.x_rdy
+@28
+axis_afifo_tb.c_clk
+axis_afifo_tb.c_vld
+axis_afifo_tb.c_rdy
+axis_afifo_tb.c_lst
+@22
+axis_afifo_tb.c_dat[7:0]
+@1000200
+-C
+[pattern_trace] 1
+[pattern_trace] 0

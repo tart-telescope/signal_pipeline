@@ -8,6 +8,9 @@ IVC	?= iverilog
 VERINC	:= ../include/
 VEROPT	:= -g2005-sv -D__icarus -Wall -I$(VERINC)
 
+LIB	:= ../lib
+AXIS	:= $(wildcard $(LIB)/verilog-axis/rtl/*.v)
+
 RTL	= ../rtl
 MISC	= $(wildcard $(RTL)/misc/*.v)
 CORR	= $(wildcard $(RTL)/correlator/*.v)
