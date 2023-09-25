@@ -1,29 +1,32 @@
 `timescale 1ns / 100ps
-module visfinal (  /*AUTOARG*/
+module visfinal (
+    clock_i,
+    reset_ni,
+
+    // Inputs
+    valid_i,
+    first_i,
+    last_i,
+    data_i,
+
     // Outputs
     valid_o,
     first_o,
     last_o,
-    data_o,
-    // Inputs
-    clock_i,
-    reset_ni,
-    valid_i,
-    first_i,
-    last_i,
-    data_i
+    data_o
 );
 
   // Input and output bit-widths
   parameter integer IBITS = 7;
   localparam integer ISB = IBITS - 1;
+
   parameter integer OBITS = 36;
   localparam integer OSB = OBITS - 1;
 
   // Total number of visibility components, and the number of required address
   // bits
   parameter integer NSUMS = 1024;
-  parameter integer ABITS = 10;
+  localparam integer ABITS = $clog2(NSUMS);
   localparam integer ASB = ABITS - 1;
 
   //

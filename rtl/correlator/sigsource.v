@@ -10,6 +10,7 @@ module sigsource (  /*AUTOARG*/
     // Inputs
     valid_i,
     first_i,
+    next_i,
     last_i,
     taddr_i,
     idata_i,
@@ -17,6 +18,7 @@ module sigsource (  /*AUTOARG*/
     // Outputs
     valid_o,
     first_o,
+    next_o,
     last_o,
     ai_o,
     aq_o,
@@ -25,20 +27,19 @@ module sigsource (  /*AUTOARG*/
 );
 
   parameter integer WIDTH = 32;  // Number of antennas/signals
+  localparam integer MSB = WIDTH - 1;
   // parameter integer SBITS = 5;
   localparam integer SBITS = $clog2(WIDTH);
+  localparam integer SSB = SBITS - 1;
 
   parameter integer MUX_N = 7;  // Number of assigned A-/B- MUX inputs
   // parameter integer XBITS = 3;  // Input MUX source-select bit-width
   localparam integer XBITS = $clog2(MUX_N);  // Input MUX source-select bit-width
+  localparam integer XSB = XBITS - 1;
 
   parameter integer TRATE = 30;  // Time-multiplexing rate
   // parameter integer TBITS = 5;  // Input MUX bits
   localparam integer TBITS = $clog2(TRATE);  // Input MUX bits
-
-  localparam integer MSB = WIDTH - 1;
-  localparam integer SSB = SBITS - 1;
-  localparam integer XSB = XBITS - 1;
   localparam integer TSB = TBITS - 1;
 
   localparam integer PBITS = SBITS * MUX_N;  // Signal taps for A-/B- MUX inputs
@@ -61,6 +62,7 @@ module sigsource (  /*AUTOARG*/
   // Interleaved, AXI4-Stream like antenna IQ source-data inputs
   input valid_i;
   input first_i;
+  input next_i;
   input last_i;
   input [TSB:0] taddr_i;
   input [MSB:0] idata_i;
@@ -69,6 +71,7 @@ module sigsource (  /*AUTOARG*/
   // Output IQ, A- & B- signals to the correlator
   output reg valid_o;
   output reg first_o;
+  output reg next_o;
   output reg last_o;
   output reg ai_o;
   output reg aq_o;
@@ -134,16 +137,18 @@ module sigsource (  /*AUTOARG*/
   /**
    * A- & B- inputs MUXs that select the output antenna (IQ) signals.
    */
-  reg valid, first, last;
+  reg valid, first, next, last;
 
   always @(posedge clock) begin
     if (!reset_n) begin
       {valid_o, valid} <= 2'b00;
       {first_o, first} <= 2'b00;
+      {next_o, next}   <= 2'b00;
       {last_o, last}   <= 2'b00;
     end else begin
       {valid_o, valid} <= {valid, valid_i};
       {first_o, first} <= {first, first_i};
+      {next_o, next}   <= {next, next_i};
       {last_o, last}   <= {last, last_i};
     end
 

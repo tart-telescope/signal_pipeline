@@ -140,10 +140,7 @@ module sigbuffer_tb;
   sigbuffer #(
       .WIDTH(WIDTH),
       .TRATE(TRATE),
-      .TBITS(TBITS),
-      .COUNT(COUNT),
-      .CBITS(CBITS),
-      .BBITS(BBITS)
+      .COUNT(COUNT)
   ) SIGBUF0 (
       .sig_clk(sig_clock),
       .vis_clk(buf_clock),

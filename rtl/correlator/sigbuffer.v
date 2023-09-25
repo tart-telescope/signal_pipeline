@@ -8,21 +8,25 @@
  * and streams them (with the correct ordering) to the correlators, switching
  * banks at the end of each block (of 'COUNT' samples).
  */
-module sigbuffer (  /*AUTOARG*/
-    sig_clk,
-    vis_clk,
+module sigbuffer (
     reset_n,
-    // Outputs
+
+    // Radio-domain signals
+    sig_clk,
+    valid_i,
+    idata_i,
+    qdata_i,
+
+    // Visibilities-domain signals
+    vis_clk,
     valid_o,
     first_o,
+    next_o,
+    emit_o,
     last_o,
     taddr_o,
     idata_o,
-    qdata_o,
-    // Inputs
-    valid_i,
-    idata_i,
-    qdata_i
+    qdata_o
 );
 
   // Number of antennas/sources
@@ -31,21 +35,25 @@ module sigbuffer (  /*AUTOARG*/
 
   // Time-multiplexing is used, so used to map from timeslice to MUX indices
   parameter integer TRATE = 30;
-  // parameter integer TBITS = 5;  // Input MUX bits
   localparam integer TBITS = $clog2(TRATE);  // Input MUX bits
   localparam integer TSB = TBITS - 1;
 
-  // For each antenna-pair, partial (visibility) sums are computed from COUNT
-  // cross-correlations
-  parameter integer COUNT = 15;
-  // parameter integer CBITS = 4;
-  localparam integer CBITS = $clog2(COUNT);
+  // For each antenna-pair, partial (visibility) sums are computed from 'COUNT'
+  // cross-correlations. And, for efficiency, 'COUNT' is the product of two
+  // smaller loops, 'LOOP0' & 'LOOP1'.
+  parameter integer LOOP0 = 3;
+  localparam integer LBITS = $clog2(LOOP0);
+  parameter integer LOOP1 = 5;
+  localparam integer HBITS = $clog2(LOOP1);
+  localparam integer COUNT = LOOP0 * LOOP1;  // Number of terms in partial sums
+  localparam integer CBITS = $clog2(COUNT);  // Bit-width of loop-counter
   localparam integer CSB = CBITS - 1;
 
   // At least two banks are required, so that one can be filled, while the other
   // is being read
-  parameter integer BBITS = 1;
+  localparam integer BBITS = 1;
   localparam integer BANKS = 1 << BBITS;
+  localparam integer BSB = BBITS - 1;
 
   // SRAM address and size parameters
   localparam integer WORDS = 1 << (CBITS + BBITS);
@@ -64,6 +72,8 @@ module sigbuffer (  /*AUTOARG*/
   // Correlator clock domain
   output valid_o;
   output first_o;
+  output next_o;
+  output emit_o;
   output last_o;
   output [TSB:0] taddr_o;
   output [MSB:0] idata_o;
@@ -71,6 +81,8 @@ module sigbuffer (  /*AUTOARG*/
 
 
   // -- Capture of antenna IQ signals -- //
+
+  localparam [CSB:0] CZERO = {COUNT{1'b0}};
 
   reg [MSB:0] isram[WORDS];
   reg [MSB:0] qsram[WORDS];
@@ -88,7 +100,7 @@ module sigbuffer (  /*AUTOARG*/
       if (valid_i) begin
         if (wnext[CSB:0] == COUNT[CSB:0]) begin
           // Count-limit reached, switch bank
-          waddr  <= {wbank, {CBITS{1'b0}}};
+          waddr  <= {wbank, CZERO};
           switch <= 1'b1;
         end else begin
           waddr  <= wnext;
@@ -122,14 +134,18 @@ module sigbuffer (  /*AUTOARG*/
 
   // -- Read-back of antenna IQ signals, with "multistage ordering" -- //
 
+  localparam [TSB:0] TZERO = {TBITS{1'b0}};
+  localparam [BSB:0] BZERO = {BBITS{1'b0}};
+
+  reg valid, first, next, emit, last;
+  reg [MSB:0] idata, qdata;
+
   reg frame;
   reg [TSB:0] taddr;
   wire [TSB:0] tnext = taddr + 1;
   wire tlast = tnext == TRATE[TSB:0];
   reg tstep;
 
-  reg valid, first, last;
-  reg [MSB:0] idata, qdata;
   reg [CSB:0] raddr;
   wire [CSB:0] rnext = raddr + 1;
   wire rlast = rnext[CSB:0] == COUNT[CSB:0];
@@ -137,17 +153,24 @@ module sigbuffer (  /*AUTOARG*/
 
   assign valid_o = valid;
   assign first_o = first;
+  assign next_o  = next;
+  assign emit_o  = emit;
   assign last_o  = last;
   assign taddr_o = taddr;
   assign idata_o = idata;
   assign qdata_o = qdata;
 
+  //
   // Transaction framing unit
+  //
+  // A "transaction" loops through 'COUNT' samples, and repeats this 'TRATE'
+  // times.
+  //
   always @(posedge vis_clk) begin
     if (!reset_n) begin
-      taddr <= {TBITS{1'b0}};
+      taddr <= TZERO;
       frame <= 1'b0;
-      rbank <= {BBITS{1'b0}};
+      rbank <= BZERO;
       tstep <= 1'b0;
     end else begin
       if (start) begin
@@ -163,11 +186,11 @@ module sigbuffer (  /*AUTOARG*/
       tstep <= rlast;
 
       if (!frame && valid) begin
-        taddr <= {TBITS{1'b0}};
-        rbank <= {BBITS{1'b0}};
+        taddr <= TZERO;
+        rbank <= BZERO;
       end else if (tstep) begin
         if (tlast) begin
-          taddr <= {TBITS{1'b0}};
+          taddr <= TZERO;
         end else begin
           taddr <= tnext;
         end
@@ -178,19 +201,19 @@ module sigbuffer (  /*AUTOARG*/
   // Read-address and read-data unit
   always @(posedge vis_clk) begin
     if (!reset_n) begin
-      raddr <= {CBITS{1'b0}};
+      raddr <= CZERO;
     end else begin
       idata <= isram[{rbank, raddr}];
       qdata <= qsram[{rbank, raddr}];
 
       if (frame) begin
         if (rlast) begin
-          raddr <= {CBITS{1'b0}};
+          raddr <= CZERO;
         end else begin
           raddr <= rnext;
         end
       end else begin
-        raddr <= {CBITS{1'b0}};
+        raddr <= CZERO;
       end
     end
   end
@@ -204,6 +227,47 @@ module sigbuffer (  /*AUTOARG*/
       valid <= frame;
       first <= frame & (~valid | last);
       last  <= rlast & tlast;
+    end
+  end
+
+
+  // -- Correlator partial-sum stepper control -- //
+
+  localparam integer LZERO = {LBITS{1'b0}};
+  localparam integer HZERO = {HBITS{1'b0}};
+
+  reg [LBITS-1:0] cntlo;
+  wire [LBITS-1:0] lnext = cntlo + 1;
+  wire lomax = lnext == LOOP0[LBITS-1:0];
+
+  // reg [HBITS-1:0] cnthi;
+  // wire [HBITS-1:0] hnext = cnthi + 1;
+  // wire himax = hnext == LOOP1[HBITS-1:0];
+
+  // wire cnext = lomax | buf_first_w;  // todo: make synchronous ...
+
+  always @(posedge vis_clk) begin
+    if (!reset_n) begin
+      cntlo <= LZERO;
+      // cnthi <= HZERO;
+      next  <= 1'b0;
+    end else begin
+      if (frame) begin
+        next <= ~valid | emit;
+        emit <= lomax;
+
+        if (lomax) begin
+          cntlo <= LZERO;
+        end else begin
+          cntlo <= lnext;
+        end
+
+      end else begin
+        next <= 1'b0;
+        emit <= 1'b0;
+
+        cntlo <= LZERO;
+      end
     end
   end
 

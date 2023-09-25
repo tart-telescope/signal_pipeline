@@ -1,6 +1,4 @@
 `timescale 1ns / 100ps
-// `include "tartcfg.v"
-
 module correlator (
     clock,
     reset_n,
@@ -8,6 +6,7 @@ module correlator (
     valid_i,
     first_i,
     next_i,
+    emit_i,
     last_i,
     taddr_i,
     idata_i,
@@ -19,9 +18,8 @@ module correlator (
 
     revis_o,
     imvis_o,
-    valid_o,
-    first_o,
-    last_o
+    frame_o,
+    valid_o
 );
 
   // TODO:
@@ -30,19 +28,22 @@ module correlator (
   //  - 'viscalc.v' for first-stage correlation
 
   parameter integer WIDTH = 32;  // Number of antennas/signals
-  parameter integer SBITS = 5;
-  parameter integer ABITS = 4;  // Adder bit-width
+  // parameter integer SBITS = 5;
+  localparam integer SBITS = $clog2(WIDTH);
+  localparam integer MSB = WIDTH - 1;
 
-  parameter integer XBITS = 3;  // Input MUX bits
-  parameter integer MUX_N = 7;
+  parameter integer ABITS = 4;  // Adder bit-width
+  localparam integer ASB = ABITS - 1;
+
+  parameter integer MUX_N = 7; // A- & B- MUX widths
+  // parameter integer XBITS = 3;  // Input MUX bits
+  localparam integer XBITS = $clog2(MUX_N);
+  localparam integer XSB = XBITS - 1;
 
   parameter integer TRATE = 30;  // Time-multiplexing rate
-  parameter integer TBITS = 5;
-
-  localparam integer MSB = WIDTH - 1;
-  localparam integer XSB = XBITS - 1;
+  // parameter integer TBITS = 5;
+  localparam integer TBITS = $clog2(TRATE);  // ceil(Log2(TRATE))
   localparam integer TSB = TBITS - 1;
-  localparam integer ASB = ABITS - 1;
 
   localparam integer PBITS = SBITS * MUX_N;  // Signal taps for A-/B- MUX inputs
   localparam integer PSB = PBITS - 1;
@@ -64,6 +65,7 @@ module correlator (
   input valid_i;
   input first_i;
   input next_i;
+  input emit_i;
   input last_i;
   input [TSB:0] taddr_i;
   input [MSB:0] idata_i;
@@ -75,13 +77,12 @@ module correlator (
 
   output [ASB:0] revis_o;
   output [ASB:0] imvis_o;
+  output frame_o;
   output valid_o;
-  output first_o;
-  output last_o;
 
 
   // -- Pipelined control-signals -- //
-
+/*
   reg last, next, valid;
 
   always @(posedge clock) begin
@@ -101,20 +102,17 @@ module correlator (
       end
     end
   end
-
+*/
 
   // -- Antenna signal source-select -- //
 
-  wire mux_valid;
+  wire mux_valid, mux_first, mux_next, mux_last;
   wire mux_ai, mux_aq, mux_bi, mux_bq;
 
   sigsource #(
       .WIDTH(WIDTH),
-      .SBITS(SBITS),
-      .XBITS(XBITS),
       .MUX_N(MUX_N),
       .TRATE(TRATE),
-      .TBITS(TBITS),
       .ATAPS(ATAPS),
       .BTAPS(BTAPS),
       .ASELS(ASELS),
@@ -125,14 +123,16 @@ module correlator (
       // Inputs
       .valid_i(valid_i),
       .first_i(first_i),
-      .last_i(last_i),
+      .next_i(next_i),
+      .last_i(emit_i),
       .taddr_i(taddr_i),
       .idata_i(idata_i),
       .qdata_i(qdata_i),
       // Outputs
       .valid_o(mux_valid),
-      .first_o(),
-      .last_o(),
+      .first_o(mux_first),
+      .next_o(mux_next),
+      .last_o(mux_last),
       .ai_o(mux_ai),
       .aq_o(mux_aq),
       .bi_o(mux_bi),
@@ -143,7 +143,7 @@ module correlator (
   // -- Cross-correlator -- //
 
   wire auto = 1'b0;  // todo: ...
-  wire cor_valid;
+  wire cor_frame, cor_valid;
   wire [ASB:0] cor_revis, cor_imvis;
 
   correlate #(
@@ -153,38 +153,40 @@ module correlator (
       .reset_n(reset_n),
       // Inputs
       .valid_i(mux_valid),
-      .first_i(next),
-      .last_i(last),
+      .first_i(mux_next),
+      .last_i(mux_last),
       .auto_i(auto),
       .ai_i(mux_ai),
       .aq_i(mux_aq),
       .bi_i(mux_bi),
       .bq_i(mux_bq),
       // Outputs
+      .frame_o(cor_frame),
       .valid_o(cor_valid),
-      .re_o(cor_revis),
-      .im_o(cor_imvis)
+      .rdata_o(cor_revis),
+      .idata_o(cor_imvis)
   );
 
 
   // -- Output select & pipeline -- //
 
-  reg succs;
+  reg succs, frame;
   reg [ASB:0] revis, imvis;
 
+  assign frame_o = frame;
   assign valid_o = succs;
-  assign first_o = 1'bx;  // todo: ...
-  assign last_o  = 1'bx;  // todo: ...
   assign revis_o = revis;
   assign imvis_o = imvis;
 
   always @(posedge clock) begin
     if (!reset_n) begin
+      frame <= 1'b0;
       succs <= 1'b0;
       revis <= {ABITS{1'bx}};
       imvis <= {ABITS{1'bx}};
     end else begin
       succs <= cor_valid | prevs_i;
+      frame <= cor_frame;
 
       if (cor_valid) begin
         revis <= cor_revis;

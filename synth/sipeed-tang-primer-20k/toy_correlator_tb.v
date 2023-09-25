@@ -39,6 +39,7 @@ module toy_correlator_tb;
     #15000 $finish;
   end
 
+
   // -- Send random data to the A port -- //
 
   reg  [9:0] count;
@@ -46,7 +47,7 @@ module toy_correlator_tb;
 
   reg  [7:0] a_dat;
 
-  always @(posedge a_clk) begin
+  always @(posedge sig_clk) begin
     if (!rst_n) begin
       count <= 10'd0000;
       a_vld <= 1'b0;
@@ -64,7 +65,7 @@ module toy_correlator_tb;
         a_dat <= $urandom;
         count <= cnext;
 
-        if (cnext == 10'd0100) begin
+        if (cnext == 10'd0104) begin
           a_lst <= 1'b1;
         end
       end
@@ -75,11 +76,21 @@ module toy_correlator_tb;
   // -- Module Under Test -- //
 
   wire vis_start, vis_frame;
-  wire b_vld, b_rdy, b_lst;
+  wire b_vld, b_lst;
   wire [31:0] r_dat, i_dat;
 
   assign a_rdy = start | a_vld;
-  assign b_rdy = 1'b1;
+  // assign b_rdy = 1'b1;
+
+  reg b_rdy;
+
+  always @(posedge bus_clk) begin
+    if (!rst_n) begin
+      b_rdy <= 1'b0;
+    end else begin
+      b_rdy <= b_vld && !b_rdy;
+    end
+  end
 
   toy_correlator #(
       .WIDTH(4),
@@ -89,7 +100,7 @@ module toy_correlator_tb;
       .LOOP1(5),
       .ACCUM(32),
       .SBITS(7)
-  ) tart_correlator_inst (
+  ) toy_correlator_inst (
       .sig_clock(sig_clk),
       .bus_clock(bus_clk),
       .bus_rst_n(rst_n),

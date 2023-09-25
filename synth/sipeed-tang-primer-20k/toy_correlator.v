@@ -56,6 +56,9 @@ module toy_correlator (
   parameter integer ACCUM = 32;  // Bit-width of accumulators
   localparam integer VSB = ACCUM - 1;
 
+  parameter integer ABITS = 4;  // Bit-width of partial-sums
+  localparam integer ASB = ABITS - 1;
+
   parameter integer SBITS = 7;  // Bit-width of partial-sums
   localparam integer SSB = SBITS - 1;
 
@@ -66,12 +69,12 @@ module toy_correlator (
   localparam integer BSB = BBITS - 1;
 
 
-  input sig_clock;
+  input sig_clock;  // 8.168 MHz sample-clock
 
-  input bus_clock;
+  input bus_clock;  // SPI/USB clock for reading visibilities
   input bus_rst_n;
 
-  input vis_clock;
+  input vis_clock;  // Correlator clock
   input vis_rst_n;
 
   // Status signals
@@ -88,7 +91,7 @@ module toy_correlator (
   output [VSB:0] bus_revis_o;
   output [VSB:0] bus_imvis_o;
   output bus_valid_o;
-  output bus_ready_i;
+  input bus_ready_i;
   output bus_last_o;
 
 
@@ -101,15 +104,15 @@ module toy_correlator (
    * and streams them (with the correct ordering) to the correlators, switching
    * banks at the end of each block (of 'COUNT' samples).
    */
-  wire buf_valid_w, buf_first_w, buf_last_w;
+  wire buf_valid_w, buf_first_w, buf_next_w, buf_emit_w, buf_last_w;
   wire [TSB:0] buf_taddr_w;
   wire [MSB:0] buf_idata_w, buf_qdata_w;
 
   sigbuffer #(
       .WIDTH(WIDTH),
       .TRATE(TRATE),
-      .COUNT(COUNT),
-      .BBITS(BBITS)
+      .LOOP0(LOOP0),
+      .LOOP1(LOOP1)
   ) SIGBUF0 (
       .sig_clk(sig_clock),
       .vis_clk(vis_clock),
@@ -121,6 +124,8 @@ module toy_correlator (
       // Delayed, up-rated, looped signals
       .valid_o(buf_valid_w),
       .first_o(buf_first_w),
+      .next_o (buf_next_w),
+      .emit_o (buf_emit_w),
       .last_o (buf_last_w),
       .taddr_o(buf_taddr_w),
       .idata_o(buf_idata_w),
@@ -128,35 +133,24 @@ module toy_correlator (
   );
 
 
-  // -- Correlator control-signals -- //
+  // -- Correlator status signals -- //
 
-  localparam integer LZERO = {LBITS{1'b0}};
-  localparam integer HZERO = {HBITS{1'b0}};
+  reg start, frame;
 
-  reg [LBITS-1:0] cntlo;
-  wire [LBITS-1:0] lnext = cntlo + 1;
-  wire lomax = lnext == LOOP0[LBITS-1:0];
-
-  reg [HBITS-1:0] cnthi;
-  wire [HBITS-1:0] hnext = cnthi + 1;
-  wire himax = hnext == LOOP1[HBITS-1:0];
-
-  wire cnext = lomax | buf_first_w;  // todo: make synchronous ...
+  assign vis_start_o = start;
+  assign vis_frame_o = frame;
 
   always @(posedge vis_clock) begin
     if (!vis_rst_n) begin
-      cntlo <= LZERO;
-      cnthi <= HZERO;
-    end else if (buf_valid_w) begin
-      if (lomax) begin
-        cntlo <= LZERO;
-        if (himax) begin
-          cnthi <= HZERO;
-        end else begin
-          cnthi <= hnext;
-        end
+      start <= 1'b0;
+      frame <= 1'b0;
+    end else begin
+
+      if (!frame && buf_valid_w && buf_first_w) begin
+        start <= 1'b1;
+        frame <= 1'b1;
       end else begin
-        cntlo <= lnext;
+        start <= 1'b0;
       end
     end
   end
@@ -165,148 +159,118 @@ module toy_correlator (
   /**
    *  Correlator array, with daisy-chained outputs.
    */
-  wire [SSB:0] re_w[CORES+1];
-  wire [SSB:0] im_w[CORES+1];
 
-  wire [SSB:0] acc_re, acc_im;
-  wire [CORES:0] vlds;
-
-  assign re_w[0] = {SBITS{1'bx}};
-  assign im_w[0] = {SBITS{1'bx}};
-
-  assign acc_re  = re_w[CORES];
-  assign acc_im  = im_w[CORES];
-
+  wire cor_frame, cor_valid;
+  wire [ASB:0] cor_revis, cor_imvis;
 
   // -- Antenna signal source-select -- //
 
-localparam [7:0] ATAPS = {2'b00, 2'b01, 2'b10, 2'b11};
-localparam [7:0] BTAPS = {2'b00, 2'b01, 2'b10, 2'b11};
+  localparam [7:0] ATAPS = {2'b00, 2'b01, 2'b10, 2'b11};
+  localparam [7:0] BTAPS = {2'b00, 2'b01, 2'b10, 2'b11};
 
-localparam [29:0] ASELS = {2'b00, 2'b00, 2'b00, 2'b00,
-                           2'b01, 2'b01, 2'b01, 2'b01,
-                           2'b10, 2'b10, 2'b10, 2'b10,
-                           2'b11, 2'b11, 2'b11};
-localparam [29:0] BSELS = {2'b00, 2'b01, 2'b10, 2'b11,
-                           2'b00, 2'b01, 2'b10, 2'b11,
-                           2'b00, 2'b01, 2'b10, 2'b11,
-                           2'b00, 2'b01, 2'b10};
+  localparam [29:0] ASELS = {
+    {2'b00, 2'b00, 2'b00},
+    {2'b00, 2'b01, 2'b01},
+    {2'b01, 2'b01, 2'b10},
+    {2'b10, 2'b10, 2'b10},
+    {2'b11, 2'b11, 2'b11}
+  };
+  localparam [29:0] BSELS = {
+    {2'b00, 2'b01, 2'b10},
+    {2'b11, 2'b00, 2'b01},
+    {2'b10, 2'b11, 2'b00},
+    {2'b01, 2'b10, 2'b11},
+    {2'b00, 2'b01, 2'b10}
+  };
 
-  wire mux_valid;
-  wire mux_ai, mux_aq, mux_bi, mux_bq;
-
-  sigsource #(
+  correlator #(
       .WIDTH(WIDTH),
+      .ABITS(ABITS),
       .MUX_N(MUX_N),
       .TRATE(TRATE),
       .ATAPS(ATAPS),
       .BTAPS(BTAPS),
       .ASELS(ASELS),
       .BSELS(BSELS)
-  ) SIGSRC0 (
-      .clock(vis_clock),
+  ) correlator_inst (
+      .clock  (vis_clock),
       .reset_n(vis_rst_n),
-      // Inputs
+
       .valid_i(buf_valid_w),
       .first_i(buf_first_w),
-      .last_i(buf_last_w),
+      .next_i (buf_next_w),
+      .emit_i (buf_emit_w),
+      .last_i (buf_last_w),
       .taddr_i(buf_taddr_w),
       .idata_i(buf_idata_w),
       .qdata_i(buf_qdata_w),
-      // Outputs
-      .valid_o(mux_valid),
-      .first_o(),
-      .last_o(),
-      .ai_o(mux_ai),
-      .aq_o(mux_aq),
-      .bi_o(mux_bi),
-      .bq_o(mux_bq)
-  );
 
+      .prevs_i(1'b0),
+      .revis_i({ABITS{1'bx}}),
+      .imvis_i({ABITS{1'bx}}),
 
-  // -- Cross-correlator -- //
-
-  localparam ABITS = 1 << LBITS;
-
-  wire auto = 1'b0;  // todo: ...
-  wire cor_valid;
-  wire [VSB:0] cor_revis, cor_imvis;
-
-  correlate #(
-      .WIDTH(ABITS)
-  ) CORRELATE0 (
-      .clock(vis_clock),
-      .reset_n(vis_rst_n),
-      // Inputs
-      .valid_i(mux_valid),
-      .first_i(next),
-      .last_i(last),
-      .auto_i(auto),
-      .ai_i(mux_ai),
-      .aq_i(mux_aq),
-      .bi_i(mux_bi),
-      .bq_i(mux_bq),
-      // Outputs
+      .frame_o(cor_frame),
       .valid_o(cor_valid),
-      .re_o(cor_revis),
-      .im_o(cor_imvis)
+      .revis_o(cor_revis),
+      .imvis_o(cor_imvis)
   );
 
 
-  // -- Output select & pipeline -- //
+  wire vis_frame, vis_valid, vis_first, vis_last;
+  wire [SSB:0] vis_rdata, vis_idata;
 
-  reg succs;
-  reg [VSB:0] revis, imvis;
+  visaccum #(
+      .IBITS(ABITS),
+      .OBITS(SBITS),
+      .PSUMS(LOOP0),
+      .COUNT(LOOP1)
+  ) visaccum_inst (
+      .clock  (vis_clock),
+      .reset_n(vis_rst_n),
 
-  assign valid_o = succs;
-  assign first_o = 1'bx;  // todo: ...
-  assign last_o  = 1'bx;  // todo: ...
-  assign revis_o = revis;
-  assign imvis_o = imvis;
+      .frame_i(cor_frame),
+      .valid_i(cor_valid),
+      .rdata_i(cor_revis),
+      .idata_i(cor_imvis),
 
-  always @(posedge clock) begin
-    if (!vis_rst_n) begin
-      succs <= 1'b0;
-      revis <= {ABITS{1'bx}};
-      imvis <= {ABITS{1'bx}};
-    end else begin
-      succs <= cor_valid | prevs_i;
-
-      if (cor_valid) begin
-        revis <= cor_revis;
-        imvis <= cor_imvis;
-      end else begin
-        revis <= revis_i;
-        imvis <= imvis_i;
-      end
-    end
-  end
+      .frame_o(vis_frame),
+      .valid_o(vis_valid),
+      .first_o(vis_first),
+      .last_o (vis_last),
+      .rdata_o(vis_rdata),
+      .idata_o(vis_idata)
+  );
 
 
   /**
    *  Accumulates each of the partial-sums into the full-width visibilities.
    */
-  wire vis_first = 1'b0;  // todo: ...
-  wire vis_last = 1'b0;
+
+  localparam LSB = ACCUM - SBITS;
+
+  wire [LSB:0] vis_limit = 3;
 
   wire [ACCUM-1:0] acc_revis, acc_imvis;
   wire acc_valid, acc_last;
 
   accumulator #(
-      .CORES(CORES),
+      .CORES(LOOP0),
       .TRATE(TRATE),
       .WIDTH(ACCUM),
       .SBITS(SBITS)
-  ) ACCUM0 (
+  ) accumulator_inst (
       .clock  (vis_clock),
       .reset_n(vis_rst_n),
 
+      .count_i(vis_limit),
+      .frame_i(vis_frame),
+
       // Inputs
-      .valid_i(vlds[CORES]),
+      .valid_i(vis_valid),
       .first_i(vis_first),
       .last_i (vis_last),
-      .revis_i(re_w[CORES]),
-      .imvis_i(im_w[CORES]),
+      .revis_i(vis_rdata),
+      .imvis_i(vis_idata),
 
       // Outputs
       .valid_o(acc_valid),
@@ -329,9 +293,29 @@ localparam [29:0] BSELS = {2'b00, 2'b01, 2'b10, 2'b11,
   assign bus_revis_o = bus_tdata[ACCUM+VSB:ACCUM];
   assign bus_imvis_o = bus_tdata[VSB:0];
 
+  axis_afifo #(
+      .WIDTH(ACCUM+ACCUM),
+      .ABITS(4)
+  ) axis_afifo_inst (
+      .s_aresetn(vis_rst_n),
+
+      .s_aclk(vis_clock),
+      .s_tvalid_i(acc_valid),
+      .s_tready_o(acc_ready),
+      .s_tlast_i(acc_last),
+      .s_tdata_i(acc_tdata),
+
+      .m_aclk(bus_clock),
+      .m_tvalid_o(bus_valid_o),
+      .m_tready_i(bus_ready_i),
+      .m_tlast_o(bus_last_o),
+      .m_tdata_o(bus_tdata)
+  );
+
+`ifdef __USE_ALEX_FIFO
   axis_async_fifo #(
       .DEPTH(16),
-      .DATA_WIDTH(WIDTH + WIDTH),
+      .DATA_WIDTH(ACCUM + ACCUM),
       .LAST_ENABLE(1),
       .ID_ENABLE(0),
       .DEST_ENABLE(0),
@@ -343,13 +327,13 @@ localparam [29:0] BSELS = {2'b00, 2'b01, 2'b10, 2'b11,
       .s_clk(vis_clock),
       .s_rst(~vis_rst_n),
       .s_axis_tdata(acc_tdata),
-      .s_axis_tkeep('bx),
+      .s_axis_tkeep(8'bx),
       .s_axis_tvalid(acc_valid),
       .s_axis_tready(acc_ready),
       .s_axis_tlast(acc_last),
-      .s_axis_tid('bx),
-      .s_axis_tdest('bx),
-      .s_axis_tuser('bx),
+      .s_axis_tid(8'bx),
+      .s_axis_tdest(8'bx),
+      .s_axis_tuser(1'bx),
 
       .m_clk(bus_clock),
       .m_rst(~bus_rst_n),
@@ -379,9 +363,16 @@ localparam [29:0] BSELS = {2'b00, 2'b01, 2'b10, 2'b11,
       .m_status_bad_frame(),
       .m_status_good_frame()
   );
+`endif
 
 
   // -- Simulation sanitisers -- //
+
+  initial begin : dump_settings
+    $display("Settings:");
+    $display(" + antennas:  %2d (index bits:  %2d)", WIDTH, WBITS);
+    $display(" + mux-width: %2d (select bits: %2d)", MUX_N, XBITS);
+  end
 
   always @(posedge vis_clock) begin
     if (vis_rst_n) begin
