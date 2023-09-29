@@ -293,36 +293,19 @@ module toy_correlator (
   assign bus_revis_o = bus_tdata[ACCUM+VSB:ACCUM];
   assign bus_imvis_o = bus_tdata[VSB:0];
 
-  axis_afifo #(
-      .WIDTH(ACCUM+ACCUM),
-      .ABITS(4)
-  ) axis_afifo_inst (
-      .s_aresetn(vis_rst_n),
-
-      .s_aclk(vis_clock),
-      .s_tvalid_i(acc_valid),
-      .s_tready_o(acc_ready),
-      .s_tlast_i(acc_last),
-      .s_tdata_i(acc_tdata),
-
-      .m_aclk(bus_clock),
-      .m_tvalid_o(bus_valid_o),
-      .m_tready_i(bus_ready_i),
-      .m_tlast_o(bus_last_o),
-      .m_tdata_o(bus_tdata)
-  );
-
+`define __USE_ALEX_FIFO
 `ifdef __USE_ALEX_FIFO
   axis_async_fifo #(
-      .DEPTH(16),
+      .DEPTH(64),
       .DATA_WIDTH(ACCUM + ACCUM),
       .LAST_ENABLE(1),
       .ID_ENABLE(0),
       .DEST_ENABLE(0),
       .USER_ENABLE(0),
+      // .RAM_PIPELINE(0),
       .RAM_PIPELINE(1),
       .OUTPUT_FIFO_ENABLE(0),
-      .FRAME_FIFO(1)
+      .FRAME_FIFO(0)
   ) axis_async_fifo_inst (
       .s_clk(vis_clock),
       .s_rst(~vis_rst_n),
@@ -362,6 +345,25 @@ module toy_correlator (
       .m_status_overflow(),
       .m_status_bad_frame(),
       .m_status_good_frame()
+  );
+`else // Paddy FIFO
+  axis_afifo #(
+      .WIDTH(ACCUM+ACCUM),
+      .ABITS(4)
+  ) axis_afifo_inst (
+      .s_aresetn(vis_rst_n),
+
+      .s_aclk(vis_clock),
+      .s_tvalid_i(acc_valid),
+      .s_tready_o(acc_ready),
+      .s_tlast_i(acc_last),
+      .s_tdata_i(acc_tdata),
+
+      .m_aclk(bus_clock),
+      .m_tvalid_o(bus_valid_o),
+      .m_tready_i(bus_ready_i),
+      .m_tlast_o(bus_last_o),
+      .m_tdata_o(bus_tdata)
   );
 `endif
 

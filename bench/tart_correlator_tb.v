@@ -135,18 +135,11 @@ module tart_correlator_tb;
 
   tart_correlator #(
       .WIDTH(WIDTH),
-      .WBITS(WBITS),
       .MUX_N(MUX_N),
-      .XBITS(XBITS),
       .CORES(CORES),
-      .UBITS(UBITS),
       .TRATE(TRATE),
-      .TBITS(TBITS),
       .LOOP0(LOOP0),
-      .LBITS(LBITS),
       .LOOP1(LOOP1),
-      .HBITS(HBITS),
-      .CBITS(CBITS),
       .ACCUM(ACCUM),
       .SBITS(SBITS)
   ) TARTCOR0 (

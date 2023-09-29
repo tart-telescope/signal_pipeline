@@ -1,18 +1,17 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Mon Sep 25 07:31:58 2023
+[*] Fri Sep 29 06:06:58 2023
 [*]
 [dumpfile] "./toy_correlator_tb.vcd"
-[dumpfile_mtime] "Mon Sep 25 07:27:56 2023"
-[dumpfile_size] 753083
+[dumpfile_mtime] "Fri Sep 29 06:05:51 2023"
+[dumpfile_size] 779052
 [savefile] "./toy_correlator_tb.gtkw"
-[timestart] 0
-[size] 2560 1376
+[timestart] 2111000
+[size] 1920 1043
 [pos] -1 -1
-*-18.435192 1556000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-17.947041 3052000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] toy_correlator_tb.
 [treeopen] toy_correlator_tb.toy_correlator_inst.
-[treeopen] toy_correlator_tb.toy_correlator_inst.axis_afifo_inst.
 [treeopen] toy_correlator_tb.toy_correlator_inst.correlator_inst.
 [sst_width] 233
 [signals_width] 150
@@ -22,7 +21,7 @@
 toy_correlator_tb.rst_n
 toy_correlator_tb.start
 toy_correlator_tb.done
-@800200
+@c00200
 -Source
 @28
 toy_correlator_tb.sig_clk
@@ -31,8 +30,10 @@ toy_correlator_tb.a_rdy
 toy_correlator_tb.a_lst
 @22
 toy_correlator_tb.a_dat[7:0]
-@1000200
+@1401200
 -Source
+@800200
+-Bus
 @28
 toy_correlator_tb.bus_clk
 toy_correlator_tb.b_vld
@@ -41,17 +42,37 @@ toy_correlator_tb.b_lst
 @22
 toy_correlator_tb.r_dat[31:0]
 toy_correlator_tb.i_dat[31:0]
-@29
-toy_correlator_tb.toy_correlator_inst.axis_afifo_inst.rd_empty
-@28
-toy_correlator_tb.toy_correlator_inst.axis_afifo_inst.wr_full
 @800200
+-BusInt
+@28
+toy_correlator_tb.toy_correlator_inst.bus_valid_o
+toy_correlator_tb.toy_correlator_inst.bus_ready_i
+toy_correlator_tb.toy_correlator_inst.bus_last_o
+@22
+toy_correlator_tb.toy_correlator_inst.bus_tdata[63:0]
+@1000200
+-BusInt
+@c00200
+-FIFO
+@800200
+-Slave
+@1000200
+-Slave
+@800200
+-Master
+@1000200
+-Master
+@1401200
+-FIFO
+@1000200
+-Bus
+@c00200
 -Calc
 @28
 toy_correlator_tb.vis_clk
 toy_correlator_tb.vis_frame
 toy_correlator_tb.vis_start
-@1000200
+@1401200
 -Calc
 @28
 toy_correlator_tb.toy_correlator_inst.SIGBUF0.start
@@ -85,9 +106,8 @@ toy_correlator_tb.toy_correlator_inst.correlator_inst.mux_bi
 toy_correlator_tb.toy_correlator_inst.correlator_inst.mux_bq
 @1401200
 -SigMUX
-@800200
--Correlate
 @c00200
+-Correlate
 -CorInt
 @28
 toy_correlator_tb.toy_correlator_inst.correlator_inst.CORRELATE0.valid_i
@@ -109,9 +129,9 @@ toy_correlator_tb.toy_correlator_inst.cor_valid
 @22
 toy_correlator_tb.toy_correlator_inst.cor_revis[3:0]
 toy_correlator_tb.toy_correlator_inst.cor_imvis[3:0]
-@1000200
+@1401200
 -Correlate
-@800200
+@c00200
 -Partial
 @28
 toy_correlator_tb.toy_correlator_inst.vis_frame
@@ -151,7 +171,6 @@ toy_correlator_tb.toy_correlator_inst.visaccum_inst.wr_lst
 toy_correlator_tb.toy_correlator_inst.visaccum_inst.wr_adr[1:0]
 @1401200
 -ParInt
-@1000200
 -Partial
 @800200
 -Accumulate

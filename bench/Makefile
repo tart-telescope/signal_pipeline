@@ -14,7 +14,7 @@ AXIS	:= $(wildcard $(LIB)/verilog-axis/rtl/*.v)
 RTL	= ../rtl
 MISC	= $(wildcard $(RTL)/misc/*.v)
 CORR	= $(wildcard $(RTL)/correlator/*.v)
-VERLIB	= $(MISC) $(CORR)
+VERLIB	= $(MISC) $(CORR) $(AXIS)
 
 VERTOP	?= $(wildcard *_tb.v)
 VEROUT	?= $(VERTOP:%.v=../build/%.out)

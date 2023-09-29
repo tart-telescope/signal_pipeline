@@ -26,12 +26,13 @@ module tart_correlator (
   //   accumulator FU?
 
   parameter integer WIDTH = 32;  // Number of antennas/signals
-  parameter integer WBITS = 5;  // Log2(#width)
+  localparam integer WBITS = $clog2(WIDTH);
   localparam integer MSB = WIDTH - 1;
 
   // Source-signal multiplexor parameters
   parameter integer MUX_N = 7;
-  parameter integer XBITS = 3;
+  // parameter integer XBITS = 3;
+  localparam integer XBITS = $clog2(MUX_N);
   localparam integer XSB = XBITS - 1;
 
   parameter integer CORES = 18;  // Number of correlator cores
@@ -41,16 +42,17 @@ module tart_correlator (
 
   // Time-multiplexing rate; i.e., clock multiplier
   parameter integer TRATE = 30;
-  parameter integer TBITS = 5;  // ceil(Log2(TRATE))
+  // parameter integer TBITS = 5;  // ceil(Log2(TRATE))
+  localparam integer TBITS = $clog2(TRATE);
   localparam integer TSB = TBITS - 1;
 
   // Every 'COUNT' samples, compute partial-visibilities to accumumlate
   parameter integer LOOP0 = 3;
-  parameter integer LBITS = 2;
+  localparam integer LBITS = $clog2(LOOP0);
   parameter integer LOOP1 = 5;
-  parameter integer HBITS = 3;
+  localparam integer HBITS = $clog2(LOOP1);
   localparam integer COUNT = LOOP0 * LOOP1;  // Number of terms in partial sums
-  parameter integer CBITS = 4;  // Bit-width of loop-counter
+  localparam integer CBITS = $clog2(COUNT);  // Bit-width of loop-counter
   localparam integer CSB = CBITS - 1;
 
   // parameter integer ADDR = 4;
@@ -106,10 +108,8 @@ module tart_correlator (
   sigbuffer #(
       .WIDTH(WIDTH),
       .TRATE(TRATE),
-      .TBITS(TBITS),
-      .COUNT(COUNT),
-      .CBITS(CBITS),
-      .BBITS(BBITS)
+      .LOOP0(LOOP0),
+      .LOOP1(LOOP1)
   ) SIGBUF0 (
       .sig_clk(sig_clock),
       .vis_clk(vis_clock),
@@ -182,12 +182,8 @@ module tart_correlator (
     for (ii = 0; ii < CORES; ii = ii + 1) begin : gen_corr_inst
       correlator #(
           .WIDTH(WIDTH),
-          .SBITS(WBITS),
-          .ABITS(SBITS),
-          .XBITS(XBITS),
           .MUX_N(MUX_N),
-          .TRATE(TRATE),
-          .TBITS(TBITS)
+          .TRATE(TRATE)
       ) CORR (
           // Inputs
           .clock  (vis_clock),
@@ -225,9 +221,7 @@ module tart_correlator (
 
   accumulator #(
       .CORES(CORES),
-      .NBITS(UBITS),
       .TRATE(TRATE),
-      .TBITS(TBITS),
       .WIDTH(ACCUM),
       .SBITS(SBITS)
   ) ACCUM0 (

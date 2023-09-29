@@ -18,7 +18,7 @@ module axis_afifo (
   parameter integer WIDTH = 8;
   parameter integer ABITS = 4;
   parameter integer ASIZE = 1 << ABITS;
-  parameter integer DELAY = 3;
+  parameter integer DELAY = 1;
 
   localparam MSB = WIDTH - 1;
 

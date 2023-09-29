@@ -6,9 +6,9 @@ module toy_correlator_tb;
   reg vis_clk = 1'b1;
   reg rst_n;
 
-  always #15 sig_clk <= ~sig_clk;
+  always #30 sig_clk <= ~sig_clk;
   always #5 bus_clk <= ~bus_clk;
-  always #1 vis_clk <= ~vis_clk;
+  always #2 vis_clk <= ~vis_clk;
 
   // -- Generate some data, and read it out -- //
 
@@ -88,7 +88,12 @@ module toy_correlator_tb;
     if (!rst_n) begin
       b_rdy <= 1'b0;
     end else begin
-      b_rdy <= b_vld && !b_rdy;
+      if (b_vld) begin
+        b_rdy <= 1'b1;
+      end else if (b_vld && b_rdy && b_lst) begin
+        b_rdy <= 1'b0;
+      end
+      // b_rdy <= b_vld && !b_rdy;
     end
   end
 

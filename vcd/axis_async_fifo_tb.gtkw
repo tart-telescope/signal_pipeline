@@ -1,0 +1,44 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Fri Sep 29 04:33:49 2023
+[*]
+[dumpfile] "./axis_async_fifo_tb.vcd"
+[dumpfile_mtime] "Fri Sep 29 04:33:25 2023"
+[dumpfile_size] 9903
+[savefile] "./axis_async_fifo_tb.gtkw"
+[timestart] 0
+[size] 2560 1376
+[pos] -1 -1
+*-15.355887 175000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] axis_async_fifo_tb.
+[treeopen] axis_async_fifo_tb.axis_async_fifo_inst.
+[sst_width] 233
+[signals_width] 166
+[sst_expanded] 1
+[sst_vpaned_height] 414
+@28
+axis_async_fifo_tb.async_rst
+@800200
+-Slave
+@29
+axis_async_fifo_tb.s_clk
+axis_async_fifo_tb.s_axis_tvalid
+axis_async_fifo_tb.s_axis_tready
+axis_async_fifo_tb.s_axis_tlast
+@23
+axis_async_fifo_tb.s_axis_tdata[7:0]
+@1000200
+-Slave
+@800200
+-Master
+@28
+axis_async_fifo_tb.m_clk
+axis_async_fifo_tb.m_axis_tvalid
+axis_async_fifo_tb.m_axis_tready
+axis_async_fifo_tb.m_axis_tlast
+@22
+axis_async_fifo_tb.m_axis_tdata[7:0]
+@1000200
+-Master
+[pattern_trace] 1
+[pattern_trace] 0
