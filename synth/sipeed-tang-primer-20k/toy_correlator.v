@@ -293,7 +293,7 @@ module toy_correlator (
   assign bus_revis_o = bus_tdata[ACCUM+VSB:ACCUM];
   assign bus_imvis_o = bus_tdata[VSB:0];
 
-`define __USE_ALEX_FIFO
+// `define __USE_ALEX_FIFO
 `ifdef __USE_ALEX_FIFO
   axis_async_fifo #(
       .DEPTH(64),

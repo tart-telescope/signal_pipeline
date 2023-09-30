@@ -1,3 +1,6 @@
 [submodule "lib/verilog-axis"]
 	path = lib/verilog-axis
 	url = https://github.com/alexforencich/verilog-axis.git
+[submodule "lib/axis_usbd"]
+	path = lib/axis_usbd
+	url = https://github.com/psuggate/axis_usbd.git

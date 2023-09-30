@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Fri Sep 29 06:06:58 2023
+[*] Fri Sep 29 08:27:48 2023
 [*]
-[dumpfile] "./toy_correlator_tb.vcd"
-[dumpfile_mtime] "Fri Sep 29 06:05:51 2023"
-[dumpfile_size] 779052
-[savefile] "./toy_correlator_tb.gtkw"
-[timestart] 2111000
-[size] 1920 1043
-[pos] -1 -1
-*-17.947041 3052000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[dumpfile] "/home/patrick/dev/signal_pipeline/vcd/toy_correlator_tb.vcd"
+[dumpfile_mtime] "Fri Sep 29 08:15:43 2023"
+[dumpfile_size] 697756
+[savefile] "/home/patrick/dev/signal_pipeline/vcd/toy_correlator_tb.gtkw"
+[timestart] 1011000
+[size] 2560 1376
+[pos] -38 -38
+*-18.947041 3700000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] toy_correlator_tb.
 [treeopen] toy_correlator_tb.toy_correlator_inst.
 [treeopen] toy_correlator_tb.toy_correlator_inst.correlator_inst.
 [sst_width] 233
 [signals_width] 150
 [sst_expanded] 1
-[sst_vpaned_height] 414
+[sst_vpaned_height] 575
 @28
 toy_correlator_tb.rst_n
 toy_correlator_tb.start
@@ -52,27 +52,19 @@ toy_correlator_tb.toy_correlator_inst.bus_last_o
 toy_correlator_tb.toy_correlator_inst.bus_tdata[63:0]
 @1000200
 -BusInt
-@c00200
--FIFO
-@800200
--Slave
-@1000200
--Slave
-@800200
--Master
-@1000200
--Master
-@1401200
--FIFO
-@1000200
 -Bus
-@c00200
+@800200
 -Calc
 @28
 toy_correlator_tb.vis_clk
-toy_correlator_tb.vis_frame
-toy_correlator_tb.vis_start
-@1401200
+toy_correlator_tb.toy_correlator_inst.vis_frame
+toy_correlator_tb.toy_correlator_inst.vis_valid
+toy_correlator_tb.toy_correlator_inst.vis_first
+toy_correlator_tb.toy_correlator_inst.vis_last
+@22
+toy_correlator_tb.toy_correlator_inst.vis_idata[6:0]
+toy_correlator_tb.toy_correlator_inst.vis_rdata[6:0]
+@1000200
 -Calc
 @28
 toy_correlator_tb.toy_correlator_inst.SIGBUF0.start

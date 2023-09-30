@@ -314,6 +314,8 @@ module top #(
   // -- Just echo/loop IN <-> OUT -- //
 
   // todo: switch to the synchronous FIFO core, and use a BSRAM for the memory.
+// `define __USE_ALEX_FIFO
+`ifdef __USE_ALEX_FIFO
   axis_async_fifo #(
       .DEPTH(16),
       .DATA_WIDTH(8),
@@ -364,8 +366,7 @@ module top #(
       .m_status_bad_frame(),
       .m_status_good_frame()
   );
-
-`ifdef __COMMUNIST_REVOLUTION_HAS_BEGUN
+`else // Paddy FIFO
   axis_afifo #(
       .WIDTH(8),
       .ABITS(4)
