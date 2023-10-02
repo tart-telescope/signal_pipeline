@@ -1,0 +1,63 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Mon Oct  2 07:19:45 2023
+[*]
+[dumpfile] "./sync_fifo_tb.vcd"
+[dumpfile_mtime] "Mon Oct  2 07:19:33 2023"
+[dumpfile_size] 3863
+[savefile] "./sync_fifo_tb.gtkw"
+[timestart] 0
+[size] 2560 1376
+[pos] -1 -1
+*-14.928884 140000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] sync_fifo_tb.
+[sst_width] 233
+[signals_width] 126
+[sst_expanded] 1
+[sst_vpaned_height] 414
+@28
+sync_fifo_tb.clock
+sync_fifo_tb.reset
+sync_fifo_tb.frame
+sync_fifo_tb.start
+sync_fifo_tb.done
+@420
+sync_fifo_tb.count
+@800200
+-Write
+@28
+sync_fifo_tb.wr_valid
+sync_fifo_tb.wr_ready
+sync_fifo_tb.wr_xfer[1:0]
+@1000200
+-Write
+@800200
+-Read
+@28
+sync_fifo_tb.rd_valid
+sync_fifo_tb.ww_ready
+sync_fifo_tb.rd_xfer[1:0]
+@1000200
+-Read
+@800200
+-Innards
+@28
+sync_fifo_tb.sync_fifo_inst.store
+sync_fifo_tb.sync_fifo_inst.fetch
+@22
+sync_fifo_tb.sync_fifo_inst.waddr[4:0]
+sync_fifo_tb.sync_fifo_inst.raddr[4:0]
+@28
+sync_fifo_tb.sync_fifo_inst.rvalid
+@800200
+-ToSkid
+@1000200
+-ToSkid
+@420
+sync_fifo_tb.rx
+@1000200
+-Innards
+@28
+sync_fifo_tb.sync_fifo_inst.ready_i
+[pattern_trace] 1
+[pattern_trace] 0
