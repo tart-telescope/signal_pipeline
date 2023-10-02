@@ -1,0 +1,10 @@
+Dockerfile
+docker-compose.yml
+logs
+target
+*.lock
+*.pdf
+*.vcd
+*.out
+*.log
+

@@ -13,7 +13,7 @@ RUN rm -rf /var/lib/apt/lists/*
 
 COPY . /build/
 WORKDIR /build
-RUN ls
+RUN ls -al
 RUN make
 
 CMD ["openFPGALoader --board tangprimer20k --write-flash impl/pnr/dummy.fs"]
