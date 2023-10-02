@@ -1,7 +1,7 @@
 .PHONY:	all sim doc diagrams clean
 all:
-	@make -C bench all
 	@make -C generator all
+	@make -C bench all
 	@make -C rtl all
 	@make -C synth all
 

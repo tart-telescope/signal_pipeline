@@ -15,3 +15,7 @@ in order to fetch the dependencies.
 To build the documentation, [`pandoc`](https://pandoc.org/) is required.
 
 The TART generator requires [Rust](https://rustup.rs/).
+
+## Building using Docker
+
+    docker compose build

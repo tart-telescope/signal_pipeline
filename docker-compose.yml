@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  fpga:
+    build: .                                # Path to Dockerfile
+    environment:
+      TART_NANT: 24                    # used for pushing new gains to API. Match to set in the telescope API.
+    volumes:
+      - ./fpga_target:/output
+    command: make
