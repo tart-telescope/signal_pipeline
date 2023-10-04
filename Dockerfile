@@ -14,6 +14,7 @@ RUN apt-get install -y git texlive-science
 RUN rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
+RUN ls
 RUN git clone --recurse-submodules https://github.com/tart-telescope/signal_pipeline.git
 
  
