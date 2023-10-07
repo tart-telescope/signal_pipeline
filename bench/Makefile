@@ -8,15 +8,19 @@ IVC	?= iverilog
 VERINC	:= ../include/
 VEROPT	:= -g2005-sv -D__icarus -Wall -I$(VERINC)
 
-LIB	:= ../lib
-AXIS	:= $(wildcard $(LIB)/verilog-axis/rtl/*.v)
-USBDIR	:= $(LIB)/axis_usbd/rtl
+LIBDIR	:= ../lib
+AXIS	:= $(wildcard $(LIBDIR)/verilog-axis/rtl/*.v)
+USBDIR	:= $(LIBDIR)/axis_usbd/rtl
 USB	:= $(wildcard $(USBDIR)/usb/*.v) $(wildcard $(USBDIR)/arch/*.v)
 
-RTL	= ../rtl
-MISC	= $(wildcard $(RTL)/misc/*.v)
-CORR	= $(wildcard $(RTL)/correlator/*.v)
-VERLIB	= $(MISC) $(CORR) $(AXIS) $(USB)
+RTLDIR	:= ../rtl
+MISC	:= $(wildcard $(RTLDIR)/misc/*.v)
+CORR	:= $(wildcard $(RTLDIR)/correlator/*.v)
+DDR3	:= $(wildcard $(RTLDIR)/ddr3/*.v)
+SIMSRC	:= $(wildcard *.v)
+SRC	:= $(filter-out %_tb.v, $(SIMSRC))
+
+VERLIB	:= $(MISC) $(CORR) $(AXIS) $(USB) $(DDR3) $(SRC)
 
 VERTOP	?= $(wildcard *_tb.v)
 VEROUT	?= $(VERTOP:%.v=../build/%.out)
