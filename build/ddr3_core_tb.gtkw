@@ -1,25 +1,86 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Sun Oct  8 04:08:42 2023
+[*] Sun Oct  8 08:09:46 2023
 [*]
 [dumpfile] "/home/patrick/dev/signal_pipeline/build/ddr3_core_tb.vcd"
-[dumpfile_mtime] "Sun Oct  8 04:07:22 2023"
-[dumpfile_size] 273413
+[dumpfile_mtime] "Sun Oct  8 08:08:05 2023"
+[dumpfile_size] 1685584
 [savefile] "/home/patrick/dev/signal_pipeline/build/ddr3_core_tb.gtkw"
-[timestart] 0
-[size] 2560 1376
-[pos] -38 -38
-*-16.480028 200000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 36148670
+[size] 1920 1043
+[pos] -1 -1
+*-14.048282 36210000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] ddr3_core_tb.
 [sst_width] 233
-[signals_width] 86
+[signals_width] 190
 [sst_expanded] 1
-[sst_vpaned_height] 414
+[sst_vpaned_height] 298
 @28
 ddr3_core_tb.clock
-@29
 ddr3_core_tb.reset
-@28
 ddr3_core_tb.clk_ddr
+ddr3_core_tb.locked
+@800200
+-DFI
+@28
+ddr3_core_tb.dfi_cke
+ddr3_core_tb.dfi_reset_n
+ddr3_core_tb.dfi_cs_n
+ddr3_core_tb.dfi_ras_n
+ddr3_core_tb.dfi_cas_n
+ddr3_core_tb.dfi_we_n
+ddr3_core_tb.dfi_odt
+ddr3_core_tb.dfi_bank[2:0]
+@22
+ddr3_core_tb.dfi_address[14:0]
+@28
+ddr3_core_tb.dfi_wrdata_en
+@22
+ddr3_core_tb.dfi_wrdata_mask[3:0]
+ddr3_core_tb.dfi_wrdata[31:0]
+@28
+ddr3_core_tb.dfi_rddata_en
+ddr3_core_tb.dfi_rddata_valid
+@22
+ddr3_core_tb.dfi_rddata[31:0]
+@1000200
+-DFI
+@28
+ddr3_core_tb.ddr3_ck_p_w
+ddr3_core_tb.ddr3_ck_n_w
+ddr3_core_tb.ddr3_cke_w
+ddr3_core_tb.ddr3_reset_n_w
+ddr3_core_tb.ddr3_cs_n_w
+ddr3_core_tb.ddr3_ras_n_w
+ddr3_core_tb.ddr3_cas_n_w
+ddr3_core_tb.ddr3_we_n_w
+ddr3_core_tb.ddr3_odt_w
+ddr3_core_tb.ddr3_ba_w[2:0]
+@22
+ddr3_core_tb.ddr3_addr_w[14:0]
+@28
+ddr3_core_tb.ddr3_dqs_p_w[1:0]
+ddr3_core_tb.ddr3_dqs_n_w[1:0]
+ddr3_core_tb.ddr3_dm_w[1:0]
+@22
+ddr3_core_tb.ddr3_dq_w[15:0]
+@c00201
+-RAM
+@28
+ddr3_core_tb.ram_accept
+ddr3_core_tb.ram_ack
+ddr3_core_tb.ram_error
+@22
+ddr3_core_tb.ram_addr[31:0]
+@28
+ddr3_core_tb.ram_rd
+@22
+ddr3_core_tb.ram_wr[15:0]
+ddr3_core_tb.ram_req_id[15:0]
+ddr3_core_tb.ram_resp_id[15:0]
+ddr3_core_tb.ram_read_data[127:0]
+ddr3_core_tb.ram_write_data[127:0]
+@1401201
+-RAM
 [pattern_trace] 1
 [pattern_trace] 0

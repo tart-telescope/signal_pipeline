@@ -81,6 +81,9 @@ module ddr3_core
 `ifdef XILINX_SIMULATOR
   localparam DDR_START_DELAY = 60000 / (1000 / DDR_MHZ);  // 60uS
 `else
+`ifdef __icarus
+  localparam DDR_START_DELAY = 60000 / (1000 / DDR_MHZ);  // 60uS
+`else
   localparam DDR_START_DELAY = 600000 / (1000 / DDR_MHZ);  // 600uS
 `endif
   localparam DDR_REFRESH_CYCLES = (64000 * DDR_MHZ) / 8192;

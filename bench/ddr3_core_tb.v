@@ -30,7 +30,7 @@ initial begin
   $dumpfile("ddr3_core_tb.vcd");
   $dumpvars(0, ddr3_core_tb);
 
-  #8000 $finish; // todo ...
+  #80000 $finish; // todo ...
 end
 
 
