@@ -22,10 +22,15 @@ module gw2a_ddr3_dfi_phy (  /*AUTOARG*/);
   parameter ADDR_BITS = 14;
   localparam ASB = ADDR_BITS - 1;
 
+parameter MAX_RW_LATENCY = 12; // Maximum 'CL'/'CWL'
+localparam CSB = MAX_RW_LATENCY - 1;
 
-  input clock;
-  input clk_ddr_i;  // 90 degree phase shifted version of clock
-  input reset;
+
+  input clock; // Global (bus) clock, 100 MHz
+  input reset; // Global, synchronous reset
+
+  input clk_ddr_ref;  // DDR 200 MHz clock
+  input clk_ddr_270;  // 270 degree phase-shifted DDR clock
 
   input cfg_valid_i;
   input [31:0] cfg_i;
@@ -48,6 +53,7 @@ module gw2a_ddr3_dfi_phy (  /*AUTOARG*/);
   output [1:0] dfi_rddata_dnv_o;
 
   output ddr3_ck_p_o;
+  output ddr3_ck_n_o;
   output ddr3_cke_o;
   output ddr3_reset_n_o;
   output ddr3_ras_n_o;
@@ -59,6 +65,7 @@ module gw2a_ddr3_dfi_phy (  /*AUTOARG*/);
   output ddr3_odt_o;
   output [QSB:0] ddr3_dm_o;
   inout [QSB:0] ddr3_dqs_p_io;
+  inout [QSB:0] ddr3_dqs_n_io;
   inout [MSB:0] ddr3_dq_io;
 
 
@@ -81,13 +88,10 @@ module gw2a_ddr3_dfi_phy (  /*AUTOARG*/);
   // DDR Clock
   //-----------------------------------------------------------------
   // ddr3_ck_p_o = ~clock
-  ODDRC u_pad_ck (
-        .CLK(clock)
-      , .CLEAR(reset)
-      , .TX(1'b1)
-      , .D0(0)
-      , .D1(1)
-      , .Q0(ddr3_ck_p_o)
+  TLVDS_OBUF
+( .I(~clock),
+  .O(ddr3_ck_p_o),
+  .OB(ddr3_ck_n_o)
   );
 
 
@@ -109,25 +113,27 @@ module gw2a_ddr3_dfi_phy (  /*AUTOARG*/);
   reg [  2:0] ba_q;
   reg [ASB:0] addr_q;
 
-  assign ddr3_cke_o     = cke_q;
-  assign ddr3_reset_n_o = reset_n_q;
-  assign ddr3_cs_n_o    = cs_n_q;
-  assign ddr3_ras_n_o   = ras_n_q;
-  assign ddr3_cas_n_o   = cas_n_q;
-  assign ddr3_we_n_o    = we_n_q;
-  assign ddr3_ba_o      = ba_q;
-  assign ddr3_addr_o    = addr_q;
-  assign ddr3_odt_o     = odt_q;
+`ifndef __mental
+// Assuming that the registers have been placed in IOB's ...
+assign ddr3_cke_o     = cke_q;
+assign ddr3_reset_n_o = reset_n_q;
+assign ddr3_cs_n_o    = cs_n_q;
+assign ddr3_ras_n_o   = ras_n_q;
+assign ddr3_cas_n_o   = cas_n_q;
+assign ddr3_we_n_o    = we_n_q;
+assign ddr3_odt_o     = odt_q;
+assign ddr3_ba_o      = ba_q;
+assign ddr3_addr_o    = addr_q;
 
   // todo: polarities of the 'n' signals?
   always @(posedge clock) begin
     if (reset) begin
       cke_q     <= 1'b0;
       reset_n_q <= 1'b0;
-      cs_n_q    <= 1'b0;
-      ras_n_q   <= 1'b0;
-      cas_n_q   <= 1'b0;
-      we_n_q    <= 1'b0;
+      cs_n_q    <= 1'b0; // todo: 1'b1 ??
+      ras_n_q   <= 1'b0; // todo: 1'b1 ??
+      cas_n_q   <= 1'b0; // todo: 1'b1 ??
+      we_n_q    <= 1'b0; // todo: 1'b1 ??
       ba_q      <= 3'b0;
       addr_q    <= 15'b0;
       odt_q     <= 1'b0;
@@ -144,72 +150,126 @@ module gw2a_ddr3_dfi_phy (  /*AUTOARG*/);
     end
   end
 
-  OSER4 cke_oser4_inst ();
-  OSER4 reset_n_oser4_inst ();
-  OSER4 cs_n_oser4_inst ();
-  OSER4 ras_oser4_inst ();
-  OSER4 cas_oser4_inst ();
-  OSER4 we_oser4_inst ();
-  OSER4 odt_oser4_inst ();
+`else /* __mental */
+//
+// Output via ODDR primitives
+//
+wire [24:0] ddr3_control_signals_q = {addr_q, ba_q, odt_q, we_n_q, cas_n_q, ras_n_q, cs_n_q, reset_n_q, cke_q};
+wire [24:0] ddr3_control_signals_w;
 
-  IODELAY cke_iodelay_inst ();
-  IODELAY reset_n_iodelay_inst ();
-  IODELAY cs_n_iodelay_inst ();
-  IODELAY ras_iodelay_inst ();
-  IODELAY cas_iodelay_inst ();
-  IODELAY we_iodelay_inst ();
-  IODELAY odt_iodelay_inst ();
+assign ddr3_cke_o     = ddr3_control_signals_w[0];
+assign ddr3_reset_n_o = ddr3_control_signals_w[1];
+assign ddr3_cs_n_o    = ddr3_control_signals_w[2];
+assign ddr3_ras_n_o = ddr3_control_signals_w[3];
+assign ddr3_cas_n_o = ddr3_control_signals_w[4];
+assign ddr3_we_n_o = ddr3_control_signals_w[5];
+assign ddr3_odt_o = ddr3_control_signals_w[6];
+assign ddr3_ba_o = ddr3_control_signals_w[9:7];
+assign ddr3_addr_o = ddr3_control_signals_w[24:10];
 
-  OSER4 ba_oser4_inst[2:0] ();
-  OSER4 ad_oser4_inst[14:0] ();
 
-  IODELAY ba_iodelay_inst[2:0] ();
-  IODELAY ad_iodelay_inst[14:0] ();
+gw2a_oddr_tbuf
+#( .STATIC_DELAY(7'h00),
+   .INIT(1'b0)
+   ) ddr3_control_iob_inst [24:0]
+( .clock(clock),
+
+  .dynamic_delay_i(1'b0),
+  .adjust_reverse_i(1'b0),
+  .adjust_step_i(1'b0),
+  .delay_overflow_o(),
+
+  .d0_i(ddr3_control_signals_q),
+  .d1_i(ddr3_control_signals_q),
+  .t_ni(1'b0),
+  .q_o(ddr3_control_signals_w)
+  );
+
+/*
+gw2a_oddr_tbuf
+#( .STATIC_DELAY(7'h00),
+   .INIT(1'b0)
+   ) cke_iob_inst
+( .clock(clock),
+
+  .dynamic_delay_i(1'b0),
+  .adjust_reverse_i(1'b0),
+  .adjust_step_i(1'b0),
+  .delay_overflow_o(),
+
+  .d0_i(dfi_cke_i),
+  .d1_i(dfi_cke_i),
+  .t_ni(1'b0),
+  .q_o(ddr3_cke_o)
+  );
+*/
+`endif
 
 
   //-----------------------------------------------------------------
-  // Write Output Enable
+  // DQS Output Enable & I/O Buffers
   //-----------------------------------------------------------------
-  reg wr_valid_q0, wr_valid_q1, wr_valid_q2;
+
   reg dqs_out_en_n_q;
+  reg [CSB:0] wr_en_q;
+  wire [CSB:0] wr_en_w;
 
-  always @(posedge clock)
+  assign wr_en_w = {1'b0, wr_en_q[CSB:1]} | (dfi_wrdata_en_i << wr_lat_q);
+  assign wr_start = wr_en_q[1];
+  assign wr_stop = ~wr_en_q[0];
+
+  always @(posedge clock) begin
     if (reset) begin
-      wr_valid_q0 <= 1'b0;
-      wr_valid_q1 <= 1'b0;
-      wr_valid_q2 <= 1'b0;
+      wr_en_q <= {MAX_RW_LATENCY{1'b0}};
     end else begin
-      wr_valid_q0 <= dfi_wrdata_en_i;
-      wr_valid_q1 <= wr_valid_q0;
-      wr_valid_q2 <= wr_valid_q1;
+      wr_en_q <= wr_en_w;
     end
+  end
 
   always @(posedge clock) begin
     if (reset) begin
       dqs_out_en_n_q <= 1'b1;
-    end else if (wr_valid_q1) begin
+    end else if (wr_start) begin
       dqs_out_en_n_q <= 1'b0;
-    end else if (!wr_valid_q2) begin
+    end else if (wr_stop) begin
       dqs_out_en_n_q <= 1'b1;
     end
   end
 
 
-  //-----------------------------------------------------------------
-  // DQS I/O Buffers
-  //-----------------------------------------------------------------
-  wire [1:0] dqs_out_en_n_w = {dqs_out_en_n_q, dqs_out_en_n_q};
-  wire [1:0] dqs_out_w;
-  wire [1:0] dqs_in_w;
+  // -- Data Strobe Signals -- //
 
+wire [QSB:0] ddr3_dqs_p_i0, ddr3_dqs_p_i1;
+wire [QSB:0] ddr3_dqs_n_i0, ddr3_dqs_n_i1;
+wire [QSB:0] dqs_w;
 
-  //-----------------------------------------------------------------
-  // Write Data Strobe (DQS)
-  //-----------------------------------------------------------------
+TLVDS_IOBUF dqs_iob_inst [QSB:0]
+( .I  (clk_ddr_270),
+  .OEN(dqs_out_en_n_q),
+  .O  (dqs_w),
+  .IOB(ddr3_dqs_n_io),
+  .IO (ddr3_dqs_p_io)
+  );
 
-  // 90 degrees delayed version of clock
-  assign dqs_out_w[0] = clk_ddr_i;
-  assign dqs_out_w[1] = clk_ddr_i;
+IDDR
+  #(.Q0_INIT(1'b1),
+    .Q1_INIT(1'b1)
+) dqs_p_iddr_inst [QSB:0]
+  ( .CLK(clock),
+    .D  (ddr3_dqs_p_io),
+    .Q0 (ddr3_dqs_p_i0), // these two outputs should be identical
+    .Q1 (ddr3_dqs_p_i1)
+    );
+
+IDDR
+  #(.Q0_INIT(1'b1),
+    .Q1_INIT(1'b1)
+) dqs_n_iddr_inst [QSB:0]
+  ( .CLK(clock),
+    .D  (ddr3_dqs_n_io),
+    .Q0 (ddr3_dqs_n_i0), // these two outputs should be identical
+    .Q1 (ddr3_dqs_n_i1)
+    );
 
 
   //-----------------------------------------------------------------
@@ -224,6 +284,7 @@ module gw2a_ddr3_dfi_phy (  /*AUTOARG*/);
       dfi_wrdata_q <= dfi_wrdata_i;
     end
   end
+
 
   wire [MSB:0] dq_in_w;
   wire [MSB:0] dq_out_w;
@@ -242,6 +303,12 @@ module gw2a_ddr3_dfi_phy (  /*AUTOARG*/);
 
   assign ddr3_dm_o = dm_out_w;
 
+reg [QSB:0] dm_lo_r, dm_hi_r;
+
+always @(posedge clk_ddr_ref) begin
+  {dm_hi_r, dm_lo_r, dm_wait} <= {dm_lo_r, salad};
+end
+
   always @(posedge clock) begin
     if (reset) begin
       dfi_wr_mask_q <= 4'b0;
@@ -250,11 +317,19 @@ module gw2a_ddr3_dfi_phy (  /*AUTOARG*/);
     end
   end
 
-  OSER4_MEM dm_inst0 ();
-  OSER4_MEM dm_inst1 ();
+ODDR dm_iob_inst [QSB:0]
+( .CLK(~clk_ddr_ref),
+  .TX(dqs_out_en_n_q),
+  .D0(dm_lo_w),
+  .D1(dm_hi_w),
+  .Q0(ddr3_dm_o),
+  .Q1(ddr3_dm_t)
+  );
 
-  IODELAY dm_delay_inst0 ();
-  IODELAY dm_delay_inst1 ();
+
+  OSER4_MEM dm_inst [QSB:0] ();
+
+  IODELAY dm_delay_inst [QSB:0] ();
 
 
   //-----------------------------------------------------------------
@@ -266,27 +341,58 @@ module gw2a_ddr3_dfi_phy (  /*AUTOARG*/);
   assign dfi_rddata_o     = rd_data_w;
   assign dfi_rddata_dnv_o = 2'b0;
 
-  IDES4_MEM dqi_inst[MSB:0] ();
+// If DDR is correctly set up, then all of these should be the same
+wire [MSB:0] dq_i0, dq_i1, dq_i2, dq_i3;
+
+IDES4
+#( .GSREN("false"),
+   .LSREN("true")
+ ) dq_iob_inst [MSB:0]
+ ( .FCLK(clk_270), // 200 MHz, 270 degree phase-shifted
+   .PCLK(clock), // 100 MHz
+   .RESET(reset),
+   .CALIB(calib),
+   .D (dq_io),
+   .Q0(dq_i0),
+   .Q1(dq_i1),
+   .Q2(dq_i2),
+   .Q3(dq_i3)
+ );
 
 
   //-----------------------------------------------------------------
   // Read Valid
   //-----------------------------------------------------------------
-  localparam RD_SHIFT_W = 12;
+  reg [CSB:0] rd_en_q;
+  wire [CSB:0] rd_en_w;
 
-  reg [RD_SHIFT_W-1:0] rd_en_q;
-  reg [RD_SHIFT_W-1:0] rd_en_r;
+  assign rd_en_w = {1'b0, rd_en_q[CSB:1]} | (dfi_rddata_en_i << rd_lat_q);
+  assign dfi_rddata_valid_o = rd_en_q[0];
+
+`ifndef __mental
+  always @(posedge clock) begin
+    if (reset) begin
+      rd_en_q <= {MAX_RW_LATENCY{1'b0}};
+    end else begin
+      rd_en_q <= rd_en_w;
+    end
+  end
+`else
+  reg [CSB:0] rd_en_r;
 
   always @* begin
-    rd_en_r = {1'b0, rd_en_q[RD_SHIFT_W-1:1]};
+    rd_en_r = {1'b0, rd_en_q[CSB:1]};
     rd_en_r[rd_lat_q] = dfi_rddata_en_i;
   end
 
-  always @(posedge clock)
-    if (reset) rd_en_q <= {(RD_SHIFT_W) {1'b0}};
-    else rd_en_q <= rd_en_r;
-
-  assign dfi_rddata_valid_o = rd_en_q[0];
+  always @(posedge clock) begin
+    if (reset) begin
+      rd_en_q <= {MAX_RW_LATENCY{1'b0}};
+    end else begin
+      rd_en_q <= rd_en_r;
+    end
+  end
+`endif
 
 
 endmodule  // gw2a_ddr3_dfi_phy

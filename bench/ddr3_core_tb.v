@@ -21,7 +21,7 @@ module ddr3_core_tb;
 
 localparam DDR_MHZ = 100;
 localparam DDR_WRITE_LATENCY = 4;
-localparam DDR_READ_LATENCY = 4;
+localparam DDR_READ_LATENCY = 5;
 
 
 // -- Simulation Data -- //
@@ -37,9 +37,11 @@ end
 // -- Globals -- //
 
 reg osc = 1'b1;
+reg ddr = 1'b1;
 reg rst = 1'b0;
 
-always #5 osc <= ~osc;
+always #5.0 osc <= ~osc;
+always #2.5 ddr <= ~ddr;
 
 initial begin
   rst <= 1'b1;
@@ -50,6 +52,7 @@ end
 wire locked, clock, reset;
 wire clk_ddr, clk_ddr_dqs, clk_ref;
 
+/*
 gowin_rpll
 #(
   .FCLKIN("27"),
@@ -63,10 +66,14 @@ gowin_rpll
  .clkout(clk_ddr),
  .clkref(clk_ref)
  );
+*/
 
 
 assign clock = osc;
 assign reset = rst | ~locked;
+
+assign #50 locked = 1'b1;
+assign clk_ddr = ddr;
 
 
 // -- DDR3 and Controller Signals -- //
@@ -79,7 +86,7 @@ wire          ddr3_cas_n_w;
 wire          ddr3_we_n_w;
 wire          ddr3_cs_n_w;
 wire [  2:0]  ddr3_ba_w;
-wire [ 13:0]  ddr3_addr_w;
+wire [ 14:0]  ddr3_addr_w;
 wire          ddr3_odt_w;
 wire [  1:0]  ddr3_dm_w;
 wire [  1:0]  ddr3_dqs_w;
@@ -112,62 +119,6 @@ wire          ram_ack;
 wire          ram_error;
 wire [ 15:0]  ram_resp_id;
 wire [127:0]  ram_read_data;
-
-
-//-----------------------------------------------------------------
-// ram_read: Perform read transfer (128-bit)
-//-----------------------------------------------------------------
-task ram_read;
-    input  [31:0]  addr;
-    output [127:0] data;
-begin
-    ram_rd     <= 1'b1;
-    ram_addr   <= addr;
-    ram_req_id <= ram_req_id + 1;
-    @(posedge clock);
-
-    while (!ram_accept)
-    begin
-        @(posedge clock);
-    end
-    ram_rd     <= 1'b0;
-
-    while (!ram_ack)
-    begin
-        @(posedge clock);
-    end
-
-    data = ram_read_data;
-end
-endtask
-
-
-//-----------------------------------------------------------------
-// ram_write: Perform write transfer (128-bit)
-//-----------------------------------------------------------------
-task ram_write;
-    input [31:0]  addr;
-    input [127:0] data;
-    input [15:0]  mask;
-begin
-    ram_wr         <= mask;
-    ram_addr       <= addr;
-    ram_write_data <= data;
-    ram_req_id     <= ram_req_id + 1;
-    @(posedge clock);
-
-    while (!ram_accept)
-    begin
-        @(posedge clock);
-    end
-    ram_wr <= 16'b0;
-
-    while (!ram_ack)
-    begin
-        @(posedge clock);
-    end
-end
-endtask
 
 
 // -- Initialisation -- //
@@ -235,7 +186,7 @@ ddr3_sdram_inst
     ,.we_n(ddr3_we_n_w)
     ,.dm_tdqs(ddr3_dm_w)
     ,.ba(ddr3_ba_w)
-    ,.addr(ddr3_addr_w)
+    ,.addr(ddr3_addr_w[13:0])
     ,.dq(ddr3_dq_w)
     ,.dqs(ddr3_dqs_p_w)
     ,.dqs_n(ddr3_dqs_n_w)
@@ -246,50 +197,50 @@ ddr3_sdram_inst
 
 // -- DDR3 PHY -- //
 
-gw2a_ddr3_dfi_phy
-#(
-     .DQS_TAP_DELAY_INIT(27)
-    ,.DQ_TAP_DELAY_INIT(0)
-    ,.TPHY_RDLAT(5)
+generic_ddr3_dfi_phy
+#( .ADDR_BITS(15),
+    .DEFAULT_CL(DDR_READ_LATENCY),
+    .DEFAULT_CWL(DDR_WRITE_LATENCY)
 )
 u_phy
 (
      .clock(clock)
-    ,.clk_ddr_i(clk_ddr)
-    ,.clk_ddr90_i(clk_ddr_dqs)
-    ,.clk_ref_i(clk_ref)
     ,.reset(reset)
+    ,.clk_ddr(clk_ddr)
 
-    ,.dfi_address_i(dfi_address)
-    ,.dfi_bank_i(dfi_bank)
-    ,.dfi_cas_n_i(dfi_cas_n)
+,.cfg_valid_i(1'b0)
+,.cfg_data_i({16'h0000, 4'h4, 4'h5, 8'h00})
+
     ,.dfi_cke_i(dfi_cke)
-    ,.dfi_cs_n_i(dfi_cs_n)
-    ,.dfi_odt_i(dfi_odt)
-    ,.dfi_ras_n_i(dfi_ras_n)
     ,.dfi_reset_n_i(dfi_reset_n)
+    ,.dfi_cs_n_i(dfi_cs_n)
+    ,.dfi_ras_n_i(dfi_ras_n)
+    ,.dfi_cas_n_i(dfi_cas_n)
     ,.dfi_we_n_i(dfi_we_n)
+    ,.dfi_odt_i(dfi_odt)
+    ,.dfi_bank_i(dfi_bank)
+    ,.dfi_addr_i(dfi_address)
 
-    ,.dfi_wrdata_i(dfi_wrdata)
-    ,.dfi_wrdata_en_i(dfi_wrdata_en)
-    ,.dfi_wrdata_mask_i(dfi_wrdata_mask)
-    ,.dfi_rddata_en_i(dfi_rddata_en)
+    ,.dfi_wren_i(dfi_wrdata_en)
+    ,.dfi_mask_i(dfi_wrdata_mask)
+    ,.dfi_data_i(dfi_wrdata)
 
-    ,.dfi_rddata_o(dfi_rddata)
-    ,.dfi_rddata_valid_o(dfi_rddata_valid)
-    ,.dfi_rddata_dnv_o(dfi_rddata_dnv)
+    ,.dfi_rden_i(dfi_rddata_en)
+    ,.dfi_valid_o(dfi_rddata_valid)
+    ,.dfi_data_o(dfi_rddata)
+    // ,.dfi_rddata_dnv_o(dfi_rddata_dnv)
 
     ,.ddr3_ck_p_o(ddr3_ck_p_w)
     ,.ddr3_ck_n_o(ddr3_ck_n_w)
     ,.ddr3_cke_o(ddr3_cke_w)
     ,.ddr3_reset_n_o(ddr3_reset_n_w)
+    ,.ddr3_cs_n_o(ddr3_cs_n_w)
     ,.ddr3_ras_n_o(ddr3_ras_n_w)
     ,.ddr3_cas_n_o(ddr3_cas_n_w)
     ,.ddr3_we_n_o(ddr3_we_n_w)
-    ,.ddr3_cs_n_o(ddr3_cs_n_w)
-    ,.ddr3_ba_o(ddr3_ba_w)
-    ,.ddr3_addr_o(ddr3_addr_w)
     ,.ddr3_odt_o(ddr3_odt_w)
+    ,.ddr3_ba_o(ddr3_ba_w)
+    ,.ddr3_a_o(ddr3_addr_w)
     ,.ddr3_dm_o(ddr3_dm_w)
     ,.ddr3_dqs_p_io(ddr3_dqs_p_w)
     ,.ddr3_dqs_n_io(ddr3_dqs_n_w)
@@ -346,8 +297,64 @@ ddr_core_inst
     .dfi_rddata_en_o(dfi_rddata_en),
     .dfi_rddata_i(dfi_rddata),
     .dfi_rddata_valid_i(dfi_rddata_valid),
-    .dfi_rddata_dnv_i(dfi_rddata_dnv)
+    .dfi_rddata_dnv_i({dfi_rddata_dnv, dfi_rddata_dnv})
 );
+
+
+//-----------------------------------------------------------------
+// ram_read: Perform read transfer (128-bit)
+//-----------------------------------------------------------------
+task ram_read;
+    input  [31:0]  addr;
+    output [127:0] data;
+begin
+    ram_rd     <= 1'b1;
+    ram_addr   <= addr;
+    ram_req_id <= ram_req_id + 1;
+    @(posedge clock);
+
+    while (!ram_accept)
+    begin
+        @(posedge clock);
+    end
+    ram_rd     <= 1'b0;
+
+    while (!ram_ack)
+    begin
+        @(posedge clock);
+    end
+
+    data = ram_read_data;
+end
+endtask
+
+
+//-----------------------------------------------------------------
+// ram_write: Perform write transfer (128-bit)
+//-----------------------------------------------------------------
+task ram_write;
+    input [31:0]  addr;
+    input [127:0] data;
+    input [15:0]  mask;
+begin
+    ram_wr         <= mask;
+    ram_addr       <= addr;
+    ram_write_data <= data;
+    ram_req_id     <= ram_req_id + 1;
+    @(posedge clock);
+
+    while (!ram_accept)
+    begin
+        @(posedge clock);
+    end
+    ram_wr <= 16'b0;
+
+    while (!ram_ack)
+    begin
+        @(posedge clock);
+    end
+end
+endtask
 
 
 endmodule // ddr3_core_tb

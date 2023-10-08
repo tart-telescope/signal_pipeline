@@ -1,0 +1,25 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Sun Oct  8 04:08:42 2023
+[*]
+[dumpfile] "/home/patrick/dev/signal_pipeline/build/ddr3_core_tb.vcd"
+[dumpfile_mtime] "Sun Oct  8 04:07:22 2023"
+[dumpfile_size] 273413
+[savefile] "/home/patrick/dev/signal_pipeline/build/ddr3_core_tb.gtkw"
+[timestart] 0
+[size] 2560 1376
+[pos] -38 -38
+*-16.480028 200000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] ddr3_core_tb.
+[sst_width] 233
+[signals_width] 86
+[sst_expanded] 1
+[sst_vpaned_height] 414
+@28
+ddr3_core_tb.clock
+@29
+ddr3_core_tb.reset
+@28
+ddr3_core_tb.clk_ddr
+[pattern_trace] 1
+[pattern_trace] 0
