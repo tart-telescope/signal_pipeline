@@ -24,54 +24,95 @@
 // limitations under the License.
 //-----------------------------------------------------------------
 
-module ddr3_core
-#(
-      parameter DDR_MHZ           = 25
-    , parameter DDR_WRITE_LATENCY = 6
-    , parameter DDR_READ_LATENCY  = 5
-    , parameter DDR_COL_W         = 10
-    , parameter DDR_BANK_W        = 3
-    , parameter DDR_ROW_W         = 15
-    , parameter DDR_BRC_MODE      = 0
-)
-(
-      input          clock
-    , input          reset
+module ddr3_core (
+    clock,
+    reset,
 
-    , input          cfg_enable_i
-    , input          cfg_stb_i
-    , output         cfg_stall_o
-    , input  [ 31:0] cfg_data_i
+    cfg_enable_i,
+    cfg_stb_i,
+    cfg_stall_o,
+    cfg_data_i,
 
-    , input  [ 15:0] mem_wr_i
-    , input          mem_rd_i
-    , input  [ 31:0] mem_addr_i
-    , input  [127:0] mem_write_data_i
-    , input  [ 15:0] mem_req_id_i
-    , output         mem_accept_o
-    , output         mem_ack_o
-    , output         mem_error_o
-    , output [ 15:0] mem_resp_id_o
-    , output [127:0] mem_read_data_o
+    mem_wr_i,
+    mem_rd_i,
+    mem_addr_i,
+    mem_write_data_i,
+    mem_req_id_i,
+    mem_accept_o,
+    mem_ack_o,
+    mem_error_o,
+    mem_resp_id_o,
+    mem_read_data_o,
 
-    , input  [ 31:0] dfi_rddata_i
-    , input          dfi_rddata_valid_i
-    , input  [  1:0] dfi_rddata_dnv_i
-    , output [ 14:0] dfi_address_o
-    , output [  2:0] dfi_bank_o
-    , output         dfi_cas_n_o
-    , output         dfi_cke_o
-    , output         dfi_cs_n_o
-    , output         dfi_odt_o
-    , output         dfi_ras_n_o
-    , output         dfi_reset_n_o
-    , output         dfi_we_n_o
-    , output [ 31:0] dfi_wrdata_o
-    , output         dfi_wrdata_en_o
-    , output [  3:0] dfi_wrdata_mask_o
-    , output         dfi_rddata_en_o
+    dfi_rddata_i,
+    dfi_rddata_valid_i,
+    dfi_rddata_dnv_i,
+    dfi_address_o,
+    dfi_bank_o,
+    dfi_cas_n_o,
+    dfi_cke_o,
+    dfi_cs_n_o,
+    dfi_odt_o,
+    dfi_ras_n_o,
+    dfi_reset_n_o,
+    dfi_we_n_o,
+    dfi_wrdata_o,
+    dfi_wrdata_en_o,
+    dfi_wrdata_mask_o,
+    dfi_rddata_en_o
 );
 
+  parameter DDR_MHZ = 25;
+  parameter DDR_WRITE_LATENCY = 6;
+  parameter DDR_READ_LATENCY = 5;
+
+  parameter DDR_BANK_W = 3;
+  parameter DDR_COL_W = 10;
+  parameter DDR_ROW_W = 15;
+  localparam ASB = DDR_ROW_W - 1;
+
+  parameter DDR_BRC_MODE = 0;
+
+  parameter TRAN_ID_WIDTH = 16;  // todo ...
+  localparam TSB = TRAN_ID_WIDTH - 1;
+  localparam TZERO = {TRAN_ID_WIDTH{1'b0}};
+
+
+  input clock;
+  input reset;
+
+  input cfg_enable_i;
+  input cfg_stb_i;
+  output cfg_stall_o;
+  input [31:0] cfg_data_i;
+
+  input [15:0] mem_wr_i;
+  input mem_rd_i;
+  input [31:0] mem_addr_i;
+  input [127:0] mem_write_data_i;
+  input [TSB:0] mem_req_id_i;
+  output mem_accept_o;
+  output mem_ack_o;
+  output mem_error_o;
+  output [TSB:0] mem_resp_id_o;
+  output [127:0] mem_read_data_o;
+
+  input [31:0] dfi_rddata_i;
+  input dfi_rddata_valid_i;
+  input [1:0] dfi_rddata_dnv_i;
+  output [14:0] dfi_address_o;
+  output [2:0] dfi_bank_o;
+  output dfi_cas_n_o;
+  output dfi_cke_o;
+  output dfi_cs_n_o;
+  output dfi_odt_o;
+  output dfi_ras_n_o;
+  output dfi_reset_n_o;
+  output dfi_we_n_o;
+  output [31:0] dfi_wrdata_o;
+  output dfi_wrdata_en_o;
+  output [3:0] dfi_wrdata_mask_o;
+  output dfi_rddata_en_o;
 
 
   //-----------------------------------------------------------------
@@ -112,6 +153,7 @@ module ddr3_core
 
   // SM states
   localparam STATE_W = 4;
+  localparam SSB = STATE_W - 1;
   localparam STATE_INIT = 4'd0;
   localparam STATE_DELAY = 4'd1;
   localparam STATE_IDLE = 4'd2;
@@ -137,7 +179,7 @@ module ddr3_core
   wire         ram_ack_w;
 
   wire         id_fifo_space_w;
-  wire         ram_req_w = ((ram_wr_w != 16'b0) | ram_rd_w) && id_fifo_space_w;
+  wire         ram_req_w = ((ram_wr_w != TZERO) | ram_rd_w) && id_fifo_space_w;
 
 
   assign mem_ack_o       = ram_ack_w;
@@ -157,18 +199,18 @@ module ddr3_core
   reg refresh_q;
 
   reg [DDR_BANKS-1:0] row_open_q;
-  reg [DDR_ROW_W-1:0] active_row_q[0:DDR_BANKS-1];
+  reg [ASB:0] active_row_q[0:DDR_BANKS-1];
 
-  reg [STATE_W-1:0] state_q;
-  reg [STATE_W-1:0] next_state_r;
-  reg [STATE_W-1:0] target_state_r;
-  reg [STATE_W-1:0] target_state_q;
+  reg [SSB:0] state_q;
+  reg [SSB:0] next_state_r;
+  reg [SSB:0] target_state_r;
+  reg [SSB:0] target_state_q;
 
   // Address bits (RBC mode)
-  wire [DDR_ROW_W-1:0] addr_col_w = {
+  wire [ASB:0] addr_col_w = {
     {(DDR_ROW_W - DDR_COL_W) {1'b0}}, ram_addr_w[DDR_COL_W:2], 1'b0
   };
-  wire [DDR_ROW_W-1:0]  addr_row_w  = DDR_BRC_MODE ? ram_addr_w[DDR_ROW_W+DDR_COL_W:DDR_COL_W+1] :            // BRC
+  wire [ASB:0]  addr_row_w  = DDR_BRC_MODE ? ram_addr_w[DDR_ROW_W+DDR_COL_W:DDR_COL_W+1] :            // BRC
   ram_addr_w[DDR_ROW_W+DDR_COL_W+3:DDR_COL_W+3+1];  // RBC
   wire [DDR_BANK_W-1:0] addr_bank_w = DDR_BRC_MODE ? ram_addr_w[DDR_ROW_W+DDR_COL_W+3:DDR_ROW_W+DDR_COL_W+1]: // BRC
   ram_addr_w[DDR_COL_W+1+3-1:DDR_COL_W+1];  // RBC
@@ -360,7 +402,7 @@ module ddr3_core
   // Command
   //-----------------------------------------------------------------
   reg [     CMD_W-1:0] command_r;
-  reg [ DDR_ROW_W-1:0] addr_r;
+  reg [ ASB:0] addr_r;
   reg                  cke_r;
   reg [DDR_BANK_W-1:0] bank_r;
 
@@ -463,7 +505,7 @@ module ddr3_core
       //-----------------------------------------
       STATE_READ: begin
         command_r              = CMD_READ;
-        addr_r                 = {addr_col_w[DDR_ROW_W-1:3], 3'b0};
+        addr_r                 = {addr_col_w[ASB:3], 3'b0};
         bank_r                 = addr_bank_w;
 
         // Disable auto precharge (auto close of row)
@@ -474,7 +516,7 @@ module ddr3_core
       //-----------------------------------------
       STATE_WRITE: begin
         command_r              = CMD_WRITE;
-        addr_r                 = {addr_col_w[DDR_ROW_W-1:3], 3'b0};
+        addr_r                 = {addr_col_w[ASB:3], 3'b0};
         bank_r                 = addr_bank_w;
 
         // Disable auto precharge (auto close of row)
@@ -498,21 +540,44 @@ module ddr3_core
     end
   end
 
+`ifdef __use_slow_fifo
+  initial begin : YUCKY
+    $display("Using SLOW FIFO");
+  end  // YUCKY
+
   slow_fifo #(
-        .WIDTH (16)
-      , .ABITS (3)
+        .WIDTH(TRAN_ID_WIDTH)
+      , .ABITS(3)
   ) u_id_fifo (
         .clock(clock)
       , .reset(reset)
 
-      , .wren_i(ram_req_w & ram_accept_w)
-      , .data_i(mem_req_id_i)
+      , .wren_i  (ram_req_w & ram_accept_w)
+      , .data_i  (mem_req_id_i)
       , .accept_o(id_fifo_space_w)
 
       , .valid_o()
-      , .data_o(mem_resp_id_o)
-      , .rden_i(ram_ack_w)
+      , .data_o (mem_resp_id_o)
+      , .rden_i (ram_ack_w)
   );
+`else
+  sync_fifo #(
+        .WIDTH (TRAN_ID_WIDTH)
+      , .ABITS (3)
+      , .OUTREG(0)
+  ) u_id_fifo (
+        .clock(clock)
+      , .reset(reset)
+
+      , .valid_i(ram_req_w & ram_accept_w)
+      , .ready_o(id_fifo_space_w)
+      , .data_i (mem_req_id_i)
+
+      , .valid_o()
+      , .ready_i(ram_ack_w)
+      , .data_o (mem_resp_id_o)
+  );
+`endif
 
   assign ram_ack_w = sdram_rd_valid_w || write_ack_q;
 
@@ -527,7 +592,7 @@ module ddr3_core
   // DDR3 DFI Interface
   //-----------------------------------------------------------------
   ddr3_dfi_seq #(
-        .DDR_MHZ(DDR_MHZ)
+      .DDR_MHZ(DDR_MHZ)
       , .DDR_WRITE_LATENCY(DDR_WRITE_LATENCY)
       , .DDR_READ_LATENCY(DDR_READ_LATENCY)
   ) u_seq (

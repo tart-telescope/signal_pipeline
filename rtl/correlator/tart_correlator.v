@@ -165,14 +165,14 @@ module tart_correlator (
   /**
    *  Correlator array, with daisy-chained outputs.
    */
-  wire [SSB:0] re_w[CORES+1];
-  wire [SSB:0] im_w[CORES+1];
+  wire [CSB:0] re_w[CORES+1];
+  wire [CSB:0] im_w[CORES+1];
 
-  wire [SSB:0] acc_re, acc_im;
+  wire [CSB:0] acc_re, acc_im;
   wire [CORES:0] vlds;
 
-  assign re_w[0] = {SBITS{1'bx}};
-  assign im_w[0] = {SBITS{1'bx}};
+  assign re_w[0] = {CBITS{1'bx}};
+  assign im_w[0] = {CBITS{1'bx}};
 
   assign acc_re  = re_w[CORES];
   assign acc_im  = im_w[CORES];
@@ -191,6 +191,7 @@ module tart_correlator (
 
           .valid_i(buf_valid_w),
           .first_i(buf_first_w),
+          .emit_i (1'b0), // todo:
           .next_i (cnext),
           .last_i (buf_last_w),
           .taddr_i(buf_taddr_w),

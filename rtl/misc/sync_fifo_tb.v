@@ -43,7 +43,7 @@ module sync_fifo_tb;
 
   integer rx = 0;
 
-  localparam TEST_MODE = 3;
+  localparam TEST_MODE = 2;
   localparam OUTREG = 1;
 
   reg  xx_ready;

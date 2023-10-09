@@ -7,6 +7,7 @@ all:
 
 sim:
 	@make -C bench sim
+	@make -C rtl/misc sim
 	@make -C build sim
 
 #	@make -C rtl/correlator sim
