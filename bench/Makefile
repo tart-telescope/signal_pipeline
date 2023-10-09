@@ -17,10 +17,11 @@ RTLDIR	:= ../rtl
 MISC	:= $(wildcard $(RTLDIR)/misc/*.v)
 CORR	:= $(wildcard $(RTLDIR)/correlator/*.v)
 DDR3	:= $(wildcard $(RTLDIR)/ddr3/*.v)
+ARCH	:= $(wildcard $(RTLDIR)/arch/gowin_ddr*.v) $(wildcard arch/gowin_prim*.v)
 SIMSRC	:= $(wildcard *.v)
 SRC	:= $(filter-out %_tb.v, $(SIMSRC))
 
-VERLIB	:= $(MISC) $(CORR) $(AXIS) $(USB) $(DDR3) $(SRC)
+VERLIB	:= $(MISC) $(CORR) $(AXIS) $(USB) $(DDR3) $(ARCH) $(SRC)
 
 VERTOP	?= $(wildcard *_tb.v)
 VEROUT	?= $(VERTOP:%.v=../build/%.out)

@@ -21,7 +21,7 @@ module ddr3_core_tb;
 
 localparam DDR_MHZ = 100;
 localparam DDR_WRITE_LATENCY = 4;
-localparam DDR_READ_LATENCY = 4;
+localparam DDR_READ_LATENCY = 6;
 
 
 // -- Simulation Data -- //
@@ -197,10 +197,15 @@ ddr3_sdram_inst
 
 // -- DDR3 PHY -- //
 
-generic_ddr3_dfi_phy
-#( .ADDR_BITS(15),
-    .DEFAULT_CL(DDR_READ_LATENCY),
-    .DEFAULT_CWL(DDR_WRITE_LATENCY)
+// GoWin Global System Reset signal tree.
+GSR GSR();
+
+// generic_ddr3_dfi_phy
+gowin_ddr3_dfi_phy
+#( .DDR3_WIDTH(16), // (default)
+   .ADDR_BITS(15), // default: 14
+   .SOURCE_CLOCK(2'b01), // (default)
+   .CAPTURE_DELAY(3'h0) // (default)
 )
 u_phy
 (
