@@ -86,6 +86,7 @@ module ddr3_core
 `else
   localparam DDR_START_DELAY = 600000 / (1000 / DDR_MHZ);  // 600uS
 `endif
+`endif
   localparam DDR_REFRESH_CYCLES = (64000 * DDR_MHZ) / 8192;
   localparam DDR_BURST_LEN = 8;
 

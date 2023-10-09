@@ -21,7 +21,7 @@ module ddr3_core_tb;
 
 localparam DDR_MHZ = 100;
 localparam DDR_WRITE_LATENCY = 4;
-localparam DDR_READ_LATENCY = 5;
+localparam DDR_READ_LATENCY = 4;
 
 
 // -- Simulation Data -- //
@@ -209,7 +209,7 @@ u_phy
     ,.clk_ddr(clk_ddr)
 
 ,.cfg_valid_i(1'b0)
-,.cfg_data_i({16'h0000, 4'h4, 4'h5, 8'h00})
+,.cfg_data_i({16'h0000, 4'h4, 4'h4, 8'h00})
 
     ,.dfi_cke_i(dfi_cke)
     ,.dfi_reset_n_i(dfi_reset_n)

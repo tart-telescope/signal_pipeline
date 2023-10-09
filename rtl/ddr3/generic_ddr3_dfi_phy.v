@@ -104,20 +104,21 @@ module generic_ddr3_dfi_phy (
   inout [MSB:0] ddr3_dq_io;
 
 
-  reg dq_t, dqs_t;
+  reg dqs_t, dq_t;
   reg [QSB:0] dqs_p, dqs_n, dm_q;
   reg [MSB:0] dq_q;
   reg cke_q, reset_n_q, cs_n_q;
   reg ras_n_q, cas_n_q, we_n_q, odt_q;
-  reg [  2:0] ba_q;
+  reg [2:0] ba_q;
+
+  reg valid_q;
   reg [ASB:0] addr_q;
   reg [DSB:0] data_q;
-  reg [CSB:0] rd_en_q;
 
 
   // -- DFI Read-Data Signal Assignments -- //
 
-  assign dfi_valid_o    = rd_en_q[0];
+  assign dfi_valid_o    = valid_q;
   assign dfi_data_o     = data_q;
 
 
@@ -136,10 +137,10 @@ module generic_ddr3_dfi_phy (
   assign ddr3_ba_o      = ba_q;
   assign ddr3_a_o       = addr_q;
 
-  assign ddr3_dqs_p_io  = dqs_t ? {DDR3_MASKS{1'bz}} : dqs_t;
-  assign ddr3_dqs_n_io  = dqs_t ? {DDR3_MASKS{1'bz}} : dqs_t;
+  assign ddr3_dqs_p_io  = dqs_t ? {DDR3_MASKS{1'bz}} : dqs_p;
+  assign ddr3_dqs_n_io  = dqs_t ? {DDR3_MASKS{1'bz}} : dqs_n;
   assign ddr3_dm_o      = dm_q;
-  assign ddr3_dq_io     = dq_t ? dq_q : {DDR3_WIDTH{1'bz}};
+  assign ddr3_dq_io     = dq_t ? {DDR3_WIDTH{1'bz}} : dq_q;
 
 
   // -- DFI Configuration -- //
@@ -148,14 +149,14 @@ module generic_ddr3_dfi_phy (
 
   always @(posedge clock)
     if (reset) begin
-      rd_lat_q <= DEFAULT_CL;
+      rd_lat_q <= DEFAULT_CL - 2;
     end else if (cfg_valid_i) begin
       rd_lat_q <= cfg_data_i[11:8];
     end
 
   always @(posedge clock) begin
     if (reset) begin
-      wr_lat_q <= DEFAULT_CWL;
+      wr_lat_q <= DEFAULT_CWL - 2;
     end else if (cfg_valid_i) begin
       wr_lat_q <= cfg_data_i[15:12];  // todo ...
     end
@@ -192,66 +193,125 @@ module generic_ddr3_dfi_phy (
 
   // -- DDR3 Data Strobes -- //
 
-  reg [CSB:0] wr_en_q;
-  wire [CSB:0] wr_en_w, wr_in_w;
-  wire wr_start, wr_stop;
+  localparam WRITE_SHIFT_WIDTH = DDR3_WIDTH * 2 + DDR3_MASKS * 2 + 1;
+  localparam WRITE_SHIFT_ADDRS = $clog2(MAX_RW_LATENCY - 1);
+  localparam WRITE_SHIFT_DEPTH = 1 << WRITE_SHIFT_ADDRS;
 
-  assign wr_in_w  = dfi_wren_i << wr_lat_q;
-  assign wr_en_w  = {1'b0, wr_en_q[CSB:1]} | wr_in_w;
-  assign wr_start = wr_en_q[1];
-  assign wr_stop  = ~wr_en_q[0];
+  reg  dqs_q;
+  wire dqs_w;
 
-  always @(posedge clock) begin
+  assign dqs_p = {DDR3_MASKS{~clock}};
+  assign dqs_n = {DDR3_MASKS{clock}};
+
+  always @(negedge clock) begin
     if (reset) begin
-      wr_en_q <= {MAX_RW_LATENCY{1'b0}};
-    end else begin
-      wr_en_q <= wr_en_w;
-    end
-  end
-
-  always @(posedge clock) begin
-    if (reset) begin
+      dqs_q <= 1'b1;
       dqs_t <= 1'b1;
-    end else if (wr_start) begin
+    end else if (!dqs_w) begin
+      dqs_q <= 1'b0;
       dqs_t <= 1'b0;
-    end else if (wr_stop) begin
-      dqs_t <= 1'b1;
+    end else begin
+      {dqs_t, dqs_q} <= {dqs_q, dqs_w};
     end
   end
+
+  wire [WRITE_SHIFT_ADDRS-1:0] wr_dqs_w = wr_lat_q - 2;
+
+  shift_register #(
+      .WIDTH(1),
+      .DEPTH(16)
+  ) wr_srl_inst (
+      .clock (clock),
+      .wren_i(1'b1),
+      .data_i(~dfi_wren_i),
+      .addr_i(wr_dqs_w),
+      .data_o(dqs_w)
+  );
+
+
+  // -- Write-Data Outputs -- //
+
+  reg clock_270, dt_s;
+  wire dt_srl;
+  wire [DSB:0] dq_srl;
+  wire [SSB:0] dm_srl;
+  wire [MSB:0] dq_w;
+  wire [QSB:0] dm_w;
+  reg [MSB:0] dq_s;
+  reg [QSB:0] dm_s;
+
+  assign dq_w = clock_270 ? dq_srl[MSB:0] : dq_srl[DSB:DDR3_WIDTH];
+  assign dm_w = clock_270 ? dm_srl[QSB:0] : dm_srl[SSB:DDR3_MASKS];
+
+  always @(negedge clk_ddr) begin
+    clock_270 <= clock;
+  end
+
+  always @(negedge clk_ddr) begin
+    if (reset) begin
+      dq_t <= 1'b1;
+    end else begin
+      {dq_t, dt_s} <= {dt_s, dt_srl};
+      {dm_q, dm_s} <= {dm_s, dm_w};
+      {dq_q, dq_s} <= {dq_s, dq_w};
+    end
+  end
+
+  wire [WRITE_SHIFT_ADDRS-1:0] wr_lat_w = wr_lat_q - 1;
+
+  shift_register #(
+      .WIDTH(WRITE_SHIFT_WIDTH),
+      .DEPTH(WRITE_SHIFT_DEPTH)
+  ) dq_srl_inst (
+      .clock (clock_270),
+      .wren_i(1'b1),
+      .data_i({~dfi_wren_i, dfi_mask_i, dfi_data_i}),
+      .addr_i(wr_lat_w),
+      .data_o({dt_srl, dm_srl, dq_srl})
+  );
 
 
   // -- Read Data Valid Signals -- //
 
-  wire [CSB:0] rd_en_w, rd_in_w;
+  wire rd_en_w;
 
-  assign rd_in_w = dfi_rden_i << rd_lat_q;
-  assign rd_en_w = {1'b0, rd_en_q[CSB:1]} | rd_in_w;
+  shift_register #(
+      .WIDTH(1),
+      .DEPTH(16)
+  ) rd_srl_inst (
+      .clock (clock),
+      .wren_i(1'b1),
+      .data_i(dfi_rden_i),
+      .addr_i(rd_lat_q),
+      .data_o(rd_en_w)
+  );
 
   always @(posedge clock) begin
     if (reset) begin
-      rd_en_q <= {MAX_RW_LATENCY{1'b0}};
+      valid_q <= 1'b0;
     end else begin
-      rd_en_q <= rd_en_w;
+      valid_q <= rd_en_w;
     end
   end
 
 
   // -- Data Capture on Read -- //
 
-  reg [MSB:0] data_l, data_h;
+  reg [MSB:0] data_l, data_n, data_h;
 
   always @(posedge clock) begin
+    data_l <= data_n;
     data_q <= {data_h, data_l};
   end
 
-  always @(posedge ddr3_dqs_p_io) begin
-    if (dqs_t) begin
-      data_l <= ddr3_dq_io;
+  always @(posedge ddr3_ck_p_o) begin
+    if (ddr3_dqs_p_io) begin
+      data_n <= ddr3_dq_io;
     end
   end
 
-  always @(posedge ddr3_dqs_n_io) begin
-    if (dqs_t) begin
+  always @(posedge ddr3_ck_n_o) begin
+    if (ddr3_dqs_n_io) begin
       data_h <= ddr3_dq_io;
     end
   end

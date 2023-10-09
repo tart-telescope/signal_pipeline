@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Sun Oct  8 08:09:46 2023
+[*] Mon Oct  9 02:14:08 2023
 [*]
 [dumpfile] "/home/patrick/dev/signal_pipeline/build/ddr3_core_tb.vcd"
-[dumpfile_mtime] "Sun Oct  8 08:08:05 2023"
-[dumpfile_size] 1685584
+[dumpfile_mtime] "Mon Oct  9 02:13:15 2023"
+[dumpfile_size] 1928081
 [savefile] "/home/patrick/dev/signal_pipeline/build/ddr3_core_tb.gtkw"
-[timestart] 36148670
+[timestart] 59778000
 [size] 1920 1043
 [pos] -1 -1
-*-14.048282 36210000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.048283 60760000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] ddr3_core_tb.
 [sst_width] 233
 [signals_width] 190
@@ -64,7 +64,7 @@ ddr3_core_tb.ddr3_dqs_n_w[1:0]
 ddr3_core_tb.ddr3_dm_w[1:0]
 @22
 ddr3_core_tb.ddr3_dq_w[15:0]
-@c00201
+@c00200
 -RAM
 @28
 ddr3_core_tb.ram_accept
@@ -80,7 +80,19 @@ ddr3_core_tb.ram_req_id[15:0]
 ddr3_core_tb.ram_resp_id[15:0]
 ddr3_core_tb.ram_read_data[127:0]
 ddr3_core_tb.ram_write_data[127:0]
-@1401201
+@1401200
 -RAM
+@c00201
+-PHY
+@28
+ddr3_core_tb.u_phy.clock_270
+ddr3_core_tb.u_phy.dqs_t
+@22
+ddr3_core_tb.u_phy.dq_srl[31:0]
+ddr3_core_tb.u_phy.data_l[15:0]
+ddr3_core_tb.u_phy.data_h[15:0]
+ddr3_core_tb.u_phy.data_q[31:0]
+@1401201
+-PHY
 [pattern_trace] 1
 [pattern_trace] 0

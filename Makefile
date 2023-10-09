@@ -6,8 +6,10 @@ all:
 	@make -C synth all
 
 sim:
-	@make -C rtl/correlator sim
+	@make -C bench sim
 	@make -C build sim
+
+#	@make -C rtl/correlator sim
 
 
 #
