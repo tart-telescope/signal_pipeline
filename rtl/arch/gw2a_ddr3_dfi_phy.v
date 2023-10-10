@@ -88,7 +88,7 @@ localparam CSB = MAX_RW_LATENCY - 1;
   // DDR Clock
   //-----------------------------------------------------------------
   // ddr3_ck_p_o = ~clock
-  TLVDS_OBUF
+  TLVDS_OBUF ddr3_ck_iob_inst
 ( .I(~clock),
   .O(ddr3_ck_p_o),
   .OB(ddr3_ck_n_o)

@@ -51,7 +51,7 @@ module sigsource_tb;
   // -- Simulation stimulus -- //
 
   initial begin
-    $dumpfile("../vcd/sigsource_tb.vcd");
+    $dumpfile("sigsource_tb.vcd");
     $dumpvars;
 
     #15 reset_n <= 1'b0;
@@ -155,11 +155,8 @@ module sigsource_tb;
 
   sigsource #(
       .WIDTH(WIDTH),
-      .SBITS(SBITS),
-      .XBITS(XBITS),
       .MUX_N(MUX_N),
       .TRATE(TRATE),
-      .TBITS(TBITS),
       .ATAPS(ATAPS),
       .BTAPS(BTAPS),
       .ASELS(ASELS),

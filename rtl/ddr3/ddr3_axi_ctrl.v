@@ -1,7 +1,7 @@
 `timescale 1ns / 100ps
 /**
  * Converts AXI4 requests into simple memory-controller commands.
- * 
+ *
  * Notes:
  *  - assumes that the AXI4 interface converts write-data into 128-bit chunks,
  *    padding as required;
@@ -10,11 +10,58 @@
  *    required;
  *  - assumes that the memory controller and the AXI4 bus are within the same
  *    clock-domain;
- * 
+ *
  * Copyright 2023, Patrick Suggate.
- * 
+ *
  */
-module ddr3_axi_ctrl (  /*AUTOARG*/);
+module ddr3_axi_ctrl (
+    clock,
+    reset,
+
+    axi_awvalid_i,
+    axi_awready_o,
+    axi_awaddr_i,
+    axi_awid_i,
+    axi_awlen_i,
+    axi_awburst_i,
+
+    axi_wvalid_i,
+    axi_wready_o,
+    axi_wlast_i,
+    axi_wstrb_i,
+    axi_wdata_i,
+
+    axi_bvalid_o,
+    axi_bready_i,
+    axi_bresp_o,
+    axi_bid_o,
+
+    axi_arvalid_i,
+    axi_arready_o,
+    axi_araddr_i,
+    axi_arid_i,
+    axi_arlen_i,
+    axi_arburst_i,
+
+    axi_rready_i,
+    axi_rvalid_o,
+    axi_rlast_o,
+    axi_rresp_o,
+    axi_rid_o,
+    axi_rdata_o,
+
+    ram_wren_o,
+    ram_rden_o,
+    ram_req_id_o,
+    ram_addr_o,
+    ram_wrmask_o,
+    ram_wrdata_o,
+    ram_accept_i,
+    ram_valid_i,
+    ram_error_i,
+    ram_resp_id_i,
+    ram_rddata_i
+);
 
   parameter DDR_FREQ_MHZ = 100;
   parameter DDR_WR_LATENCY = 6;
@@ -28,10 +75,13 @@ module ddr3_axi_ctrl (  /*AUTOARG*/);
   parameter DDR_ROW_BITS = 15;
   localparam RSB = DDR_ROW_BITS - 1;
 
+parameter ADDRS = 32;
+localparam ASB = ADDRS - 1;
+
   parameter WIDTH = 32;
   localparam MSB = WIDTH - 1;
 
-  parameter MASKS = DDR_DATA_WIDTH / 8;
+  parameter MASKS = WIDTH / 8;
   localparam SSB = MASKS - 1;
 
 
@@ -40,7 +90,7 @@ module ddr3_axi_ctrl (  /*AUTOARG*/);
 
   input axi_awvalid_i;  // AXI4 Write Address Port
   output axi_awready_o;
-  input [MSB:0] axi_awaddr_i;
+  input [ASB:0] axi_awaddr_i;
   input [3:0] axi_awid_i;
   input [7:0] axi_awlen_i;
   input [1:0] axi_awburst_i;
@@ -55,7 +105,7 @@ module ddr3_axi_ctrl (  /*AUTOARG*/);
   output [3:0] axi_bid_o;
   input axi_arvalid_i;  // AXI4 Read Address Port
   output axi_arready_o;
-  input [MSB:0] axi_araddr_i;
+  input [ASB:0] axi_araddr_i;
   input [3:0] axi_arid_i;
   input [7:0] axi_arlen_i;
   input [1:0] axi_arburst_i;
@@ -87,8 +137,12 @@ module ddr3_axi_ctrl (  /*AUTOARG*/);
 
   // -- Queue the Commands to the Memory-Controller -- //
 
+reg [3:0] req_id;
+reg req_we;
+reg [ASB:0] req_ad;
+
   wire cmd_valid, cmd_queued, ram_accept_w;
-  reg  [COMMAND_WIDTH-1:0] command_q;
+  reg [COMMAND_WIDTH-1:0] command_q;
   wire [COMMAND_WIDTH-1:0] command_w, command_a;
 
   assign command_w = {req_id, req_we, req_ad};

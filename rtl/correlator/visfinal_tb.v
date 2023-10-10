@@ -23,7 +23,7 @@ module visfinal_tb;
   always #5 clock <= ~clock;
 
   initial begin
-    $dumpfile("../vcd/visfinal_tb.vcd");
+    $dumpfile("visfinal_tb.vcd");
     $dumpvars;
 
     #15 rst_n <= 1'b0;
@@ -100,8 +100,7 @@ module visfinal_tb;
   visfinal #(
       .IBITS(IBITS),
       .OBITS(OBITS),
-      .NSUMS(NSUMS),
-      .ABITS(ABITS)
+      .NSUMS(NSUMS)
   ) VISFINAL0 (
       .clock_i (clock),
       .reset_ni(rst_n),

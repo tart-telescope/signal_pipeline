@@ -14,9 +14,12 @@ USBDIR	:= $(LIBDIR)/axis_usbd/rtl
 USB	:= $(wildcard $(USBDIR)/usb/*.v) $(wildcard $(USBDIR)/arch/*.v)
 
 RTLDIR	:= ../rtl
-MISC	:= $(wildcard $(RTLDIR)/misc/*.v)
-CORR	:= $(wildcard $(RTLDIR)/correlator/*.v)
-DDR3	:= $(wildcard $(RTLDIR)/ddr3/*.v)
+MISC_V	:= $(wildcard $(RTLDIR)/misc/*.v)
+MISC	:= $(filter-out %_tb.v, $(MISC_V))
+CORR_V	:= $(wildcard $(RTLDIR)/correlator/*.v)
+CORR	:= $(filter-out %_tb.v, $(CORR_V))
+DDR3_V	:= $(wildcard $(RTLDIR)/ddr3/*.v)
+DDR3	:= $(filter-out %_tb.v, $(DDR3_V))
 ARCH	:= $(wildcard $(RTLDIR)/arch/gowin_ddr*.v) $(wildcard arch/gowin_prim*.v)
 SIMSRC	:= $(wildcard *.v)
 SRC	:= $(filter-out %_tb.v, $(SIMSRC))

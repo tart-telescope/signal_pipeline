@@ -36,7 +36,7 @@ module sigbuffer_tb;
   // -- Simulation stimulus -- //
 
   initial begin
-    $dumpfile("../vcd/sigbuffer_tb.vcd");
+    $dumpfile("sigbuffer_tb.vcd");
     $dumpvars;
 
     #15 reset_n <= 1'b0;

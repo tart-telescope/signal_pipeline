@@ -1,5 +1,8 @@
-.PHONY:	all build clean
-all:	build
+.PHONY:	all sim build clean
+all:	sim build
+
+sim:	build
+
 
 #
 #  Icarus Verilog settings

@@ -52,7 +52,7 @@ module axis_async_fifo_tb;
 
 
   initial begin
-    $dumpfile("../vcd/axis_async_fifo_tb.vcd");
+    $dumpfile("axis_async_fifo_tb.vcd");
     $dumpvars;
 
     #10 async_rst <= 1'b1;

@@ -19,7 +19,7 @@ module ddr3_core_tb;
 
 // -- Simulation Settings -- //
 
-localparam DDR_MHZ = 100;
+localparam DDR_FREQUENCY_MHZ = 100;
 localparam DDR_WRITE_LATENCY = 4;
 localparam DDR_READ_LATENCY = 6;
 
@@ -263,7 +263,7 @@ ddr3_core
 #(
     .DDR_WRITE_LATENCY(DDR_WRITE_LATENCY),
     .DDR_READ_LATENCY(DDR_READ_LATENCY),
-    .DDR_MHZ(DDR_MHZ)
+    .DDR_MHZ(DDR_FREQUENCY_MHZ)
 )
 ddr_core_inst
 (

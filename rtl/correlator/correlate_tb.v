@@ -30,7 +30,7 @@ module correlate_tb;
   // -- Simulation stimulus -- //
 
   initial begin
-    $dumpfile("../vcd/correlate_tb.vcd");
+    $dumpfile("correlate_tb.vcd");
     $dumpvars;
 
     #15 reset_n <= 1'b0;
@@ -156,9 +156,11 @@ module correlate_tb;
       .bi_i(bi),
       .bq_i(bq),
 
+             .frame_o(),
       .valid_o(cor_valid),
-      .re_o(cor_rdata),
-      .im_o(cor_idata)
+      .rdata_o(cor_rdata),
+      .idata_o(cor_idata)
   );
+
 
 endmodule  // correlate_tb

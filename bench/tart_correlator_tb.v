@@ -49,7 +49,7 @@ module tart_correlator_tb;
   // -- Simulation stimulus -- //
 
   initial begin
-    $dumpfile("../vcd/tart_correlator_tb.vcd");
+    $dumpfile("tart_correlator_tb.vcd");
     $dumpvars;
 
     #15 reset_n <= 1'b0;

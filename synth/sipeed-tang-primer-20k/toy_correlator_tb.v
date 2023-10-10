@@ -19,7 +19,7 @@ module toy_correlator_tb;
   wire a_rdy;
 
   initial begin
-    $dumpfile("../vcd/toy_correlator_tb.vcd");
+    $dumpfile("toy_correlator_tb.vcd");
     $dumpvars;
 
     #20 rst_n <= 1'b0;

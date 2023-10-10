@@ -19,7 +19,7 @@ module axis_afifo_tb;
   wire a_rdy;
 
   initial begin
-    $dumpfile("../vcd/axis_afifo_tb.vcd");
+    $dumpfile("axis_afifo_tb.vcd");
     $dumpvars;
 
     #7.3 rst_n <= 1'b0;
