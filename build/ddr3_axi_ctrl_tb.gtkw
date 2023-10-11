@@ -1,11 +1,11 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Wed Oct 11 09:06:14 2023
+[*] Wed Oct 11 09:39:40 2023
 [*]
-[dumpfile] "/home/patrick/dev/signal_pipeline/build/ddr3_axi_ctrl_tb.vcd"
-[dumpfile_mtime] "Wed Oct 11 09:05:29 2023"
-[dumpfile_size] 19679
-[savefile] "/home/patrick/dev/signal_pipeline/build/ddr3_axi_ctrl_tb.gtkw"
+[dumpfile] "./ddr3_axi_ctrl_tb.vcd"
+[dumpfile_mtime] "Wed Oct 11 09:38:44 2023"
+[dumpfile_size] 19600
+[savefile] "./ddr3_axi_ctrl_tb.gtkw"
 [timestart] 127200
 [size] 2560 1376
 [pos] -1 -1
@@ -59,7 +59,6 @@ ddr3_axi_ctrl_tb.rd_data[31:0]
 @28
 ddr3_axi_ctrl_tb.wr_valid
 ddr3_axi_ctrl_tb.wr_ready
-@29
 ddr3_axi_ctrl_tb.wr_last
 @22
 ddr3_axi_ctrl_tb.wr_mask[3:0]
@@ -102,8 +101,5 @@ ddr3_axi_ctrl_tb.bresp[1:0]
 @1000200
 -Resp
 -Write
-@28
-ddr3_axi_ctrl_tb.ddr3_axi_ctrl_inst.axi_wr_path_inst.mvalid
-ddr3_axi_ctrl_tb.ddr3_axi_ctrl_inst.axi_wr_path_inst.xfer_count[1:0]
 [pattern_trace] 1
 [pattern_trace] 0

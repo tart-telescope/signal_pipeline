@@ -105,6 +105,7 @@ module axi_wr_path (
   // -- Constants -- //
 
   localparam [1:0] BURST_INCR = 2'b01;
+  localparam [1:0] AXI_RESP_OKAY = 2'b00;
 
 
 `ifdef __icarus
@@ -131,9 +132,6 @@ module axi_wr_path (
 `endif
 
 
-  localparam [1:0] AXI_RESP_OKAY = 2'b00;
-
-
   // todo:
   //  - burst counter, so that responses can be sent on all RX data
   //  - padding with empty-words for unaligned and/or small transfers
@@ -147,8 +145,6 @@ module axi_wr_path (
 
   wire cmd_ready, wdf_ready, wdf_valid, wdf_last, wr_accept;
   wire wcf_valid;
-  wire [ISB:0] cmd_wrid;
-  wire [ASB:0] cmd_addr;
 
 
   assign axi_awready_o = aready;
@@ -183,9 +179,6 @@ module axi_wr_path (
   wire [1:0] fill_cnext = fill_count - 1;
   wire [1:0] xfer_cnext = xfer_count - 1;
 
-  wire cmd_full = ~cmd_ready;
-  wire wdf_full = ~wdf_ready;
-
 
   // -- FSM to Capture WRITE Requests and Data -- //
 
@@ -213,7 +206,6 @@ module axi_wr_path (
             fill_count <= 2'bxx;
             aready <= 1'b1;
             wready <= 1'b0;
-            // aready <= ~wdf_ready & ~cmd_ready;
           end
         end
 
@@ -283,7 +275,7 @@ module axi_wr_path (
           if (write && mem_accept_i) begin
             xfer_count <= 2'd3;
             issue <= IS_XFER;
-            bwrid <= cmd_wrid;  // toods ...
+            bwrid <= mem_wrid_o;  // toods ...
             mvalid <= 1'b1;
           end else begin
             xfer_count <= 2'bxx;
@@ -300,6 +292,7 @@ module axi_wr_path (
             issue  <= IS_RESP;
             mvalid <= 1'b0;
             bvalid <= 1'b1;
+            bresp  <= AXI_RESP_OKAY;
           end else begin
             mvalid <= 1'b1;
             bvalid <= 1'b0;
