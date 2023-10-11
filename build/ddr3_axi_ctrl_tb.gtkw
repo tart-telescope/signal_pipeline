@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Tue Oct 10 08:30:09 2023
+[*] Wed Oct 11 09:06:14 2023
 [*]
-[dumpfile] "./ddr3_axi_ctrl_tb.vcd"
-[dumpfile_mtime] "Tue Oct 10 08:29:33 2023"
-[dumpfile_size] 18598
-[savefile] "./ddr3_axi_ctrl_tb.gtkw"
-[timestart] 39400
-[size] 1920 1043
+[dumpfile] "/home/patrick/dev/signal_pipeline/build/ddr3_axi_ctrl_tb.vcd"
+[dumpfile_mtime] "Wed Oct 11 09:05:29 2023"
+[dumpfile_size] 19679
+[savefile] "/home/patrick/dev/signal_pipeline/build/ddr3_axi_ctrl_tb.gtkw"
+[timestart] 127200
+[size] 2560 1376
 [pos] -1 -1
-*-15.695078 270000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-14.695078 320000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] ddr3_axi_ctrl_tb.
 [treeopen] ddr3_axi_ctrl_tb.ddr3_axi_ctrl_inst.
 [treeopen] ddr3_axi_ctrl_tb.ddr3_axi_ctrl_inst.axi_wr_path_inst.
 [sst_width] 233
-[signals_width] 126
+[signals_width] 150
 [sst_expanded] 1
-[sst_vpaned_height] 298
+[sst_vpaned_height] 414
 @28
 ddr3_axi_ctrl_tb.clock
 ddr3_axi_ctrl_tb.reset
@@ -47,13 +47,23 @@ ddr3_axi_ctrl_tb.araddr[31:0]
 ddr3_axi_ctrl_tb.fetch
 ddr3_axi_ctrl_tb.store
 ddr3_axi_ctrl_tb.accept
-ddr3_axi_ctrl_tb.valid
 ddr3_axi_ctrl_tb.error
 @22
 ddr3_axi_ctrl_tb.maddr[31:0]
 ddr3_axi_ctrl_tb.wstrb[3:0]
-ddr3_axi_ctrl_tb.wdat[31:0]
-ddr3_axi_ctrl_tb.rdat[31:0]
+@28
+ddr3_axi_ctrl_tb.rd_valid
+ddr3_axi_ctrl_tb.rd_ready
+@22
+ddr3_axi_ctrl_tb.rd_data[31:0]
+@28
+ddr3_axi_ctrl_tb.wr_valid
+ddr3_axi_ctrl_tb.wr_ready
+@29
+ddr3_axi_ctrl_tb.wr_last
+@22
+ddr3_axi_ctrl_tb.wr_mask[3:0]
+ddr3_axi_ctrl_tb.wr_data[31:0]
 @1000200
 -RAM
 @800200
@@ -92,5 +102,8 @@ ddr3_axi_ctrl_tb.bresp[1:0]
 @1000200
 -Resp
 -Write
+@28
+ddr3_axi_ctrl_tb.ddr3_axi_ctrl_inst.axi_wr_path_inst.mvalid
+ddr3_axi_ctrl_tb.ddr3_axi_ctrl_inst.axi_wr_path_inst.xfer_count[1:0]
 [pattern_trace] 1
 [pattern_trace] 0

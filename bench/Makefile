@@ -28,13 +28,11 @@ VERLIB	:= $(MISC) $(CORR) $(AXIS) $(USB) $(DDR3) $(ARCH) $(SRC)
 
 VERTOP	?= $(wildcard *_tb.v)
 VEROUT	?= $(VERTOP:%.v=../build/%.out)
-VCDOUT	?= ../vcd
 
-sim:	$(VEROUT) build
+sim:	build
 
-build:
+build:	$(VEROUT)
 	echo $(VERINC)
-	@mkdir -p $(VCDOUT)
 
 ../build/%.out: %.v $(VERLIB)
 	$(IVC) $(VEROPT) -o $@ -s $(*F) $^

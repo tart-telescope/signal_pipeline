@@ -48,19 +48,19 @@ module ddr3_axi_ctrl_tb;
   assign #50 locked = 1'b1;
 
 
-  reg awvalid, wvalid, wlast, bready, arvalid, rready, accept, error, valid;
+  reg awvalid, wvalid, wlast, bready, arvalid, rready, accept, error, rd_valid, rd_last, wr_ready;
   reg [3:0] awid, arid;
   reg [7:0] awlen, arlen;
   reg [1:0] awburst, arburst;
   reg [ASB:0] awaddr, araddr;
-  reg [MSB:0] rdat;
+  reg [MSB:0] rd_data;
   reg [SSB:0] wstrb;
-  wire awready, wready, bvalid, arready, rvalid, rlast, fetch, store;
+  wire awready, wready, bvalid, arready, rvalid, rlast, fetch, store, rd_ready, wr_valid, wr_last;
   wire [3:0] bid, rid;
   wire [1:0] bresp, rresp;
   wire [ASB:0] maddr;
-  wire [SSB:0] mask;
-  wire [MSB:0] rdata, wdat;
+  wire [SSB:0] wr_mask;
+  wire [MSB:0] rdata, wr_data;
 
 
   // -- Initialisation -- //
@@ -154,15 +154,22 @@ end
 
       .mem_store_o(store),
       .mem_fetch_o(fetch),
+      .mem_accept_i(accept),
+      .mem_error_i(error),
       .mem_req_id_o(),
       .mem_addr_o(maddr),
-      .mem_wrmask_o(mask),
-      .mem_wrdata_o(wdat),
-      .mem_accept_i(accept),
-      .mem_valid_i(valid),
-      .mem_error_i(error),
+
+      .mem_valid_o(wr_valid),
+      .mem_ready_i(wr_ready),
+      .mem_last_o (wr_last),
+      .mem_wrmask_o(wr_mask),
+      .mem_wrdata_o(wr_data),
+
+      .mem_valid_i(rd_valid),
+      .mem_ready_o(rd_ready),
+      .mem_last_i (rd_last),
       .mem_resp_id_i(4'b0110),
-      .mem_rddata_i(rdat)
+      .mem_rddata_i(rd_data)
   );
 
 
@@ -170,20 +177,28 @@ end
 
   always @(posedge clock) begin
     if (reset) begin
-      valid  <= 1'b0;
+      rd_valid <= 1'b0;
       error  <= 1'b0;
       accept <= 1'b0;
-      rdat   <= {WIDTH{1'bx}};
+      rd_data <= {WIDTH{1'bx}};
     end else begin
-      accept <= 1'b1;
-
-      if (fetch) begin
-        valid <= 1'b1;
-        rdat  <= $urandom;
+      if (accept && (fetch || store)) begin
+        accept <= 1'b0;
+      end else begin
+        accept <= 1'b1;
       end
 
-      if (store) begin
+      if (fetch) begin
+        rd_valid <= 1'b1;
+        rd_last <= 1'b1; // todo: ...
+        rd_data  <= $urandom;
+      end
+
+      if (store && accept) begin
+        wr_ready <= 1'b1;
         $display("Ignoring STORE");
+      end else if (wr_valid && wr_ready && wr_last) begin
+        wr_ready <= 1'b0;
       end
     end
   end

@@ -53,17 +53,19 @@ module ddr3_axi_ctrl (
     mem_store_o,
     mem_fetch_o,
     mem_accept_i,
+    mem_error_i,
     mem_req_id_o,
     mem_addr_o,
 
     mem_valid_o,
     mem_ready_i,
+    mem_last_o,
     mem_wrmask_o,
     mem_wrdata_o,
 
     mem_valid_i,
     mem_ready_o,
-    mem_error_i,
+    mem_last_i,
     mem_resp_id_i,
     mem_rddata_i
 );
@@ -135,16 +137,20 @@ module ddr3_axi_ctrl (
   output mem_store_o;
   output mem_fetch_o;
   input mem_accept_i;
-  output mem_valid_o;
-  input mem_ready_i;
-  input mem_valid_i;
-  output mem_ready_o;
   input mem_error_i;
-  input [ISB:0] mem_resp_id_i;
   output [ISB:0] mem_req_id_o;
   output [MSB:0] mem_addr_o;
+
+  output mem_valid_o;
+  input mem_ready_i;
+  output mem_last_o;
   output [SSB:0] mem_wrmask_o;
   output [MSB:0] mem_wrdata_o;
+
+  input mem_valid_i;
+  output mem_ready_o;
+  input mem_last_i;
+  input [ISB:0] mem_resp_id_i;
   input [MSB:0] mem_rddata_i;
 
 
@@ -303,7 +309,7 @@ module ddr3_axi_ctrl (
 
       .mem_valid_o(mem_valid_o),
       .mem_ready_i(mem_ready_i),
-      .mem_last_o (),
+      .mem_last_o (mem_last_o),
       .mem_strb_o (mem_wrmask_o),
       .mem_data_o (mem_wrdata_o)
   );
@@ -343,7 +349,7 @@ module ddr3_axi_ctrl (
 
       .mem_valid_i(mem_valid_i),
       .mem_ready_o(mem_ready_o),
-      .mem_last_i(1'b0),  // todo: ...
+      .mem_last_i(mem_last_i),  // todo: ...
       .mem_rdid_i(mem_resp_id_i),
       .mem_data_i(mem_rddata_i)
   );

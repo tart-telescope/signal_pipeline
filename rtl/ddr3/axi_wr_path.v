@@ -282,7 +282,7 @@ module axi_wr_path (
           // Wait for the memory-controller to accept the command
           if (write && mem_accept_i) begin
             xfer_count <= 2'd3;
-            state <= IS_XFER;
+            issue <= IS_XFER;
             bwrid <= cmd_wrid;  // toods ...
             mvalid <= 1'b1;
           end else begin
@@ -297,7 +297,7 @@ module axi_wr_path (
         IS_XFER: begin
           // Transfer all write-data to the memory controller
           if (wdf_valid && mem_ready_i && xfer_count == 2'd0) begin
-            state  <= IS_RESP;
+            issue  <= IS_RESP;
             mvalid <= 1'b0;
             bvalid <= 1'b1;
           end else begin
@@ -319,7 +319,7 @@ module axi_wr_path (
         IS_RESP: begin
           // Issue the AXI4 write response
           if (bvalid && axi_bready_i) begin
-            state  <= ST_IDLE;
+            issue  <= IS_IDLE;
             bvalid <= 1'b0;
             bresp  <= 2'bxx;
           end else begin
