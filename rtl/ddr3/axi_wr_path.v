@@ -182,7 +182,7 @@ module axi_wr_path (
 
   // -- FSM to Capture WRITE Requests and Data -- //
 
-  // States for capturing write-data
+  // States for capturing write requests
   localparam ST_IDLE = 4'b0000;
   localparam ST_FILL = 4'b0001;
   localparam ST_BUSY = 4'b0010;
