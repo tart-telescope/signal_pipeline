@@ -230,7 +230,7 @@ module axi_wr_path (
           if (axi_wvalid_i && wready && fill_count == 2'd1) begin
             wlast <= 1'b1;
           end else if (axi_wvalid_i && wready) begin
-            wlast  <= 1'b0;
+            wlast <= 1'b0;
           end
         end
 

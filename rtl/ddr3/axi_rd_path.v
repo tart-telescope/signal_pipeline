@@ -98,19 +98,14 @@ module axi_rd_path (
 
 
   reg aready, rready, fetch;
-  // reg [MSB:0] rdata;
 
   wire cmd_valid = axi_arvalid_i & aready;
   wire cmd_ready, rcf_valid, rdf_ready, rrf_ready;
 
 
   assign axi_arready_o = aready;
-  /*
-assign axi_rvalid_o = rvalid;
-assign axi_rlast_o = rlast;
-assign axi_rdata_o = rdata;
-*/
-assign axi_rresp_o = rrf_ready ? AXI_RESP_OKAY : 2'bxx ;
+
+  assign axi_rresp_o   = rrf_ready ? AXI_RESP_OKAY : 2'bxx;
 
   assign mem_fetch_o   = fetch;
   assign mem_ready_o   = rready;
@@ -129,7 +124,7 @@ assign axi_rresp_o = rrf_ready ? AXI_RESP_OKAY : 2'bxx ;
 
   always @(posedge clock) begin
     if (reset) begin
-      state <= ST_IDLE;
+      state  <= ST_IDLE;
       aready <= 1'b0;
       rready <= 1'b0;
     end else begin
@@ -150,39 +145,39 @@ assign axi_rresp_o = rrf_ready ? AXI_RESP_OKAY : 2'bxx ;
           // Break up large bursts into smaller bursts
           if (fetch && mem_accept_i) begin
             rready <= 1'b1;
-            state <= ST_READ; // todoodo ...
+            state  <= ST_READ;  // todoodo ...
           end else begin
             rready <= 1'b0;
           end
         end
 
-          ST_READ: begin
-            if (mem_valid_i && rready && mem_last_i) begin
-              rready <= 1'b0;
-              
-              if (cmd_ready && rdf_ready) begin
-                state <= ST_IDLE;
-              end else begin
-                state <= ST_BUSY;
-              end
+        ST_READ: begin
+          if (mem_valid_i && rready && mem_last_i) begin
+            rready <= 1'b0;
+
+            if (cmd_ready && rdf_ready) begin
+              state <= ST_IDLE;
             end else begin
-              rready <= rdf_ready; // todo: skid-buf required ??
+              state <= ST_BUSY;
             end
+          end else begin
+            rready <= rdf_ready;  // todo: skid-buf required ??
           end
+        end
 
         ST_BUSY: begin
           if (cmd_ready && mem_ready_o) begin
-            state <= ST_IDLE;
+            state  <= ST_IDLE;
             aready <= 1'b1;
           end else begin
             aready <= 1'b0;
           end
         end
 
-          default: begin
-            $error("RD:%10t: READ state machine failure!", $time);
-            $fatal;
-          end
+        default: begin
+          $error("RD:%10t: READ state machine failure!", $time);
+          $fatal;
+        end
       endcase
     end
   end
@@ -228,18 +223,24 @@ assign axi_rresp_o = rrf_ready ? AXI_RESP_OKAY : 2'bxx ;
       .data_o ({mem_addr_o, mem_rdid_o})
   );
 
-// -- Read-Data Response FIFO -- //
 
-sync_fifo #( .WIDTH(AXI_ID_WIDTH), .ABITS(CBITS), .OUTREG(CTRL_FIFO_BLOCK)
-) response_fifo_inst
-( .clock(clock),
-  .reset(reset),
-  .valid_i(fetch & mem_accept_i),
-  .ready_o(),
-  .data_i(mem_rdid_o),
-  .valid_o(rrf_ready),
-  .ready_i(axi_rvalid_o & axi_rready_i & axi_rlast_o),
-  .data_o(axi_rid_o)
+  // -- Read-Data Response FIFO -- //
+
+  // todo: should this be in 'ddr3_axi_ctrl', so that it can be used for both
+  //   READ & WRITE operations ??
+  sync_fifo #(
+      .WIDTH (AXI_ID_WIDTH),
+      .ABITS (CBITS),
+      .OUTREG(CTRL_FIFO_BLOCK)
+  ) response_fifo_inst (
+      .clock  (clock),
+      .reset  (reset),
+      .valid_i(fetch & mem_accept_i),
+      .ready_o(),
+      .data_i (mem_rdid_o),
+      .valid_o(rrf_ready),
+      .ready_i(axi_rvalid_o & axi_rready_i & axi_rlast_o),
+      .data_o (axi_rid_o)
   );
 
 
@@ -257,7 +258,7 @@ sync_fifo #( .WIDTH(AXI_ID_WIDTH), .ABITS(CBITS), .OUTREG(CTRL_FIFO_BLOCK)
 
       .valid_i(mem_valid_i),
       .ready_o(rdf_ready),
-      .data_i ({mem_last_i, mem_data_i}), // todo: pad end of bursts
+      .data_i ({mem_last_i, mem_data_i}), // todo: pad end of bursts ??
 
       .valid_o(axi_rvalid_o),
       .ready_i(axi_rready_i),

@@ -2,10 +2,10 @@
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
 [*] Wed Oct 11 22:46:04 2023
 [*]
-[dumpfile] "/home/patrick/dev/signal_pipeline/build/ddr3_axi_ctrl_tb.vcd"
+[dumpfile] "./ddr3_axi_ctrl_tb.vcd"
 [dumpfile_mtime] "Wed Oct 11 22:45:44 2023"
 [dumpfile_size] 22174
-[savefile] "/home/patrick/dev/signal_pipeline/build/ddr3_axi_ctrl_tb.gtkw"
+[savefile] "./ddr3_axi_ctrl_tb.gtkw"
 [timestart] 0
 [size] 2560 1376
 [pos] -1 -1

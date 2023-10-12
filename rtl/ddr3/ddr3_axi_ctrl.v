@@ -102,6 +102,10 @@ module ddr3_axi_ctrl (
   parameter DATA_FIFO_BLOCK = 1;
   localparam DBITS = $clog2(DATA_FIFO_DEPTH);
 
+// If the memory controller is idle (and both datapaths), send any request
+// straight to the memory-controller (if 'FAST_PATH_ENABLE == 1')
+parameter FAST_PATH_ENABLE = 1;
+
 
   input clock;
   input reset;
@@ -161,6 +165,9 @@ module ddr3_axi_ctrl (
   // todo: this is but a sketch ...
   localparam COMMAND_WIDTH = 4 + 1 + WIDTH;
 
+localparam TRANS = 4;
+localparam TSB = TRANS - 1;
+
 
   // -- Turn AXI4 Commands into Memory-Controller Commands -- //
 
@@ -170,6 +177,38 @@ module ddr3_axi_ctrl (
 
   // assign axi_awready_o = awready;
   // assign axi_arready_o = arready;
+
+localparam ST_IDLE = 4'b0000;
+localparam ST_BUSY = 4'b1000;
+
+reg [3:0] state = ST_IDLE;
+
+// Current, Next, Read, Write (Transaction ID's)
+reg [TSB:0] trid;
+wire [TSB:0] ctrid, ntrid, rtrid, wtrid;
+
+assign ntrid = trid + 1;
+
+always @(posedge clock) begin
+  if (reset) begin
+    trid <= {TRANS{1'b0}};
+    state <= ST_IDLE;
+  end else begin
+    case (state)
+        ST_IDLE: begin
+        end
+
+        ST_BUSY: begin
+          // Can not queue any more AXI requests
+        end
+
+        default: begin
+          $error("AX:%10t: CTRL state machine failure!", $time);
+          $fatal;
+        end
+    endcase
+  end
+end
 
 
   // -- Write Requests -- //
@@ -240,7 +279,6 @@ module ddr3_axi_ctrl (
   reg cmd_block;
 
   assign command_w = {req_id, valid, store, req_ad};
-  // assign cmd_valid = (mem_store_o || mem_fetch_o) && mem_accept_i;
   assign cmd_valid = axi_awvalid_i || axi_arvalid_i;
 
   always @(posedge clock) begin
@@ -299,8 +337,8 @@ module ddr3_axi_ctrl (
 
       .axi_bvalid_o(axi_bvalid_o),  // AXI4 Write Response Port
       .axi_bready_i(axi_bready_i),
-      .axi_bresp_o(axi_bresp_o),
       .axi_bid_o(axi_bid_o),
+      .axi_bresp_o(axi_bresp_o),
 
       .mem_store_o (wr_store),
       .mem_accept_i(wr_accept),
@@ -352,6 +390,39 @@ module ddr3_axi_ctrl (
       .mem_last_i(mem_last_i),  // todo: ...
       .mem_rdid_i(mem_resp_id_i),
       .mem_data_i(mem_rddata_i)
+  );
+
+
+  // -- AXI4 Transaction Response FIFO -- //
+
+  wire trf_empty_n, trf_full_n, trf_push, trf_pop;
+  wire [ISB:0] trid_a, trid_w;
+
+  assign trid_a = rd_fetch ? rd_reqid : (wr_store ? wr_reqid : {AXI_ID_WIDTH{1'bx}}) ;
+
+  assign trf_push = (mem_fetch_o | mem_store_o) & mem_accept_i;
+  assign trf_pop = (axi_rvalid_o & axi_rready_i & axi_rlast_o) | (axi_bvalid_o & axi_bready_i) ;
+
+
+  // todo: store the transaction ID of each request that is sent to the memory
+  //   controller, and when each request completes, generate the appropriate
+  //   AXI4 response.
+  // todo: perhaps this ordering should be left up to the memory controller ??
+  sync_fifo #(
+      .WIDTH (AXI_ID_WIDTH),
+      .ABITS (CBITS),
+      .OUTREG(CTRL_FIFO_BLOCK)
+  ) response_fifo_inst (
+      .clock  (clock),
+      .reset  (reset),
+
+      .valid_i(trf_push),
+      .ready_o(trf_full_n),
+      .data_i (trid_a),
+
+      .valid_o(trf_empty_n),
+      .ready_i(trf_pop),
+      .data_o (trid_w)
   );
 
 
