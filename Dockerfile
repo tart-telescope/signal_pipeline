@@ -11,7 +11,8 @@ RUN apt-get update -y && apt-get install -y \
 RUN apt-get install -y texlive-luatex
 RUN apt-get install -y git texlive-science
 RUN apt-get install -y autotools-dev
-RUN apt-get install -y libtool automake yacc libcairo2-dev
+RUN apt-get install -y libtool automake libcairo2-dev
+RUN apt-get install -y bison
 
 RUN rm -rf /var/lib/apt/lists/*
 
