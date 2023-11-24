@@ -51,7 +51,7 @@ For the calculation of $v_{ab}$, for antenna sources $Z_a, Z_b$:
   Z_b & = & I_b + j\,Q_b \\
   v_{ab} & = & Z_a \cdot Z_b^* = \mathcal{R}_{ab} + j \mathcal{I}_{ab} \\
   \mathcal{R}_{ab}  &  \equiv & I_a \cdot I_b + Q_a \cdot Q_b \\
-  \mathcal{I}_{ab} & \equiv & Q_a \cdot I_b - I_a \cdot Q_b \
+  \mathcal{I}_{ab} & \equiv & Q_a \cdot I_b - I_a \cdot Q_b 
 \end{eqnarray*}
 For 1-bit signals, we have the following truth-table:
 
