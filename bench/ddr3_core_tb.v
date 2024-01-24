@@ -209,47 +209,47 @@ gowin_ddr3_dfi_phy
 )
 u_phy
 (
-     .clock(clock)
-    ,.reset(reset)
-    ,.clk_ddr(clk_ddr)
+     .clock(clock),
+    .reset(reset),
+    .clk_ddr(clk_ddr),
 
-,.cfg_valid_i(1'b0)
-,.cfg_data_i({16'h0000, 4'h4, 4'h4, 8'h00})
+.cfg_valid_i(1'b0),
+.cfg_data_i({16'h0000, 4'h4, 4'h4, 8'h00}),
 
-    ,.dfi_cke_i(dfi_cke)
-    ,.dfi_reset_n_i(dfi_reset_n)
-    ,.dfi_cs_n_i(dfi_cs_n)
-    ,.dfi_ras_n_i(dfi_ras_n)
-    ,.dfi_cas_n_i(dfi_cas_n)
-    ,.dfi_we_n_i(dfi_we_n)
-    ,.dfi_odt_i(dfi_odt)
-    ,.dfi_bank_i(dfi_bank)
-    ,.dfi_addr_i(dfi_address)
+    .dfi_cke_i(dfi_cke),
+    .dfi_reset_n_i(dfi_reset_n),
+    .dfi_cs_n_i(dfi_cs_n),
+    .dfi_ras_n_i(dfi_ras_n),
+    .dfi_cas_n_i(dfi_cas_n),
+    .dfi_we_n_i(dfi_we_n),
+    .dfi_odt_i(dfi_odt),
+    .dfi_bank_i(dfi_bank),
+    .dfi_addr_i(dfi_address),
 
-    ,.dfi_wren_i(dfi_wrdata_en)
-    ,.dfi_mask_i(dfi_wrdata_mask)
-    ,.dfi_data_i(dfi_wrdata)
+    .dfi_wren_i(dfi_wrdata_en),
+    .dfi_mask_i(dfi_wrdata_mask),
+    .dfi_data_i(dfi_wrdata),
 
-    ,.dfi_rden_i(dfi_rddata_en)
-    ,.dfi_valid_o(dfi_rddata_valid)
-    ,.dfi_data_o(dfi_rddata)
-    // ,.dfi_rddata_dnv_o(dfi_rddata_dnv)
+    .dfi_rden_i(dfi_rddata_en),
+    .dfi_valid_o(dfi_rddata_valid),
+    .dfi_data_o(dfi_rddata),
+    // .dfi_rddata_dnv_o(dfi_rddata_dnv),
 
-    ,.ddr3_ck_p_o(ddr3_ck_p_w)
-    ,.ddr3_ck_n_o(ddr3_ck_n_w)
-    ,.ddr3_cke_o(ddr3_cke_w)
-    ,.ddr3_reset_n_o(ddr3_reset_n_w)
-    ,.ddr3_cs_n_o(ddr3_cs_n_w)
-    ,.ddr3_ras_n_o(ddr3_ras_n_w)
-    ,.ddr3_cas_n_o(ddr3_cas_n_w)
-    ,.ddr3_we_n_o(ddr3_we_n_w)
-    ,.ddr3_odt_o(ddr3_odt_w)
-    ,.ddr3_ba_o(ddr3_ba_w)
-    ,.ddr3_a_o(ddr3_addr_w)
-    ,.ddr3_dm_o(ddr3_dm_w)
-    ,.ddr3_dqs_p_io(ddr3_dqs_p_w)
-    ,.ddr3_dqs_n_io(ddr3_dqs_n_w)
-    ,.ddr3_dq_io(ddr3_dq_w)
+    .ddr3_ck_p_o(ddr3_ck_p_w),
+    .ddr3_ck_n_o(ddr3_ck_n_w),
+    .ddr3_cke_o(ddr3_cke_w),
+    .ddr3_reset_n_o(ddr3_reset_n_w),
+    .ddr3_cs_n_o(ddr3_cs_n_w),
+    .ddr3_ras_n_o(ddr3_ras_n_w),
+    .ddr3_cas_n_o(ddr3_cas_n_w),
+    .ddr3_we_n_o(ddr3_we_n_w),
+    .ddr3_odt_o(ddr3_odt_w),
+    .ddr3_ba_o(ddr3_ba_w),
+    .ddr3_a_o(ddr3_addr_w),
+    .ddr3_dm_o(ddr3_dm_w),
+    .ddr3_dqs_p_io(ddr3_dqs_p_w),
+    .ddr3_dqs_n_io(ddr3_dqs_n_w),
+    .ddr3_dq_io(ddr3_dq_w)
 );
 
 
