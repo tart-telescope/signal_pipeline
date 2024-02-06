@@ -5,3 +5,5 @@
 logs/
 target/
 *.log
+
+misc-verilog-cores/
