@@ -5,22 +5,24 @@ all:	doc sim
 #  Icarus Verilog sources & settings
 ##
 
-LIBDIR	:= ../lib/misc-verilog-cores/rtl
+LIBDIR	:= ../lib/misc-verilog-cores
 DDR3DIR	:= $(LIBDIR)/ddr3
 USB_DIR	:= $(LIBDIR)/usb
 
 # Various cores & modules
+ARCH	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/arch/*.v))
 AXIS	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/axis/*.v))
 DDR3	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/ddr3/*.v))
 FIFO	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/fifo/*.v))
 MISC	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/misc/*.v))
+SPI	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/spi/*.v))
 UART	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/uart/*.v))
 USB	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/usb/*.v))
 
 # Correlator cores & testbenches
 RTL	:= ../rtl
 CORR	:= $(wildcard $(RTL)/correlator/*.v)
-VERLIB	:= $(AXIS) $(CORR) $(DDR3) $(FIFO) $(MISC) $(UART) $(USB)
+VERLIB	:= $(ARCH) $(AXIS) $(CORR) $(DDR3) $(FIFO) $(MISC) $(SPI) $(UART) $(USB)
 
 # Icarus settings
 IVC	?= iverilog
