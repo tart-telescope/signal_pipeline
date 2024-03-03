@@ -43,7 +43,7 @@ module top_tb;
   // Safety-valve
   initial #6000 $finish;
 
-reg valid;
+  reg valid;
 
 
   /**

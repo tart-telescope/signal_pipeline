@@ -28,7 +28,6 @@ module correlator (
   //  - 'viscalc.v' for first-stage correlation
 
   parameter integer WIDTH = 32;  // Number of antennas/signals
-  // parameter integer SBITS = 5;
   localparam integer SBITS = $clog2(WIDTH);
   localparam integer MSB = WIDTH - 1;
 
@@ -36,13 +35,11 @@ module correlator (
   localparam integer ASB = ABITS - 1;
 
   parameter integer MUX_N = 7; // A- & B- MUX widths
-  // parameter integer XBITS = 3;  // Input MUX bits
-  localparam integer XBITS = $clog2(MUX_N);
+  localparam integer XBITS = $clog2(MUX_N);  // Input MUX bits
   localparam integer XSB = XBITS - 1;
 
   parameter integer TRATE = 30;  // Time-multiplexing rate
-  // parameter integer TBITS = 5;
-  localparam integer TBITS = $clog2(TRATE);  // ceil(Log2(TRATE))
+  localparam integer TBITS = $clog2(TRATE);  // Time-slice counter bits
   localparam integer TSB = TBITS - 1;
 
   localparam integer PBITS = SBITS * MUX_N;  // Signal taps for A-/B- MUX inputs

@@ -55,8 +55,19 @@ module controller #(
     localparam integer STRBS = WIDTH / 8,
     localparam integer SSB   = STRBS - 1
 ) (
-    input clock,
-    input reset,
+    input clock_in, // ~16.4 MHz on TART & 27 MHz on Tang Primer
+    input ulpi_clk, // 60 MHz (if present)
+    input areset_n,
+
+    output axi_clk_o,
+    output axi_rst_o,
+    output ddr_clk_o,
+    output usb_clk_o,
+    output usb_rst_o,
+    output acq_clk_o,
+
+    output ulpi_rst_no,
+    output tart_reset_o,
 
     input axil_awvalid_i,
     output axil_awready_o,
@@ -80,7 +91,6 @@ module controller #(
     output [1:0] axil_rresp_o,
     output [MSB:0] axil_rdata_o,
 
-    output tart_reset_o,
     output capture_en_o,
     output acquire_en_o,
     output correlator_o,
@@ -90,18 +100,91 @@ module controller #(
 
   // -- Signals & State Registers -- //
 
+  reg [4:0] reset_count = 5'd0;
   reg rst_q, cap_q, acq_q, cor_q;
+  wire clock;
 
-  always @(posedge clock) begin
-    if (reset) begin
+  assign axi_clk_o = clock;
+  assign acq_clk_o = clock_in;
+
+  assign tart_reset_o = rst_q;
+  assign capture_en_o = cap_q;
+  assign acquire_en_o = acq_q;
+  assign correlator_o = cor_q;
+
+
+  // -- Reset Logic -- //
+
+  always @(posedge clock or negedge areset_n) begin
+    if (!areset_n) begin
       rst_q <= 1'b1;
       cap_q <= 1'b0;
       acq_q <= 1'b0;
       cor_q <= 1'b0;
     end else begin
-      rst_q <= 1'b0;  // todo ...
+      rst_q <= ~reset_count[4];
     end
   end
+
+  // Reset delay after clock starts
+  always @(posedge clock or negedge areset_n) begin
+    if (!areset_n) begin
+      reset_count <= 5'd0;
+    end else begin
+      if (!reset_count[4]) begin
+        reset_count <= reset_count + 5'd1;
+      end
+    end
+  end
+
+
+  // -- AXI Lite FSM -- //
+
+  localparam [3:0] ST_IDLE = 4'h0;
+
+  reg [3:0] state;
+
+  always @(posedge clock) begin
+    if (rst_q) begin
+      state <= ST_IDLE;
+    end else begin
+      case (state)
+        ST_IDLE: begin
+          state <= state;
+        end
+        default: begin
+          state <= ST_IDLE;
+        end
+      endcase
+    end
+  end
+
+
+  // -- TART Main Clocks & Resets -- //
+
+  clock_reset #(
+      .GOWIN_GW2A(1),
+      .GOWIN_FCLKIN("27"),  // todo ...
+      .GOWIN_RPLL_IDIV(3)  // todo ...
+  ) U_AXI_AND_DDR_CLK1 (
+      .clock_in(clock_in),
+      .areset_n(areset_n),
+      .clock(clock),
+      .clk2x(ddr_clk_o),
+      .reset(axi_rst_o)
+  );
+
+
+  // -- USB ULPI Clocks and Resets (OPTIONAL) -- //
+
+  ulpi_reset U_ULPI_CLK_RST1 (
+      .ulpi_clk  (ulpi_clk),
+      .areset_n  (areset_n),
+      .sys_clock (clock),
+      .ulpi_rst_n(ulpi_rst_no),
+      .usb_clock (usb_clk_o),
+      .usb_reset (usb_rst_o)
+  );
 
 
 endmodule  // controller

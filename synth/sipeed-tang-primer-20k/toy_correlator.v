@@ -293,8 +293,11 @@ module toy_correlator (
   assign bus_revis_o = bus_tdata[ACCUM+VSB:ACCUM];
   assign bus_imvis_o = bus_tdata[VSB:0];
 
-// `define __USE_ALEX_FIFO
+`define __USE_ALEX_FIFO
 `ifdef __USE_ALEX_FIFO
+
+  // Notes:
+  //  - a bit naughty, as some of the outputs are combinational ??
   axis_async_fifo #(
       .DEPTH(64),
       .DATA_WIDTH(ACCUM + ACCUM),
@@ -346,7 +349,11 @@ module toy_correlator (
       .m_status_bad_frame(),
       .m_status_good_frame()
   );
+
 `else // Paddy FIFO
+
+  // Notes:
+  //  - not as mature/tested as Alex's AFIFO (above);
   axis_afifo #(
       .WIDTH(ACCUM+ACCUM),
       .ABITS(4)
@@ -365,6 +372,7 @@ module toy_correlator (
       .m_tlast_o(bus_last_o),
       .m_tdata_o(bus_tdata)
   );
+
 `endif
 
 
