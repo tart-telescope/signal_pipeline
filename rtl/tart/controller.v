@@ -45,6 +45,15 @@
  *
  * Note:
  *  - based on `tart_control.v`, from TART2;
+ *  - Tang Primer Core Board has a 27.0 MHz oscillator;
+ *  - TART motherboard has a 16.368 MHz oscillator;
+ *  - Run the correlators at 12x 16.368 MHz (same as TART2)?
+ *  - Raspberry Pi 4 has SPI bus with the following clocks:
+ *     + 250 MHz / 'n';
+ *     + 'n' is any even integer from 2 to 65536;
+ *  - The DDR3 SDRAM should have a clock-rate between 100-125 MHz;
+ *  - The hardware testbench board has a USB2.0 ULPI PHY with a 60 MHz output
+ *    oscillator;
  *
  */
 module controller #(
@@ -55,7 +64,7 @@ module controller #(
     localparam integer STRBS = WIDTH / 8,
     localparam integer SSB   = STRBS - 1
 ) (
-    input clock_in, // ~16.4 MHz on TART & 27 MHz on Tang Primer
+    input clock_in, // ~16.368 MHz on TART
     input ulpi_clk, // 60 MHz (if present)
     input areset_n,
 
