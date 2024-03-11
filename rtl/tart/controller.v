@@ -78,32 +78,20 @@ module controller #(
     output ulpi_rst_no,
     output tart_reset_o,
 
-    input axil_awvalid_i,
-    output axil_awready_o,
-    input [ASB:0] axil_awaddr_i,
-
-    input axil_wvalid_i,
-    output axil_wready_o,
-    input [SSB:0] axil_wstrb_i,
-    input [MSB:0] axil_wdata_i,
-
-    output axil_bvalid_o,
-    input axil_bready_i,
-    output [1:0] axil_bresp_o,
-
-    input axil_arvalid_i,
-    output axil_arready_o,
-    input [ASB:0] axil_araddr_i,
-
-    output axil_rvalid_o,
-    input axil_rready_i,
-    output [1:0] axil_rresp_o,
-    output [MSB:0] axil_rdata_o,
-
     output capture_en_o,
     output acquire_en_o,
     output correlator_o,
-    input  visibility_i
+    input  visibility_i,
+
+   input s_tvalid,
+   output s_tready,
+   input s_tlast,
+   input [7:0] s_tdata,
+
+   output m_tvalid,
+   input m_tready,
+   output m_tlast,
+   output [7:0] m_tdata
 );
 
 
@@ -112,6 +100,9 @@ module controller #(
   reg [4:0] reset_count = 5'd0;
   reg rst_q, cap_q, acq_q, cor_q;
   wire clock;
+
+
+  // -- I/O Assignments -- //
 
   assign axi_clk_o = clock;
   assign acq_clk_o = clock_in;
