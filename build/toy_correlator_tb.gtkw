@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Fri Sep 29 08:27:48 2023
+[*] Fri Mar 15 10:09:41 2024
 [*]
-[dumpfile] "/home/patrick/dev/signal_pipeline/vcd/toy_correlator_tb.vcd"
-[dumpfile_mtime] "Fri Sep 29 08:15:43 2023"
-[dumpfile_size] 697756
-[savefile] "/home/patrick/dev/signal_pipeline/vcd/toy_correlator_tb.gtkw"
-[timestart] 1011000
+[dumpfile] "/home/patrick/dev/signal_pipeline/build/toy_correlator_tb.vcd"
+[dumpfile_mtime] "Fri Mar 15 10:08:51 2024"
+[dumpfile_size] 819827
+[savefile] "/home/patrick/dev/signal_pipeline/build/toy_correlator_tb.gtkw"
+[timestart] 0
 [size] 2560 1376
-[pos] -38 -38
-*-18.947041 3700000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -1 -1
+*-17.947041 300000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] toy_correlator_tb.
 [treeopen] toy_correlator_tb.toy_correlator_inst.
 [treeopen] toy_correlator_tb.toy_correlator_inst.correlator_inst.
@@ -21,16 +21,16 @@
 toy_correlator_tb.rst_n
 toy_correlator_tb.start
 toy_correlator_tb.done
-@c00200
+@800201
 -Source
-@28
+@29
 toy_correlator_tb.sig_clk
 toy_correlator_tb.a_vld
 toy_correlator_tb.a_rdy
 toy_correlator_tb.a_lst
-@22
+@23
 toy_correlator_tb.a_dat[7:0]
-@1401200
+@1000201
 -Source
 @800200
 -Bus

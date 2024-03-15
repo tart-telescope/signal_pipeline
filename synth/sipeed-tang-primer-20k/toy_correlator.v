@@ -1,99 +1,72 @@
 `timescale 1ns / 100ps
-module toy_correlator (
-    sig_clock,
+module toy_correlator #(
+    parameter integer WIDTH = 4,  // Number of antennas/signals
+    localparam WBITS = $clog2(WIDTH),
+    localparam MSB = WIDTH - 1,
 
-    bus_clock,
-    bus_rst_n,
+    // Source-signal multiplexor parameters
+    parameter  integer MUX_N = 4,
+    localparam integer XBITS = $clog2(MUX_N),
+    localparam integer XSB   = XBITS - 1,
 
-    vis_clock,
-    vis_rst_n,
+    parameter integer CORES = 1,  // Number of correlator cores
+    localparam integer UBITS = $clog2(CORES),  // Log2(#cores)
+    localparam integer USB = UBITS - 1,
+
+    // Time-multiplexing rate, i.e., clock multiplier
+    parameter  integer TRATE = 15,
+    localparam integer TBITS = $clog2(TRATE),  // ceil(Log2(TRATE))
+    localparam integer TSB   = TBITS - 1,
+
+    // Every 'COUNT' samples, compute partial-visibilities to accumumlate
+    parameter  integer LOOP0 = 3,
+    localparam integer LBITS = $clog2(LOOP0),
+    parameter  integer LOOP1 = 5,
+    localparam integer HBITS = $clog2(LOOP1),
+    localparam integer COUNT = LOOP0 * LOOP1,  // Number of terms in partial sums
+    localparam integer CBITS = $clog2(COUNT),  // Bit-width of loop-counter
+    localparam integer CSB   = CBITS - 1,
+
+    parameter integer ACCUM = 32,  // Bit-width of accumulators
+    localparam integer VSB = ACCUM - 1,
+
+    parameter integer ABITS = 4,  // Bit-width of partial-sums
+    localparam integer ASB = ABITS - 1,
+
+    parameter integer SBITS = 7,  // Bit-width of partial-sums
+    localparam integer SSB = SBITS - 1,
+
+    // Buffer SRAM parameters
+    localparam integer BBITS = 1,  // Number of bits for the bank-number
+    localparam integer WORDS = 1 << (BBITS + CBITS),  // Buffer SRAM size
+    localparam integer BANKS = BBITS << 1,
+    localparam integer BSB = BBITS - 1
+) (
+    input sig_clock,  // 8.168 MHz sample-clock
+
+    input bus_clock,  // SPI/USB clock for reading visibilities
+    input bus_rst_n,
+
+    input vis_clock,  // Correlator clock
+    input vis_rst_n,
 
     // Status signals
-    vis_start_o,
-    vis_frame_o,
+    output vis_start_o,
+    output vis_frame_o,
 
     // AXI4 Stream of antenna data
-    sig_valid_i,
-    sig_last_i,
-    sig_idata_i,
-    sig_qdata_i,
+    input sig_valid_i,
+    input sig_last_i,
+    input [MSB:0] sig_idata_i,
+    input [MSB:0] sig_qdata_i,
 
     // AXI4 Stream of visibilities data
-    bus_revis_o,
-    bus_imvis_o,
-    bus_valid_o,
-    bus_ready_i,
-    bus_last_o
+    output [VSB:0] bus_revis_o,
+    output [VSB:0] bus_imvis_o,
+    output bus_valid_o,
+    input bus_ready_i,
+    output bus_last_o
 );
-
-  parameter integer WIDTH = 4;  // Number of antennas/signals
-  localparam WBITS = $clog2(WIDTH);
-  localparam MSB = WIDTH - 1;
-
-  // Source-signal multiplexor parameters
-  parameter integer MUX_N = 4;
-  localparam integer XBITS = $clog2(MUX_N);
-  localparam integer XSB = XBITS - 1;
-
-  parameter integer CORES = 1;  // Number of correlator cores
-  localparam integer UBITS = $clog2(CORES);  // Log2(#cores)
-  localparam integer USB = UBITS - 1;
-
-  // Time-multiplexing rate; i.e., clock multiplier
-  parameter integer TRATE = 15;
-  localparam integer TBITS = $clog2(TRATE);  // ceil(Log2(TRATE))
-  localparam integer TSB = TBITS - 1;
-
-  // Every 'COUNT' samples, compute partial-visibilities to accumumlate
-  parameter integer LOOP0 = 3;
-  localparam integer LBITS = $clog2(LOOP0);
-  parameter integer LOOP1 = 5;
-  localparam integer HBITS = $clog2(LOOP1);
-  localparam integer COUNT = LOOP0 * LOOP1;  // Number of terms in partial sums
-  localparam integer CBITS = $clog2(COUNT);  // Bit-width of loop-counter
-  localparam integer CSB = CBITS - 1;
-
-  parameter integer ACCUM = 32;  // Bit-width of accumulators
-  localparam integer VSB = ACCUM - 1;
-
-  parameter integer ABITS = 4;  // Bit-width of partial-sums
-  localparam integer ASB = ABITS - 1;
-
-  parameter integer SBITS = 7;  // Bit-width of partial-sums
-  localparam integer SSB = SBITS - 1;
-
-  // Buffer SRAM parameters
-  localparam integer BBITS = 1;  // Number of bits for the bank-number
-  localparam integer WORDS = 1 << (BBITS + CBITS);  // Buffer SRAM size
-  localparam integer BANKS = BBITS << 1;
-  localparam integer BSB = BBITS - 1;
-
-
-  input sig_clock;  // 8.168 MHz sample-clock
-
-  input bus_clock;  // SPI/USB clock for reading visibilities
-  input bus_rst_n;
-
-  input vis_clock;  // Correlator clock
-  input vis_rst_n;
-
-  // Status signals
-  output vis_start_o;
-  output vis_frame_o;
-
-  // AXI4 Stream of antenna data
-  input sig_valid_i;
-  input sig_last_i;
-  input [MSB:0] sig_idata_i;
-  input [MSB:0] sig_qdata_i;
-
-  // AXI4 Stream of visibilities data
-  output [VSB:0] bus_revis_o;
-  output [VSB:0] bus_imvis_o;
-  output bus_valid_o;
-  input bus_ready_i;
-  output bus_last_o;
-
 
   /**
    * Input-buffering SRAM's for (antenna) signal IQ data.
@@ -293,7 +266,7 @@ module toy_correlator (
   assign bus_revis_o = bus_tdata[ACCUM+VSB:ACCUM];
   assign bus_imvis_o = bus_tdata[VSB:0];
 
-`define __USE_ALEX_FIFO
+  `define __USE_ALEX_FIFO
 `ifdef __USE_ALEX_FIFO
 
   // Notes:
@@ -350,12 +323,12 @@ module toy_correlator (
       .m_status_good_frame()
   );
 
-`else // Paddy FIFO
+`else  // Paddy FIFO
 
   // Notes:
   //  - not as mature/tested as Alex's AFIFO (above);
   axis_afifo #(
-      .WIDTH(ACCUM+ACCUM),
+      .WIDTH(ACCUM + ACCUM),
       .ABITS(4)
   ) axis_afifo_inst (
       .s_aresetn(vis_rst_n),

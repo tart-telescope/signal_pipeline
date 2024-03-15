@@ -19,7 +19,7 @@ module toy_correlator_tb;
   wire a_rdy;
 
   initial begin
-    $dumpfile("../vcd/toy_correlator_tb.vcd");
+    $dumpfile("toy_correlator_tb.vcd");
     $dumpvars;
 
     #20 rst_n <= 1'b0;
@@ -37,6 +37,44 @@ module toy_correlator_tb;
 
   initial begin
     #15000 $finish;
+  end
+
+
+  //
+  //  Fake Radios
+  ///
+  localparam USE_DUMMY_RADIOS = 1;
+  localparam ANTENNA_NUM = 4;
+  localparam NSB = ANTENNA_NUM - 1;
+  localparam NZERO = {ANTENNA_NUM{1'b0}};
+
+  reg [NSB:0] dat_i = NZERO, dat_q = NZERO;
+  wire [NSB:0] sig_i, sig_q;
+
+  genvar ant;
+  generate
+    for (ant = 0; ant < ANTENNA_NUM; ant = ant + 1) begin
+      radio_dummy #(
+          .ANT_NUM(ant)
+      ) r0 (
+          .clk16(sig_clk),
+          .rst_n(rst_n),
+          .i1(dat_i[ant]),
+          .q1(dat_q[ant]),
+          .data_i(sig_i[ant]),
+          .data_q(sig_q[ant])
+      );
+    end
+  endgenerate
+
+  always @(posedge sig_clk) begin
+    if (!rst_n) begin
+      dat_i <= NZERO;
+      dat_q <= NZERO;
+    end else begin
+      dat_i <= sig_i;
+      dat_q <= sig_q;
+    end
   end
 
 
@@ -59,10 +97,10 @@ module toy_correlator_tb;
         count <= 10'd0000;
       end else if (start && a_rdy) begin
         a_vld <= 1'b1;
-        a_dat <= $urandom;
+        a_dat <= USE_DUMMY_RADIOS ? {dat_i, dat_q} : $urandom;
         count <= cnext;
       end else if (a_vld && a_rdy) begin
-        a_dat <= $urandom;
+        a_dat <= USE_DUMMY_RADIOS ? {dat_i, dat_q} : $urandom;
         count <= cnext;
 
         if (cnext == 10'd0104) begin
@@ -97,8 +135,9 @@ module toy_correlator_tb;
     end
   end
 
+
   toy_correlator #(
-      .WIDTH(4),
+      .WIDTH(ANTENNA_NUM),
       .MUX_N(4),
       .TRATE(15),
       .LOOP0(3),

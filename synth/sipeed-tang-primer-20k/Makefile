@@ -17,8 +17,9 @@ USB	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/usb/*.v))
 
 DIR	:= ../../rtl
 CORR	:= $(wildcard $(DIR)/correlator/*.v)
+RADIO	:= $(filter-out %_tb.v, $(wildcard $(DIR)/radio/*.v))
 
-LIB	:= $(ARCH) $(AXIS) $(CORR) $(FIFO) $(MISC) $(SPI) $(USB)
+LIB	:= $(ARCH) $(AXIS) $(CORR) $(RADIO) $(FIFO) $(MISC) $(SPI) $(USB)
 
 SRC	:= $(wildcard *.v)
 RTL	:= $(filter-out %_tb.v, $(SRC)) $(LIB)
