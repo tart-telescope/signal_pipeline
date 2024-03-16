@@ -94,6 +94,7 @@ module toy_correlator #(
       .valid_i(sig_valid_i),
       .idata_i(sig_idata_i),
       .qdata_i(sig_qdata_i),
+
       // Delayed, up-rated, looped signals
       .vis_clk(vis_clock),
       .vis_rst(vis_reset),
@@ -127,6 +128,7 @@ module toy_correlator #(
       end else begin
         start <= 1'b0;
       end
+
     end
   end
 
@@ -134,7 +136,6 @@ module toy_correlator #(
   /**
    *  Correlator array, with daisy-chained outputs.
    */
-
   wire cor_frame, cor_valid;
   wire [ASB:0] cor_revis, cor_imvis;
 
@@ -167,7 +168,7 @@ module toy_correlator #(
       .BTAPS(BTAPS),
       .ASELS(ASELS),
       .BSELS(BSELS)
-  ) correlator_inst (
+  ) U_CORE1 (
       .clock(vis_clock),
       .reset(vis_reset),
 
@@ -199,7 +200,7 @@ module toy_correlator #(
       .OBITS(SBITS),
       .PSUMS(LOOP0),
       .COUNT(LOOP1)
-  ) visaccum_inst (
+  ) U_VISACC1 (
       .clock(vis_clock),
       .reset(vis_reset),
 
@@ -220,7 +221,6 @@ module toy_correlator #(
   /**
    *  Accumulates each of the partial-sums into the full-width visibilities.
    */
-
   localparam LSB = ACCUM - SBITS;
 
   wire [LSB:0] vis_limit = 3;
@@ -233,7 +233,7 @@ module toy_correlator #(
       .TRATE(TRATE),
       .WIDTH(ACCUM),
       .SBITS(SBITS)
-  ) accumulator_inst (
+  ) U_ACCUM1 (
       .clock(vis_clock),
       .reset(vis_reset),
 
@@ -259,7 +259,6 @@ module toy_correlator #(
    *  Output SRAM's that store visibilities, while waiting to be sent to the
    *  host system.
    */
-
   wire acc_ready;
   wire [ACCUM+VSB:0] acc_tdata, bus_tdata;
 
@@ -268,7 +267,7 @@ module toy_correlator #(
   assign bus_revis_o = bus_tdata[ACCUM+VSB:ACCUM];
   assign bus_imvis_o = bus_tdata[VSB:0];
 
-  `define __USE_ALEX_FIFO
+`define __USE_ALEX_FIFO
 `ifdef __USE_ALEX_FIFO
 
   // Notes:
@@ -353,6 +352,8 @@ module toy_correlator #(
 
   // -- Simulation sanitisers -- //
 
+`ifdef __icarus
+
   initial begin : dump_settings
     $display("Settings:");
     $display(" + antennas:  %2d (index bits:  %2d)", WIDTH, WBITS);
@@ -366,6 +367,8 @@ module toy_correlator #(
       end
     end
   end
+
+`endif
 
 
 endmodule  // toy_correlator

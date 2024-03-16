@@ -83,3 +83,41 @@ Todo:
 ## Partial-Sum Output Chain (PSOC)
 
 Every `COUNT` cycles, each correlator unit produces a complex, partially-summed visibility. Accumulating each of these requires two additions (one each for the real and imaginary components), and these are full-width accumulators (for the two-stage-accumulator designs). Therefore, `CORES` correlator units requires `2*CORES` additions every `COUNT` cycles.
+
+\pagebreak
+
+# Functional Units
+
+## Signal Buffer
+
+**Synopsis:** *Buffers incoming IQ data from the radios, using two banks and bank-switching as each bank fills up, while streaming out radio-data at a higher clock-rate, to the correlators.*
+
+Module:
+
+- Source file: `sigbuffer.v`
+- Clock domains: signal and correlator domains (synchronous with the signal clock-domain)
+- Parameters:
+  + `WIDTH` -- number of radios
+  + `TRATE` -- clock ratio for correlator frequency to signal frequency
+  + `LOOP0` -- inner-loop counter
+  + `LOOP1` -- outer-loop counter
+
+## Signal Multiplexor
+
+**Synopsis:** *Multiplexes radio-signal input pairs for the correlator, switching sources for each time-slice.*
+
+## Correlator (1st Stage)
+
+**Synopsis:** *Correlates radio-source pairs, accumulating the product using a narrow accumulator, and streaming out partial-sums before the accumulator overflows.*
+
+## Visibilities Accumulators
+
+**Synopsis:** *Accumulates narrower partial-sums into wider partial-sums, and streaming out these wider sums periodically, to avoid accumulator overflows.*
+
+## Final Accumulator
+
+**Synopsis:** *Final accumulator for the visibilities computations, with a single adder being time-shared by many radio-pair visibility results.*
+
+## Output Buffer
+
+**Synopsis:** *Multi-bank SRAM buffer, for visibilities read-back, by the host computer.*

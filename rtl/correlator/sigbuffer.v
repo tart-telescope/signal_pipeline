@@ -60,7 +60,6 @@ module sigbuffer #(
     output [MSB:0] qdata_o
 );
 
-
   // -- Capture of antenna IQ signals -- //
 
   localparam [CSB:0] CZERO = {COUNT{1'b0}};

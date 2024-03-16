@@ -144,7 +144,7 @@ module toy_correlator_tb;
       .LOOP1(5),
       .ACCUM(32),
       .SBITS(7)
-  ) toy_correlator_inst (
+  ) U_TOY1 (
       .sig_clock(sig_clk),
       .areset_n (rst_n),
       .bus_clock(bus_clk),
