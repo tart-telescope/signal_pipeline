@@ -146,11 +146,12 @@ module toy_correlator_tb;
       .SBITS(7)
   ) toy_correlator_inst (
       .sig_clock(sig_clk),
+      .areset_n (rst_n),
       .bus_clock(bus_clk),
       .bus_rst_n(rst_n),
 
       .vis_clock(vis_clk),
-      .vis_rst_n(rst_n),
+      .vis_reset(~rst_n),
 
       .sig_valid_i(a_vld),
       .sig_last_i (a_lst),

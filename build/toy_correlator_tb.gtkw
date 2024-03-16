@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Fri Mar 15 10:09:41 2024
+[*] Sat Mar 16 06:04:58 2024
 [*]
-[dumpfile] "/home/patrick/dev/signal_pipeline/build/toy_correlator_tb.vcd"
-[dumpfile_mtime] "Fri Mar 15 10:08:51 2024"
-[dumpfile_size] 819827
-[savefile] "/home/patrick/dev/signal_pipeline/build/toy_correlator_tb.gtkw"
-[timestart] 0
+[dumpfile] "./toy_correlator_tb.vcd"
+[dumpfile_mtime] "Sat Mar 16 06:04:04 2024"
+[dumpfile_size] 819877
+[savefile] "./toy_correlator_tb.gtkw"
+[timestart] 2169000
 [size] 2560 1376
 [pos] -1 -1
-*-17.947041 300000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.947041 3900000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] toy_correlator_tb.
 [treeopen] toy_correlator_tb.toy_correlator_inst.
 [treeopen] toy_correlator_tb.toy_correlator_inst.correlator_inst.
@@ -21,7 +21,7 @@
 toy_correlator_tb.rst_n
 toy_correlator_tb.start
 toy_correlator_tb.done
-@800201
+@800200
 -Source
 @29
 toy_correlator_tb.sig_clk
@@ -30,7 +30,7 @@ toy_correlator_tb.a_rdy
 toy_correlator_tb.a_lst
 @23
 toy_correlator_tb.a_dat[7:0]
-@1000201
+@1000200
 -Source
 @800200
 -Bus

@@ -43,12 +43,13 @@ module toy_correlator #(
     localparam integer BSB = BBITS - 1
 ) (
     input sig_clock,  // 8.168 MHz sample-clock
+    input areset_n,
 
     input bus_clock,  // SPI/USB clock for reading visibilities
     input bus_rst_n,
 
     input vis_clock,  // Correlator clock
-    input vis_rst_n,
+    input vis_reset,
 
     // Status signals
     output vis_start_o,
@@ -87,14 +88,15 @@ module toy_correlator #(
       .LOOP0(LOOP0),
       .LOOP1(LOOP1)
   ) SIGBUF0 (
-      .sig_clk(sig_clock),
-      .vis_clk(vis_clock),
-      .reset_n(vis_rst_n),
       // Antenna/source signals
+      .sig_clk(sig_clock),
+      .reset_n(areset_n),
       .valid_i(sig_valid_i),
       .idata_i(sig_idata_i),
       .qdata_i(sig_qdata_i),
       // Delayed, up-rated, looped signals
+      .vis_clk(vis_clock),
+      .vis_rst(vis_reset),
       .valid_o(buf_valid_w),
       .first_o(buf_first_w),
       .next_o (buf_next_w),
@@ -114,7 +116,7 @@ module toy_correlator #(
   assign vis_frame_o = frame;
 
   always @(posedge vis_clock) begin
-    if (!vis_rst_n) begin
+    if (vis_reset) begin
       start <= 1'b0;
       frame <= 1'b0;
     end else begin
@@ -166,8 +168,8 @@ module toy_correlator #(
       .ASELS(ASELS),
       .BSELS(BSELS)
   ) correlator_inst (
-      .clock  (vis_clock),
-      .reset_n(vis_rst_n),
+      .clock(vis_clock),
+      .reset(vis_reset),
 
       .valid_i(buf_valid_w),
       .first_i(buf_first_w),
@@ -198,8 +200,8 @@ module toy_correlator #(
       .PSUMS(LOOP0),
       .COUNT(LOOP1)
   ) visaccum_inst (
-      .clock  (vis_clock),
-      .reset_n(vis_rst_n),
+      .clock(vis_clock),
+      .reset(vis_reset),
 
       .frame_i(cor_frame),
       .valid_i(cor_valid),
@@ -232,8 +234,8 @@ module toy_correlator #(
       .WIDTH(ACCUM),
       .SBITS(SBITS)
   ) accumulator_inst (
-      .clock  (vis_clock),
-      .reset_n(vis_rst_n),
+      .clock(vis_clock),
+      .reset(vis_reset),
 
       .count_i(vis_limit),
       .frame_i(vis_frame),
@@ -284,7 +286,7 @@ module toy_correlator #(
       .FRAME_FIFO(0)
   ) axis_async_fifo_inst (
       .s_clk(vis_clock),
-      .s_rst(~vis_rst_n),
+      .s_rst(vis_reset),
       .s_axis_tdata(acc_tdata),
       .s_axis_tkeep(8'bx),
       .s_axis_tvalid(acc_valid),
@@ -331,7 +333,7 @@ module toy_correlator #(
       .WIDTH(ACCUM + ACCUM),
       .ABITS(4)
   ) axis_afifo_inst (
-      .s_aresetn(vis_rst_n),
+      .s_aresetn(areset_n),
 
       .s_aclk(vis_clock),
       .s_tvalid_i(acc_valid),
@@ -358,7 +360,7 @@ module toy_correlator #(
   end
 
   always @(posedge vis_clock) begin
-    if (vis_rst_n) begin
+    if (!vis_reset) begin
       if (!acc_ready && acc_valid) begin
         $error("Oh noes, the FIFO has overflowed!");
       end

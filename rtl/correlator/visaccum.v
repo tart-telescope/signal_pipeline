@@ -1,61 +1,43 @@
+//
+// Read-Modify-Write pipelined accumulator, for the partial-sums from each of
+// the first-stage correlators.
+//
 `timescale 1ns / 100ps
-module visaccum (
-    clock,
-    reset_n,
+module visaccum #(
+    // Input bit-width
+    parameter  integer IBITS = 4,
+    localparam integer ISB   = IBITS - 1,
 
-    frame_i,
-    valid_i,
-    rdata_i,
-    idata_i,
+    // Output bit-width
+    parameter  integer OBITS = 7,
+    localparam integer OSB   = OBITS - 1,
 
-    frame_o,
-    valid_o,
-    first_o,
-    last_o,
-    rdata_o,
-    idata_o
+    // Number of partial-sums to loop over
+    parameter  integer PSUMS = 3,
+    localparam integer PBITS = $clog2(PSUMS),
+    localparam integer PSB   = PBITS - 1,
+
+    // Number of times to accumulate each partial sum
+    parameter  integer COUNT = 5,
+    localparam integer CBITS = $clog2(COUNT),
+    localparam integer CSB   = CBITS - 1
+) (
+    input clock,
+    input reset,
+
+    input frame_i,
+    input valid_i,
+    input [ISB:0] rdata_i,
+    input [ISB:0] idata_i,
+
+    // AX4-Stream like interface, but with no backpressure
+    output frame_o,
+    output valid_o,
+    output first_o,
+    output last_o,
+    output [OSB:0] rdata_o,
+    output [OSB:0] idata_o
 );
-
-  // Input bit-width
-  parameter integer IBITS = 4;
-  localparam integer ISB = IBITS - 1;
-
-  // Output bit-width
-  parameter integer OBITS = 7;
-  localparam integer OSB = OBITS - 1;
-
-  // Number of partial-sums to loop over
-  parameter integer PSUMS = 3;
-  localparam integer PBITS = $clog2(PSUMS);
-  localparam integer PSB = PBITS - 1;
-
-  // Number of times to accumulate each partial sum
-  parameter integer COUNT = 5;
-  localparam integer CBITS = $clog2(COUNT);
-  localparam integer CSB = CBITS - 1;
-
-
-  input clock;
-  input reset_n;
-
-  input frame_i;
-  input valid_i;
-  input [ISB:0] rdata_i;
-  input [ISB:0] idata_i;
-
-  // AX4-Stream like interface, but with no backpressure
-  output frame_o;
-  output valid_o;
-  output first_o;
-  output last_o;
-  output [OSB:0] rdata_o;
-  output [OSB:0] idata_o;
-
-
-  //
-  // Read-Modify-Write pipelined accumulator, for the partial-sums from each of
-  // the first-stage correlators.
-  //
 
   reg [OSB:0] rsram[PSUMS];
   reg [OSB:0] isram[PSUMS];
@@ -78,7 +60,7 @@ module visaccum (
   wire [PSB:0] rd_nxt = rd_adr + 1;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       rd_cyc <= 1'b0;
       rd_vld <= 1'b0;
       rd_adr <= PZERO;
@@ -126,7 +108,7 @@ module visaccum (
   wire [OSB:0] ai_src = czero ? OZERO : ri_sum;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       ac_cyc <= 1'b0;
     end else if (rd_cyc) begin
       ac_cyc <= 1'b1;
@@ -136,7 +118,7 @@ module visaccum (
   end
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       ac_vld <= 1'b0;
       ac_fst <= 1'b0;
       ac_lst <= 1'b0;
@@ -184,7 +166,7 @@ module visaccum (
   assign idata_o = wi_dat;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       wr_cyc <= 1'b0;
     end else if (ac_cyc) begin
       wr_cyc <= 1'b1;
@@ -194,7 +176,7 @@ module visaccum (
   end
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       wr_vld <= 1'b0;
       wr_fst <= 1'b0;
       wr_lst <= 1'b0;

@@ -8,76 +8,57 @@
  * and streams them (with the correct ordering) to the correlators, switching
  * banks at the end of each block (of 'COUNT' samples).
  */
-module sigbuffer (
-    reset_n,
+module sigbuffer #(
+    // Number of antennas/sources
+    parameter  integer WIDTH = 32,
+    localparam integer MSB   = WIDTH - 1,
 
-    // Radio-domain signals
-    sig_clk,
-    valid_i,
-    idata_i,
-    qdata_i,
+    // Time-multiplexing is used, so used to map from timeslice to MUX indices
+    parameter  integer TRATE = 30,
+    localparam integer TBITS = $clog2(TRATE),  // Input MUX bits
+    localparam integer TSB   = TBITS - 1,
 
-    // Visibilities-domain signals
-    vis_clk,
-    valid_o,
-    first_o,
-    next_o,
-    emit_o,
-    last_o,
-    taddr_o,
-    idata_o,
-    qdata_o
+    // For each antenna-pair, partial (visibility) sums are computed from 'COUNT'
+    // cross-correlations. And, for efficiency, 'COUNT' is the product of two
+    // smaller loops, 'LOOP0' & 'LOOP1'.
+    parameter  integer LOOP0 = 3,
+    localparam integer LBITS = $clog2(LOOP0),
+    parameter  integer LOOP1 = 5,
+    localparam integer HBITS = $clog2(LOOP1),
+    localparam integer COUNT = LOOP0 * LOOP1,  // Number of terms in partial sums
+    localparam integer CBITS = $clog2(COUNT),  // Bit-width of loop-counter
+    localparam integer CSB   = CBITS - 1,
+
+    // At least two banks are required, so that one can be filled, while the other
+    // is being read
+    localparam integer BBITS = 1,
+    localparam integer BANKS = 1 << BBITS,
+    localparam integer BSB   = BBITS - 1,
+
+    // SRAM address and size parameters
+    localparam integer WORDS = 1 << (CBITS + BBITS),
+    localparam integer ABITS = CBITS + BBITS,
+    localparam integer ASB   = ABITS - 1
+) (
+    // Antenna/radio (source-signal) domain
+    input sig_clk,
+    input reset_n,
+    input valid_i,
+    input [MSB:0] idata_i,
+    input [MSB:0] qdata_i,
+
+    // Correlator clock domain
+    input vis_clk,
+    input vis_rst,
+    output valid_o,
+    output first_o,
+    output next_o,
+    output emit_o,
+    output last_o,
+    output [TSB:0] taddr_o,
+    output [MSB:0] idata_o,
+    output [MSB:0] qdata_o
 );
-
-  // Number of antennas/sources
-  parameter integer WIDTH = 32;
-  localparam integer MSB = WIDTH - 1;
-
-  // Time-multiplexing is used, so used to map from timeslice to MUX indices
-  parameter integer TRATE = 30;
-  localparam integer TBITS = $clog2(TRATE);  // Input MUX bits
-  localparam integer TSB = TBITS - 1;
-
-  // For each antenna-pair, partial (visibility) sums are computed from 'COUNT'
-  // cross-correlations. And, for efficiency, 'COUNT' is the product of two
-  // smaller loops, 'LOOP0' & 'LOOP1'.
-  parameter integer LOOP0 = 3;
-  localparam integer LBITS = $clog2(LOOP0);
-  parameter integer LOOP1 = 5;
-  localparam integer HBITS = $clog2(LOOP1);
-  localparam integer COUNT = LOOP0 * LOOP1;  // Number of terms in partial sums
-  localparam integer CBITS = $clog2(COUNT);  // Bit-width of loop-counter
-  localparam integer CSB = CBITS - 1;
-
-  // At least two banks are required, so that one can be filled, while the other
-  // is being read
-  localparam integer BBITS = 1;
-  localparam integer BANKS = 1 << BBITS;
-  localparam integer BSB = BBITS - 1;
-
-  // SRAM address and size parameters
-  localparam integer WORDS = 1 << (CBITS + BBITS);
-  localparam integer ABITS = CBITS + BBITS;
-  localparam integer ASB = ABITS - 1;
-
-  input sig_clk;
-  input vis_clk;
-  input reset_n;
-
-  // Antenna source signal domain
-  input valid_i;
-  input [MSB:0] idata_i;
-  input [MSB:0] qdata_i;
-
-  // Correlator clock domain
-  output valid_o;
-  output first_o;
-  output next_o;
-  output emit_o;
-  output last_o;
-  output [TSB:0] taddr_o;
-  output [MSB:0] idata_o;
-  output [MSB:0] qdata_o;
 
 
   // -- Capture of antenna IQ signals -- //
@@ -92,7 +73,7 @@ module sigbuffer (
   wire [ASB:0] wnext = waddr + 1;
   wire [ASB:CBITS] wbank = waddr[ASB:CBITS] + 1;
 
-  always @(posedge sig_clk) begin
+  always @(posedge sig_clk or negedge reset_n) begin
     if (!reset_n) begin
       waddr  <= {ABITS{1'b0}};
       switch <= 1'b0;
@@ -120,7 +101,7 @@ module sigbuffer (
   reg start, fired, ended;
 
   always @(posedge vis_clk) begin
-    if (!reset_n) begin
+    if (vis_rst) begin
       start <= 1'b0;
       fired <= 1'b0;
       ended <= 1'b1;
@@ -167,7 +148,7 @@ module sigbuffer (
   // times.
   //
   always @(posedge vis_clk) begin
-    if (!reset_n) begin
+    if (vis_rst) begin
       taddr <= TZERO;
       frame <= 1'b0;
       rbank <= BZERO;
@@ -200,7 +181,7 @@ module sigbuffer (
 
   // Read-address and read-data unit
   always @(posedge vis_clk) begin
-    if (!reset_n) begin
+    if (vis_rst) begin
       raddr <= CZERO;
     end else begin
       idata <= isram[{rbank, raddr}];
@@ -219,7 +200,7 @@ module sigbuffer (
   end
 
   always @(posedge vis_clk) begin
-    if (!reset_n) begin
+    if (vis_rst) begin
       valid <= 1'b0;
       first <= 1'b0;
       last  <= 1'b0;
@@ -247,7 +228,7 @@ module sigbuffer (
   // wire cnext = lomax | buf_first_w;  // todo: make synchronous ...
 
   always @(posedge vis_clk) begin
-    if (!reset_n) begin
+    if (vis_rst) begin
       cntlo <= LZERO;
       // cnthi <= HZERO;
       next  <= 1'b0;
@@ -263,8 +244,8 @@ module sigbuffer (
         end
 
       end else begin
-        next <= 1'b0;
-        emit <= 1'b0;
+        next  <= 1'b0;
+        emit  <= 1'b0;
 
         cntlo <= LZERO;
       end

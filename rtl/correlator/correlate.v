@@ -1,50 +1,37 @@
 `timescale 1ns / 100ps
-module correlate (
-    clock,
-    reset_n,
+module correlate #(
+    // Bit-width of local adders
+    parameter  integer WIDTH = 4,
+    localparam integer MSB   = WIDTH - 1
+) (
+    input clock,
+    input reset,
 
-    valid_i,
-    first_i,
-    last_i,
-    auto_i,
-    ai_i,
-    aq_i,
-    bi_i,
-    bq_i,
+    // AX4-Stream like interface, with no backpressure
+    input valid_i,
+    input first_i,
+    input last_i,
+    input auto_i,  // todo: compute auto-correlations
+    input ai_i,  // 4x data bits
+    input aq_i,
+    input bi_i,
+    input bq_i,
 
-    frame_o,
-    valid_o,
-    rdata_o,
-    idata_o
+    // AX4-Stream like interface, with no backpressure
+    output frame_o,
+    output valid_o,
+    output [MSB:0] rdata_o,
+    output [MSB:0] idata_o
 );
 
-  // Bit-width of local adders
-  parameter integer WIDTH = 4;
-  localparam integer MSB = WIDTH - 1;
-
-  input clock;
-  input reset_n;
-
-  // AX4-Stream like interface, with no backpressure
-  input valid_i;
-  input first_i;
-  input last_i;
-  input auto_i; // todo: compute auto-correlations
-  input ai_i;  // 4x data bits
-  input aq_i;
-  input bi_i;
-  input bq_i;
-
-  // AX4-Stream like interface, with no backpressure
-  output frame_o;
-  output valid_o;
-  output [MSB:0] rdata_o;
-  output [MSB:0] idata_o;
-
+  // -- State & Signals -- //
 
   reg valid, frame;
   reg [MSB:0] rdata;
   reg [MSB:0] idata;
+
+
+  // -- I/O Assignments -- //
 
   assign frame_o = frame;
   assign valid_o = valid;
@@ -71,7 +58,7 @@ module correlate (
   reg vld_r, fst_r, lst_r;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       vld_r <= 1'b0;
       fst_r <= 1'b0;
       lst_r <= 1'b0;

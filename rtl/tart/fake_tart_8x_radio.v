@@ -27,7 +27,7 @@ module fake_tart_8x_radio (
 
 
   // -- Signals & State Registers -- //
-  
+
   wire usb_clock, usb_reset, usb_ready;
   wire [3:0] cbits;
 

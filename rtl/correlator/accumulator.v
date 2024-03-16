@@ -1,65 +1,45 @@
+//
+// Read-Modify-Write pipelined accumulator, for the partial-sums from each of
+// the first-stage correlators.
+//
 `timescale 1ns / 100ps
-module accumulator (
-    clock,
-    reset_n,
+module accumulator #(
+    parameter  integer CORES = 18,
+    localparam integer NBITS = $clog2(CORES),
 
-    count_i,
-    frame_i,
+    parameter  integer TRATE = 30,
+    localparam integer TBITS = $clog2(TRATE), // Input MUX bits
 
-    valid_i,
-    first_i,
-    last_i,
-    revis_i,
-    imvis_i,
+    parameter integer WIDTH = 36,  // Accumulator bit-width
+    parameter integer SBITS = 7,   // Partial-sums bit-width
 
-    revis_o,
-    imvis_o,
-    valid_o,
-    last_o
+    localparam integer MSB = WIDTH - 1,
+    localparam integer SSB = SBITS - 1,
+
+    localparam integer PAIRS = CORES * TRATE,
+    localparam integer PBITS = NBITS + TBITS,
+    localparam integer PSB   = PBITS - 1,
+
+    localparam integer CBITS = WIDTH - SBITS + 1,
+    localparam integer CSB   = CBITS - 1
+) (
+    input clock,
+    input reset,
+
+    input [CSB:0] count_i,
+    input frame_i,
+
+    input valid_i,
+    input first_i,
+    input last_i,
+    input [SSB:0] revis_i,
+    input [SSB:0] imvis_i,
+
+    output [MSB:0] revis_o,
+    output [MSB:0] imvis_o,
+    output valid_o,
+    output last_o
 );
-
-  parameter integer CORES = 18;
-  localparam integer NBITS = $clog2(CORES);
-
-  parameter integer TRATE = 30;
-  localparam integer TBITS = $clog2(TRATE);  // Input MUX bits
-
-  parameter integer WIDTH = 36;  // Accumulator bit-width
-  parameter integer SBITS = 7;  // Partial-sums bit-width
-
-  localparam integer MSB = WIDTH - 1;
-  localparam integer SSB = SBITS - 1;
-
-  localparam integer PAIRS = CORES * TRATE;
-  localparam integer PBITS = NBITS + TBITS;
-  localparam integer PSB = PBITS - 1;
-
-  localparam integer CBITS = WIDTH - SBITS + 1;
-  localparam integer CSB = CBITS - 1;
-
-
-  input clock;
-  input reset_n;
-
-  input [CSB:0] count_i;
-  input frame_i;
-
-  input valid_i;
-  input first_i;
-  input last_i;
-  input [SSB:0] revis_i;
-  input [SSB:0] imvis_i;
-
-  output [MSB:0] revis_o;
-  output [MSB:0] imvis_o;
-  output valid_o;
-  output last_o;
-
-
-  //
-  // Read-Modify-Write pipelined accumulator, for the partial-sums from each of
-  // the first-stage correlators.
-  //
 
   localparam [MSB:0] VZERO = {WIDTH{1'b0}};
   localparam [PSB:0] CZERO = {CBITS{1'b0}};
@@ -67,12 +47,13 @@ module accumulator (
   reg [CSB:0] count = CZERO;
   reg czero;
 
+
   /**
    *  SRAMs that store the partially-accumulated visibilities.
    */
-
   reg [MSB:0]    rsram [PAIRS];
   reg [MSB:0]    isram [PAIRS];
+
 
   // -- Read cycle -- //
 
@@ -87,7 +68,7 @@ module accumulator (
 
   // todo:
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       raddr <= PZERO;
       accum <= 1'b0;
       czero <= 1'b1;
@@ -125,7 +106,7 @@ module accumulator (
   assign i_vis = czero ? VZERO : i_dat;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       write <= 1'b0;
     end else if (accum) begin
       write <= 1'b1;
@@ -145,7 +126,7 @@ module accumulator (
   reg          wlast = 1'b0;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       waddr <= PZERO;
       wlast <= 1'b0;
     end else begin
@@ -188,7 +169,7 @@ module accumulator (
   assign last_o  = rlast;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       count <= CZERO;
       valid <= 1'b0;
       rlast <= 1'b0;  // todo: logic for this signal
@@ -217,4 +198,5 @@ module accumulator (
     end
   end
 
-endmodule  // correlator
+
+endmodule  // accumulator

@@ -39,7 +39,7 @@ module sigsource_tb;
   // -- Globals -- //
 
   reg clock = 1'b1;
-  reg reset_n = 1'bx;
+  reg reset = 1'bx;
 
   always #5 clock <= ~clock;
 
@@ -51,11 +51,11 @@ module sigsource_tb;
   // -- Simulation stimulus -- //
 
   initial begin
-    $dumpfile("../vcd/sigsource_tb.vcd");
+    $dumpfile("sigsource_tb.vcd");
     $dumpvars;
 
-    #15 reset_n <= 1'b0;
-    #60 reset_n <= 1'b1;
+    #15 reset <= 1'b1;
+    #60 reset <= 1'b0;
 
     #20 src_start <= 1'b1;
     #10 src_start <= 1'b0;
@@ -73,7 +73,7 @@ module sigsource_tb;
   wire mux_valid, mux_first, mux_last;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       mux_frame <= 1'b0;
       mux_done  <= 1'b0;
     end else begin
@@ -107,7 +107,7 @@ module sigsource_tb;
   wire src_frame = (src_start | src_valid) & ~src_done;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       src_done <= 1'b0;
       src_valid <= 1'b0;
       src_first <= 1'b0;
@@ -166,7 +166,7 @@ module sigsource_tb;
       .BSELS(BSELS)
   ) SIGSRC0 (
       .clock(clock),
-      .reset_n(reset_n),
+      .reset(reset),
       // Inputs
       .valid_i(src_valid),
       .first_i(src_first),

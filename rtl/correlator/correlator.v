@@ -1,89 +1,66 @@
+// TODO:
+//  - figure out how to parameterise the input MUXs
+//  - 'sigsource.v' for input MUXs
+//  - 'viscalc.v' for first-stage correlation
 `timescale 1ns / 100ps
-module correlator (
-    clock,
-    reset_n,
+module correlator #(
+    parameter integer WIDTH = 32,  // Number of antennas/signals
+    localparam integer SBITS = $clog2(WIDTH),
+    localparam integer MSB = WIDTH - 1,
 
-    valid_i,
-    first_i,
-    next_i,
-    emit_i,
-    last_i,
-    taddr_i,
-    idata_i,
-    qdata_i,
+    parameter integer ABITS = 4,  // Adder bit-width
+    localparam integer ASB = ABITS - 1,
 
-    prevs_i,
-    revis_i,
-    imvis_i,
+    parameter integer MUX_N = 7,  // A- & B- MUX widths
+    localparam integer XBITS = $clog2(MUX_N),  // Input MUX bits
+    localparam integer XSB = XBITS - 1,
 
-    revis_o,
-    imvis_o,
-    frame_o,
-    valid_o
+    parameter integer TRATE = 30,  // Time-multiplexing rate
+    localparam integer TBITS = $clog2(TRATE),  // Time-slice counter bits
+    localparam integer TSB = TBITS - 1,
+
+    localparam integer PBITS = SBITS * MUX_N,  // Signal taps for A-/B- MUX inputs
+    localparam integer PSB   = PBITS - 1,
+
+    localparam integer QBITS = TRATE * XBITS,  // Time-interval to MUX-sel bits
+    localparam integer QSB   = QBITS - 1,
+
+    // todo: produce these values using the 'generator' utility
+    parameter unsigned [PSB:0] ATAPS = {PBITS{1'bx}},
+    parameter unsigned [PSB:0] BTAPS = {PBITS{1'bx}},
+
+    parameter unsigned [QSB:0] ASELS = {QBITS{1'bx}},
+    parameter unsigned [QSB:0] BSELS = {QBITS{1'bx}}
+) (
+    input clock,
+    input reset,
+
+    input valid_i,
+    input first_i,
+    input next_i,
+    input emit_i,
+    input last_i,
+    input [TSB:0] taddr_i,
+    input [MSB:0] idata_i,
+    input [MSB:0] qdata_i,
+
+    input prevs_i,
+    input [ASB:0] revis_i,  // Inputs of each stage are outputs of the previous
+    input [ASB:0] imvis_i,
+
+    output [ASB:0] revis_o,
+    output [ASB:0] imvis_o,
+    output frame_o,
+    output valid_o
 );
-
-  // TODO:
-  //  - figure out how to parameterise the input MUXs
-  //  - 'sigsource.v' for input MUXs
-  //  - 'viscalc.v' for first-stage correlation
-
-  parameter integer WIDTH = 32;  // Number of antennas/signals
-  localparam integer SBITS = $clog2(WIDTH);
-  localparam integer MSB = WIDTH - 1;
-
-  parameter integer ABITS = 4;  // Adder bit-width
-  localparam integer ASB = ABITS - 1;
-
-  parameter integer MUX_N = 7; // A- & B- MUX widths
-  localparam integer XBITS = $clog2(MUX_N);  // Input MUX bits
-  localparam integer XSB = XBITS - 1;
-
-  parameter integer TRATE = 30;  // Time-multiplexing rate
-  localparam integer TBITS = $clog2(TRATE);  // Time-slice counter bits
-  localparam integer TSB = TBITS - 1;
-
-  localparam integer PBITS = SBITS * MUX_N;  // Signal taps for A-/B- MUX inputs
-  localparam integer PSB = PBITS - 1;
-
-  localparam integer QBITS = TRATE * XBITS;  // Time-interval to MUX-sel bits
-  localparam integer QSB = QBITS - 1;
-
-  // todo: produce these values using the 'generator' utility
-  parameter unsigned [PSB:0] ATAPS = {PBITS{1'bx}};
-  parameter unsigned [PSB:0] BTAPS = {PBITS{1'bx}};
-
-  parameter unsigned [QSB:0] ASELS = {QBITS{1'bx}};
-  parameter unsigned [QSB:0] BSELS = {QBITS{1'bx}};
-
-
-  input clock;
-  input reset_n;
-
-  input valid_i;
-  input first_i;
-  input next_i;
-  input emit_i;
-  input last_i;
-  input [TSB:0] taddr_i;
-  input [MSB:0] idata_i;
-  input [MSB:0] qdata_i;
-
-  input prevs_i;
-  input [ASB:0] revis_i;  // Inputs of each stage are outputs of the previous
-  input [ASB:0] imvis_i;
-
-  output [ASB:0] revis_o;
-  output [ASB:0] imvis_o;
-  output frame_o;
-  output valid_o;
 
 
   // -- Pipelined control-signals -- //
-/*
+  /*
   reg last, next, valid;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       valid <= 1'b0;
       last  <= 1'b0;
       next  <= 1'b0;
@@ -116,7 +93,7 @@ module correlator (
       .BSELS(BSELS)
   ) SIGSRC0 (
       .clock(clock),
-      .reset_n(reset_n),
+      .reset(reset),
       // Inputs
       .valid_i(valid_i),
       .first_i(first_i),
@@ -147,7 +124,7 @@ module correlator (
       .WIDTH(ABITS)
   ) CORRELATE0 (
       .clock(clock),
-      .reset_n(reset_n),
+      .reset(reset),
       // Inputs
       .valid_i(mux_valid),
       .first_i(mux_next),
@@ -176,7 +153,7 @@ module correlator (
   assign imvis_o = imvis;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       frame <= 1'b0;
       succs <= 1'b0;
       revis <= {ABITS{1'bx}};

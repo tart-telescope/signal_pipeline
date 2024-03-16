@@ -46,7 +46,7 @@ module top #(
 
   wire axi_clk, axi_lock;
   wire usb_clk, usb_rst_n;
-  wire vis_clk, vis_lock;
+  wire vis_clock, vis_lock, vis_reset;
 
   // So 27.0 MHz divided by 9, then x40 = 120 MHz.
   gowin_rpll #(
@@ -67,7 +67,7 @@ module top #(
       .FBDIV_SEL(14),  // ~= 15
       .ODIV_SEL(8)
   ) vis_rpll_inst (
-      .clkout(vis_clk),   // 245.52 MHz
+      .clkout(vis_clock),  // 245.52 MHz
       .lock  (vis_lock),
       .clkin (CLK_16)
   );
@@ -92,9 +92,9 @@ module top #(
   sync_reset #(
       .N(2)
   ) vis_sync_reset (
-      .clk(vis_clk),
-      .rst(rst_n),
-      .out(vis_rst_n)
+      .clk(vis_clock),
+      .rst(~rst_n),
+      .out(vis_reset)
   );
 
   // SPI clock, 24.0 MHz.
@@ -191,8 +191,8 @@ module top #(
       .bus_clock(clock_b),
       .bus_rst_n(bus_rst_n),
 
-      .vis_clock(vis_clk),
-      .vis_rst_n(vis_rst_n),
+      .vis_clock(vis_clock),
+      .vis_reset(vis_reset),
 
       .sig_valid_i(axi_lock),
       .sig_last_i (1'b0),
@@ -314,7 +314,7 @@ module top #(
   // -- Just echo/loop IN <-> OUT -- //
 
   // todo: switch to the synchronous FIFO core, and use a BSRAM for the memory.
-// `define __USE_ALEX_FIFO
+  // `define __USE_ALEX_FIFO
 `ifdef __USE_ALEX_FIFO
   axis_async_fifo #(
       .DEPTH(16),
@@ -366,12 +366,12 @@ module top #(
       .m_status_bad_frame(),
       .m_status_good_frame()
   );
-`else // Paddy FIFO
+`else  // Paddy FIFO
   axis_afifo #(
       .WIDTH(8),
       .ABITS(4)
   ) axis_afifo_inst (
-      .s_aresetn(reset_n),
+      .s_aresetn(rst_n),
 
       .s_aclk    (axi_clk),
       .s_tvalid_i(m_tvalid),

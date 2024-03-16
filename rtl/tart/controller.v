@@ -64,8 +64,8 @@ module controller #(
     localparam integer STRBS = WIDTH / 8,
     localparam integer SSB   = STRBS - 1
 ) (
-    input clock_in, // ~16.368 MHz on TART
-    input ulpi_clk, // 60 MHz (if present)
+    input clock_in,  // ~16.368 MHz on TART
+    input ulpi_clk,  // 60 MHz (if present)
     input areset_n,
 
     output axi_clk_o,
@@ -83,15 +83,15 @@ module controller #(
     output correlator_o,
     input  visibility_i,
 
-   input s_tvalid,
-   output s_tready,
-   input s_tlast,
-   input [7:0] s_tdata,
+    input s_tvalid,
+    output s_tready,
+    input s_tlast,
+    input [7:0] s_tdata,
 
-   output m_tvalid,
-   input m_tready,
-   output m_tlast,
-   output [7:0] m_tdata
+    output m_tvalid,
+    input m_tready,
+    output m_tlast,
+    output [7:0] m_tdata
 );
 
 
