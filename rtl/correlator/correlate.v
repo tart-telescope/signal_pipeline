@@ -27,8 +27,7 @@ module correlate #(
   // -- State & Signals -- //
 
   reg valid, frame;
-  reg [MSB:0] rdata;
-  reg [MSB:0] idata;
+  reg [MSB:0] rdata, idata;
 
 
   // -- I/O Assignments -- //
@@ -53,6 +52,10 @@ module correlate #(
   wire [1:0] xr_w = {re_inc, ~re_inc & ~re_dec};  // values in {0, 1, 2}
   wire [1:0] xi_w = {im_inc, ~im_inc & ~im_dec};
 
+  // Signal means
+  wire [1:0] aa_w = aq_i + ai_i;
+  wire [1:0] ba_w = bq_i + bi_i;
+
   // 2-stage cross-correlation then accumulate.
   reg [1:0] xr_r, xi_r;
   reg vld_r, fst_r, lst_r;
@@ -72,8 +75,8 @@ module correlate #(
       lst_r <= last_i;
 
       if (valid_i) begin
-        xr_r <= xr_w;
-        xi_r <= xi_w;
+        xr_r <= auto_i ? aa_w : xr_w;
+        xi_r <= auto_i ? ba_w : xi_w;
       end
 
       if (vld_r) begin

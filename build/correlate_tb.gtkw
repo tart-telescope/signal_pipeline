@@ -1,10 +1,10 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Sun Mar 17 08:13:39 2024
+[*] Sun Mar 17 09:13:45 2024
 [*]
 [dumpfile] "./correlate_tb.vcd"
-[dumpfile_mtime] "Sun Mar 17 08:13:20 2024"
-[dumpfile_size] 6472
+[dumpfile_mtime] "Sun Mar 17 09:13:10 2024"
+[dumpfile_size] 6890
 [savefile] "./correlate_tb.gtkw"
 [timestart] 0
 [size] 2560 1376
@@ -26,7 +26,6 @@ correlate_tb.src_auto
 @24
 [color] 7
 correlate_tb.count[1:0]
-@25
 [color] 7
 correlate_tb.taddr[3:0]
 @28
@@ -48,7 +47,8 @@ correlate_tb.bq
 -source
 @800200
 -corr
-@28
+@29
+[color] 3
 correlate_tb.cor_valid
 @22
 correlate_tb.cor_rdata[3:0]

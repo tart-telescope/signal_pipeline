@@ -126,6 +126,26 @@ Module:
 
 # Appendix A: Example TART Configurations
 
+### Example: Four Radios
+
+Correlator parameters:
+
+- `parameter TRATE = 8`{.v} -- 1x correlator ??
+
+- `parameter LOOP0 = 3`{.v} -- 4-bit adder ??
+
+- `parameter LOOP1 = 5`{.v} -- 7-bit adder ??
+
+- `parameter WIDTH = 32`{.v} -- 32-bit final accumulator ??
+
+Perhaps?
+
+Pairs:
+```
+  {(0,1), (0,2), (0,3), (1,2), (1,3), (2,3), (0*,1*), (2*,3*)}
+```
+where the final two pairs are for the signal-means calculations.
+
 ### Example: Eight Radios
 
 Correlator parameters:

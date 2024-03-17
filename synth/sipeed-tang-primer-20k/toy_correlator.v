@@ -7,7 +7,7 @@ module toy_correlator #(
     localparam MSB = WIDTH - 1,
 
     // Source-signal multiplexor parameters
-    parameter  integer MUX_N = 4,
+    parameter  integer MUX_N = 3,
     localparam integer XBITS = $clog2(MUX_N),
     localparam integer XSB   = XBITS - 1,
 
@@ -16,7 +16,7 @@ module toy_correlator #(
     localparam integer USB = UBITS - 1,
 
     // Time-multiplexing rate, i.e., clock multiplier
-    parameter  integer TRATE = 15,
+    parameter  integer TRATE = 8,
     localparam integer TBITS = $clog2(TRATE),  // ceil(Log2(TRATE))
     localparam integer TSB   = TBITS - 1,
 
@@ -143,23 +143,17 @@ module toy_correlator #(
 
   // -- Antenna signal source-select -- //
 
-  localparam [7:0] ATAPS = {2'b00, 2'b01, 2'b10, 2'b11};
-  localparam [7:0] BTAPS = {2'b00, 2'b01, 2'b10, 2'b11};
+  // Note: reverse-ordering
+  localparam [5:0] ATAPS = {2'b10, 2'b01, 2'b00}; // 2, 1, 0
+  localparam [5:0] BTAPS = {2'b11, 2'b10, 2'b01}; // 3, 2, 1
 
-  localparam [29:0] ASELS = {
-    {2'b00, 2'b00, 2'b00},
-    {2'b00, 2'b01, 2'b01},
-    {2'b01, 2'b01, 2'b10},
-    {2'b10, 2'b10, 2'b10},
-    {2'b11, 2'b11, 2'b11}
-  };
-  localparam [29:0] BSELS = {
-    {2'b00, 2'b01, 2'b10},
-    {2'b11, 2'b00, 2'b01},
-    {2'b10, 2'b11, 2'b00},
-    {2'b01, 2'b10, 2'b11},
-    {2'b00, 2'b01, 2'b10}
-  };
+  localparam [7:0] AUTOS = 8'b1100_0000;
+
+  // Note: these index into their respective 'xTAPS', in order to determine the
+  //   actual radio-index.
+  // Note: reverse-ordering
+  localparam [15:0] ASELS = { 2'b10, 2'b00, 2'b10, 2'b01, 2'b01, 2'b00, 2'b00, 2'b00 };
+  localparam [15:0] BSELS = { 2'b10, 2'b00, 2'b10, 2'b10, 2'b01, 2'b10, 2'b01, 2'b00 };
 
   correlator #(
       .WIDTH(WIDTH),
@@ -169,7 +163,8 @@ module toy_correlator #(
       .ATAPS(ATAPS),
       .BTAPS(BTAPS),
       .ASELS(ASELS),
-      .BSELS(BSELS)
+      .BSELS(BSELS),
+      .AUTOS(AUTOS)
   ) U_CORE1 (
       .clock(vis_clock),
       .reset(vis_reset),

@@ -30,7 +30,9 @@ module correlator #(
     parameter unsigned [PSB:0] BTAPS = {PBITS{1'bx}},
 
     parameter unsigned [QSB:0] ASELS = {QBITS{1'bx}},
-    parameter unsigned [QSB:0] BSELS = {QBITS{1'bx}}
+    parameter unsigned [QSB:0] BSELS = {QBITS{1'bx}},
+
+    parameter unsigned [TSB:0] AUTOS = {TBITS{1'bx}}
 ) (
     input clock,
     input reset,
@@ -77,6 +79,17 @@ module correlator #(
     end
   end
 */
+
+  reg [TSB:0] autos;
+
+  always @(posedge clock) begin
+    if (reset) begin
+      autos <= AUTOS;
+    end else begin
+      autos <= {1'bx, autos[TSB:1]};
+    end
+  end
+
 
   // -- Antenna signal source-select -- //
 
