@@ -121,3 +121,35 @@ Module:
 ## Output Buffer
 
 **Synopsis:** *Multi-bank SRAM buffer, for visibilities read-back, by the host computer.*
+
+\pagebreak
+
+# Appendix A: Example TART Configurations
+
+### Example: Eight Radios
+
+Correlator parameters:
+
+- `parameter TRATE = 6`{.v} -- 48 correlators ??
+
+- `parameter LOOP0 = 3`{.v} -- 5-bit adder ??
+
+- `parameter LOOP1 = 5`{.v} -- 8-bit adder ??
+
+- `parameter WIDTH = 32`{.v} -- final accumulator ??
+
+Perhaps?
+
+### Example: 24 Radios
+
+Correlator parameters:
+
+- `parameter TRATE = 12`{.v} -- 24 correlators ??
+
+- `parameter LOOP0 = 3`{.v} -- 5-bit adder ??
+
+- `parameter LOOP1 = 5`{.v} -- 8-bit adder ??
+
+- `parameter WIDTH = 32`{.v} -- final accumulator ??
+
+Perhaps?

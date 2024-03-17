@@ -1,5 +1,7 @@
 `timescale 1ns / 100ps
 module toy_correlator #(
+    parameter integer USE_ALEX_AFIFO = 1,
+
     parameter integer WIDTH = 4,  // Number of antennas/signals
     localparam WBITS = $clog2(WIDTH),
     localparam MSB = WIDTH - 1,
@@ -267,87 +269,88 @@ module toy_correlator #(
   assign bus_revis_o = bus_tdata[ACCUM+VSB:ACCUM];
   assign bus_imvis_o = bus_tdata[VSB:0];
 
-`define __USE_ALEX_FIFO
-`ifdef __USE_ALEX_FIFO
+  generate
+    if (USE_ALEX_AFIFO) begin : g_alex_afifo
 
-  // Notes:
-  //  - a bit naughty, as some of the outputs are combinational ??
-  axis_async_fifo #(
-      .DEPTH(64),
-      .DATA_WIDTH(ACCUM + ACCUM),
-      .LAST_ENABLE(1),
-      .ID_ENABLE(0),
-      .DEST_ENABLE(0),
-      .USER_ENABLE(0),
-      // .RAM_PIPELINE(0),
-      .RAM_PIPELINE(1),
-      .OUTPUT_FIFO_ENABLE(0),
-      .FRAME_FIFO(0)
-  ) axis_async_fifo_inst (
-      .s_clk(vis_clock),
-      .s_rst(vis_reset),
-      .s_axis_tdata(acc_tdata),
-      .s_axis_tkeep(8'bx),
-      .s_axis_tvalid(acc_valid),
-      .s_axis_tready(acc_ready),
-      .s_axis_tlast(acc_last),
-      .s_axis_tid(8'bx),
-      .s_axis_tdest(8'bx),
-      .s_axis_tuser(1'bx),
+      // Notes:
+      //  - a bit naughty, as some of the outputs are combinational ??
+      axis_async_fifo #(
+          .DEPTH(64),
+          .DATA_WIDTH(ACCUM + ACCUM),
+          .LAST_ENABLE(1),
+          .ID_ENABLE(0),
+          .DEST_ENABLE(0),
+          .USER_ENABLE(0),
+          // .RAM_PIPELINE(0),
+          .RAM_PIPELINE(1),
+          .OUTPUT_FIFO_ENABLE(0),
+          .FRAME_FIFO(0)
+      ) U_AFIFO1 (
+          .s_clk(vis_clock),
+          .s_rst(vis_reset),
+          .s_axis_tdata(acc_tdata),
+          .s_axis_tkeep(8'bx),
+          .s_axis_tvalid(acc_valid),
+          .s_axis_tready(acc_ready),
+          .s_axis_tlast(acc_last),
+          .s_axis_tid(8'bx),
+          .s_axis_tdest(8'bx),
+          .s_axis_tuser(1'bx),
 
-      .m_clk(bus_clock),
-      .m_rst(~bus_rst_n),
-      .m_axis_tdata(bus_tdata),
-      .m_axis_tkeep(),
-      .m_axis_tvalid(bus_valid_o),
-      .m_axis_tready(bus_ready_i),
-      .m_axis_tlast(bus_last_o),
-      .m_axis_tid(),
-      .m_axis_tdest(),
-      .m_axis_tuser(),
+          .m_clk(bus_clock),
+          .m_rst(~bus_rst_n),
+          .m_axis_tdata(bus_tdata),
+          .m_axis_tkeep(),
+          .m_axis_tvalid(bus_valid_o),
+          .m_axis_tready(bus_ready_i),
+          .m_axis_tlast(bus_last_o),
+          .m_axis_tid(),
+          .m_axis_tdest(),
+          .m_axis_tuser(),
 
-      .s_pause_req(1'b0),
-      .s_pause_ack(),
-      .m_pause_req(1'b0),
-      .m_pause_ack(),
+          .s_pause_req(1'b0),
+          .s_pause_ack(),
+          .m_pause_req(1'b0),
+          .m_pause_ack(),
 
-      .s_status_depth(),
-      .s_status_depth_commit(),
-      .s_status_overflow(),
-      .s_status_bad_frame(),
-      .s_status_good_frame(),
+          .s_status_depth(),
+          .s_status_depth_commit(),
+          .s_status_overflow(),
+          .s_status_bad_frame(),
+          .s_status_good_frame(),
 
-      .m_status_depth(),
-      .m_status_depth_commit(),
-      .m_status_overflow(),
-      .m_status_bad_frame(),
-      .m_status_good_frame()
-  );
+          .m_status_depth(),
+          .m_status_depth_commit(),
+          .m_status_overflow(),
+          .m_status_bad_frame(),
+          .m_status_good_frame()
+      );
 
-`else  // Paddy FIFO
+    end else begin : g_tart_afifo
 
-  // Notes:
-  //  - not as mature/tested as Alex's AFIFO (above);
-  axis_afifo #(
-      .WIDTH(ACCUM + ACCUM),
-      .ABITS(4)
-  ) axis_afifo_inst (
-      .s_aresetn(areset_n),
+      // Notes:
+      //  - not as mature/tested as Alex's AFIFO (above);
+      axis_afifo #(
+          .WIDTH(ACCUM + ACCUM),
+          .ABITS(4)
+      ) U_AFIFO1 (
+          .s_aresetn(areset_n),
 
-      .s_aclk(vis_clock),
-      .s_tvalid_i(acc_valid),
-      .s_tready_o(acc_ready),
-      .s_tlast_i(acc_last),
-      .s_tdata_i(acc_tdata),
+          .s_aclk(vis_clock),
+          .s_tvalid_i(acc_valid),
+          .s_tready_o(acc_ready),
+          .s_tlast_i(acc_last),
+          .s_tdata_i(acc_tdata),
 
-      .m_aclk(bus_clock),
-      .m_tvalid_o(bus_valid_o),
-      .m_tready_i(bus_ready_i),
-      .m_tlast_o(bus_last_o),
-      .m_tdata_o(bus_tdata)
-  );
+          .m_aclk(bus_clock),
+          .m_tvalid_o(bus_valid_o),
+          .m_tready_i(bus_ready_i),
+          .m_tlast_o(bus_last_o),
+          .m_tdata_o(bus_tdata)
+      );
 
-`endif
+    end
+  endgenerate
 
 
   // -- Simulation sanitisers -- //

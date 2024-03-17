@@ -2,9 +2,9 @@
 all:	sim
 
 OUT	:= $(wildcard *_tb.out)
-VCD	:= $(OUT:%.out=../vcd/%.vcd)
+VCD	:= $(OUT:%.out=%.vcd)
 
 sim:	$(VCD)
 
-../vcd/%.vcd: %.out
+%.vcd: %.out
 	./$<

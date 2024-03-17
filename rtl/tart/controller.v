@@ -1,5 +1,5 @@
 `timescale 1ns / 100ps
-/*
+/**
  * Module      : verilog/tart_control.v
  * Copyright   : (C) Tim Molteno     2023
  *             : (C) Max Scheel      2023
