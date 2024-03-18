@@ -107,7 +107,7 @@ module correlator #(
   ) SIGSRC0 (
       .clock(clock),
       .reset(reset),
-      // Inputs
+
       .valid_i(valid_i),
       .first_i(first_i),
       .next_i(next_i),
@@ -115,7 +115,7 @@ module correlator #(
       .taddr_i(taddr_i),
       .idata_i(idata_i),
       .qdata_i(qdata_i),
-      // Outputs
+
       .valid_o(mux_valid),
       .first_o(mux_first),
       .next_o(mux_next),

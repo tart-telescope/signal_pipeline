@@ -1,33 +1,39 @@
 `timescale 1ns / 100ps
-module visfinal (
-    clock_i,
-    reset_ni,
-
-    // Inputs
-    valid_i,
-    first_i,
-    last_i,
-    data_i,
-
-    // Outputs
-    valid_o,
-    first_o,
-    last_o,
-    data_o
-);
-
+/**
+ *
+ * Todo:
+ *  - currently incomplete, and just a "sketch" -- still relevant ??
+ *
+ */
+module visfinal #(
   // Input and output bit-widths
-  parameter integer IBITS = 7;
-  localparam integer ISB = IBITS - 1;
+  parameter integer IBITS = 7,
+  localparam integer ISB = IBITS - 1,
 
-  parameter integer OBITS = 36;
-  localparam integer OSB = OBITS - 1;
+  parameter integer OBITS = 36,
+  localparam integer OSB = OBITS - 1,
 
   // Total number of visibility components, and the number of required address
   // bits
-  parameter integer NSUMS = 1024;
-  localparam integer ABITS = $clog2(NSUMS);
-  localparam integer ASB = ABITS - 1;
+  parameter integer NSUMS = 1024,
+  localparam integer ABITS = $clog2(NSUMS),
+  localparam integer ASB = ABITS - 1
+) (
+  input clock,
+  input reset,
+
+  // "Interleaved" AX4-Stream like interface, but with no backpressure
+  input valid_i,
+  input first_i,
+  input last_i,
+  input [ISB:0] data_i,
+
+  // AX4-Stream like interface, but with no backpressure
+  output valid_o,
+  output first_o,
+  output last_o,
+  output [OSB:0] data_o
+);
 
   //
   // todo: doesn't belong here? the 'last_i' signals should be used, so that the
@@ -38,21 +44,6 @@ module visfinal (
   // parameter integer COUNT = 200_000;
   // parameter integer CBITS = 29;
   // localparam integer CSB = CBITS - 1;
-
-  input clock_i;
-  input reset_ni;
-
-  // "Interleaved" AX4-Stream like interface, but with no backpressure
-  input valid_i;
-  input first_i;
-  input last_i;
-  input [ISB:0] data_i;
-
-  // AX4-Stream like interface, but with no backpressure
-  output valid_o;
-  output first_o;
-  output last_o;
-  output [OSB:0] data_o;
 
 
   // -- Read-Modify-Write Unit -- //
@@ -67,8 +58,8 @@ module visfinal (
   reg [ASB:0] raddr, aaddr, waddr;
   wire [ASB:0] rnext = raddr + 1;
 
-  always @(posedge clock_i) begin
-    if (!reset_ni) begin
+  always @(posedge clock) begin
+    if (reset) begin
       raddr <= {ABITS{1'b0}};
       waddr <= {ABITS{1'b0}};
 
@@ -122,8 +113,8 @@ module visfinal (
   assign last_o  = olast;
   assign data_o  = odata;
 
-  always @(posedge clock_i) begin
-    if (!reset_ni) begin
+  always @(posedge clock) begin
+    if (reset) begin
       valid <= 1'b0;
       first <= 1'b0;
       olast <= 1'b0;

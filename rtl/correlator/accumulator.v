@@ -155,7 +155,6 @@ module accumulator #(
    *
    *  Note: does not support bus-idle cycles.
    */
-
   reg [MSB:0] revis, imvis;
   reg valid = 1'b0;
   reg rlast = 1'b0;

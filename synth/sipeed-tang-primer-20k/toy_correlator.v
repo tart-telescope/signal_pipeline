@@ -192,6 +192,8 @@ module toy_correlator #(
   wire vis_frame, vis_valid, vis_first, vis_last;
   wire [SSB:0] vis_rdata, vis_idata;
 
+  // Note: this instance would normally be at the end of a `vismerge` "chain,"
+  //   which would typically be `LOOP0` in length.
   visaccum #(
       .IBITS(ABITS),
       .OBITS(SBITS),
