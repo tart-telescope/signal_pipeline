@@ -217,7 +217,7 @@ Module:
 - Source file(s): `axis_afifo.v`
 - Clock domain(s): correlator clock domain, and chip bus-clock domains
 - Parameter(s):
-  + `WIDTH` -- visibility bit-width (per component)
+  + `WIDTH` -- visibility bit-width (per $\mathcal{R}$- and $\mathcal{I}$- component)
   + `ABITS` -- FIFO pointer-bits, so the FIFO size is `1 << ABITS` entries
 
 Description:
@@ -234,14 +234,9 @@ Description:
 Correlator parameters:
 
 - `parameter TRATE = 8`{.v} -- 1x correlator ??
-
 - `parameter LOOP0 = 3`{.v} -- 4-bit adder ??
-
 - `parameter LOOP1 = 5`{.v} -- 7-bit adder ??
-
 - `parameter WIDTH = 32`{.v} -- 32-bit final accumulator ??
-
-Perhaps?
 
 Pairs:
 ```
@@ -249,30 +244,13 @@ Pairs:
 ```
 where the final two pairs are for the signal-means calculations.
 
-### Example: Eight Radios
-
-Correlator parameters:
-
-- `parameter TRATE = 6`{.v} -- 48 correlators ??
-
-- `parameter LOOP0 = 3`{.v} -- 5-bit adder ??
-
-- `parameter LOOP1 = 5`{.v} -- 8-bit adder ??
-
-- `parameter WIDTH = 32`{.v} -- final accumulator ??
-
-Perhaps?
-
 ### Example: 24 Radios
 
 Correlator parameters:
 
 - `parameter TRATE = 12`{.v} -- 24 correlators ??
-
 - `parameter LOOP0 = 3`{.v} -- 5-bit adder ??
-
 - `parameter LOOP1 = 5`{.v} -- 8-bit adder ??
-
 - `parameter WIDTH = 32`{.v} -- final accumulator ??
 
 Perhaps?
