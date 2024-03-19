@@ -1,5 +1,6 @@
 use clap::Parser;
 use rand::distributions::{Distribution, Uniform};
+use rand::Rng;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use num::complex::Complex;
@@ -14,14 +15,25 @@ use num::complex::Complex;
 
 type DataType = Complex<i32>;
 
-fn create_data(n: usize) -> Vec<DataType> {
 
-    let mut rng = rand::thread_rng();
+    
+fn adc_sample(rng: &mut impl Rng) -> i32 {
+    let mut s = 0;
     let sign_mag = Uniform::from(-7..8);
+    
+    while s == 0 {
+        s = sign_mag.sample(rng);
+    }
+    return s;
+}
+
+fn create_data(n: usize) -> Vec<DataType> {
+    let mut rng = rand::thread_rng();
+
     let mut buffer: Vec<DataType> = Vec::with_capacity(n);
     
-    for _ in 0..buffer.capacity() {        
-        buffer.push(Complex::new(sign_mag.sample(&mut rng), sign_mag.sample(&mut rng)));
+    for _ in 0..buffer.capacity() {
+        buffer.push(Complex::new(adc_sample(&mut rng), adc_sample(&mut rng)));
     };
 
     return buffer;
