@@ -8,6 +8,7 @@ Usage: test_vectors [OPTIONS]
 Options:
   -f, --fname <FNAME>      Name of file to output [default: radio_data.txt]
   -a, --ant <ANT>          Number of antennas [default: 8]
+  -b, --bits <BITS>        Number of ADC bits [default: 1]
   -s, --samples <SAMPLES>  Number of samples [default: 1024]
   -h, --help               Print help
   -V, --version            Print version

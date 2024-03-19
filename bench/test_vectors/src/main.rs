@@ -10,30 +10,67 @@ use num::complex::Complex;
  * Write these to a verilog test vector file 'radio_data.txt'
  *
  * generate the complex correlation products for each pair (i,j) and write these
- * a file called 'vis_data.txt'
+ * a file called 'vis_data.txt' TODO At the moment these are just displayed.
  */
 
 type DataType = Complex<i32>;
 
-
-    
-fn adc_sample(rng: &mut impl Rng) -> i32 {
+/**
+    * Create an ADC sample (random) that matches the range of samples 
+    * that we can expect from the MA2769. NOTE. This means that for 2-bit
+    * data the range will be greater (between -5 and 5) and I'm a little unsure
+    * about what scaling means in this case. I suspect that as we have Automatic
+    * gain control, the scaling is not significant, and we can rescale down
+    * to something suitable, so perhaps can use a range of -2,-1,1,2 just as well
+    * although we have to be careful. 1-bit is just 1 if negative and 0 if positive.
+    * */
+fn adc_sample(rng: &mut impl Rng, bits: u8) -> i32 {
     let mut s = 0;
-    let sign_mag = Uniform::from(-7..8);
+    let mut min = -1;
+    let mut max = 1;
+        
+    match bits {
+        1 => { min = -1; max = 1; }
+        2 => { min = -5; max = 5; }
+        _ => println!("Only work with 1 or two bit sign magnitude data")
+    }
     
-    while s == 0 {
-        s = sign_mag.sample(rng);
+    let sign_mag = Uniform::from(min..=max);
+    
+    while s % 2 == 0 {
+        s = sign_mag.sample(rng); // the radio itself never produces zeros, or even numbers.
     }
     return s;
 }
 
-fn create_data(n: usize) -> Vec<DataType> {
+fn to_sign_magnitude(a : i32, nbits: u8) -> i32 {
+    // See Table 16 in the Max2769 data sheet.
+    let mut ret = 0;
+    
+    match nbits{
+        1 => {
+            if a < 0 { ret = 1; }
+            else { ret = 0; }
+        },
+        2 => {
+            if a < -3 { ret = 0b11; }
+            else if a < 0 { ret = 0b10; }
+            else if a < 4 { ret = 0b00; }
+            else { ret = 0b01; }
+        }
+        _ => println!("Only work with 1 or two bit sign magnitude data")
+    }
+    return ret;
+}
+
+
+fn create_data(n: usize, bits: u8) -> Vec<DataType> {
     let mut rng = rand::thread_rng();
 
     let mut buffer: Vec<DataType> = Vec::with_capacity(n);
     
     for _ in 0..buffer.capacity() {
-        buffer.push(Complex::new(adc_sample(&mut rng), adc_sample(&mut rng)));
+        buffer.push(Complex::new(adc_sample(&mut rng, bits), adc_sample(&mut rng, bits)));
     };
 
     return buffer;
@@ -56,23 +93,6 @@ fn correlate(a: &Vec<DataType>, b: &Vec<DataType>) -> Complex<i32> {
 }
 
 
-fn to_sign_magnitude(a : i32, nbits: i32) -> i32 {
-    // See Table 16 in the Max2769 data sheet.
-    let mut ret = 0;
-    
-    match nbits{
-        1 => {
-            if a < 0 { ret = 1; }
-            else { ret = 0; }
-        },
-        2 => {
-            if a < 0 { ret = 1; }
-            else { ret = 0; }
-        }
-        _ => println!("Only work with 1 or two bit sign magnitude data")
-    }
-    return ret;
-}
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -84,6 +104,10 @@ struct Args {
     /// Number of antennas
     #[arg(short, long, default_value_t = 8)]
     ant: u8,
+
+    /// Number of ADC bits
+    #[arg(short, long, default_value_t = 1)]
+    bits: u8,
 
     /// Number of samples
     #[arg(short, long, default_value_t = 1024)]
@@ -100,7 +124,7 @@ fn main() -> std::io::Result<()> {
     
     for i in 0..args.ant {
         println!("Antenna {}!", i);
-        let buffer = create_data(args.samples);
+        let buffer = create_data(args.samples, args.bits);
         data.push(buffer); // println!("{:?}", &buffer);
     }
     
@@ -114,7 +138,7 @@ fn main() -> std::io::Result<()> {
         
         for j in 0..s.capacity() {
             s[j] = data[j][i];
-            write!(writer, "{}{}",to_sign_magnitude(s[j].re,1), to_sign_magnitude(s[j].im,1))?;
+            write!(writer, "{}{}",to_sign_magnitude(s[j].re,args.bits), to_sign_magnitude(s[j].im,args.bits))?;
         }
         write!(writer, "\n")?;
     }
