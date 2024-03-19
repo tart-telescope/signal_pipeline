@@ -78,7 +78,7 @@ fn to_sign_magnitude(a : i32, nbits: i32) -> i32 {
 #[command(version, about, long_about = None)]
 struct Args {
     /// Name of file to output
-    #[arg(short, long, default_value_t = String::from("test_vectors.txt"))]
+    #[arg(short, long, default_value_t = String::from("radio_data.txt"))]
     fname: String,
 
     /// Number of antennas

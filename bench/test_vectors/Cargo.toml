@@ -9,4 +9,3 @@ edition = "2021"
 clap = { version = "4.5.2", features = ["derive"] }
 num = "0.4.1"
 rand = "0.8.5"
-rustfft = "6.2.0"
