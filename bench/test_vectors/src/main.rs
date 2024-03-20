@@ -128,11 +128,13 @@ fn main() -> std::io::Result<()> {
     let args = Args::parse();
     println!("Output file {}", args.fname);
     
+    let bits = args.bits;
+    
     let mut data: Vec<Vec<DataType>> = Vec::with_capacity(args.ant.into());
     
     for i in 0..args.ant {
         println!("Antenna {}", i);
-        let buffer = create_data(args.samples, args.bits);
+        let buffer = create_data(args.samples, bits);
         data.push(buffer); // println!("{:?}", &buffer);
     }
     
@@ -146,7 +148,16 @@ fn main() -> std::io::Result<()> {
         
         for j in 0..s.capacity() {
             s[j] = data[j][i];
-            write!(writer, "{}{}",to_sign_magnitude(s[j].re,args.bits), to_sign_magnitude(s[j].im,args.bits))?;
+            
+            match bits{
+                1 => {
+                    write!(writer, "{:01b}{:01b}",to_sign_magnitude(s[j].re,bits), to_sign_magnitude(s[j].im,bits))?;
+                },
+                2 => {
+                    write!(writer, "{:02b}{:02b}",to_sign_magnitude(s[j].re,bits), to_sign_magnitude(s[j].im,bits))?;
+                }
+                _ => println!("Only work with 1 or two bit sign magnitude data")
+            }
         }
         write!(writer, "\n")?;
     }
