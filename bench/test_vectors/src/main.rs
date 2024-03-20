@@ -23,6 +23,9 @@ type DataType = Complex<i32>;
     * gain control, the scaling is not significant, and we can rescale down
     * to something suitable, so perhaps can use a range of -2,-1,1,2 just as well
     * although we have to be careful. 1-bit is just 1 if negative and 0 if positive.
+    * 
+    * The Automatic Gain Control keeps the magnitude bit high 33% of the time in 2-bit
+    * mode. This means we should generate random samples with this property.
     * */
 fn adc_sample(rng: &mut impl Rng, bits: u8) -> i32 {
     let mut s = 0;
@@ -69,26 +72,31 @@ fn create_data(n: usize, bits: u8) -> Vec<DataType> {
 
     let mut buffer: Vec<DataType> = Vec::with_capacity(n);
     
+    let mut count: i32 = 0;
+    
     for _ in 0..buffer.capacity() {
-        buffer.push(Complex::new(adc_sample(&mut rng, bits), adc_sample(&mut rng, bits)));
+        let z = Complex::new(adc_sample(&mut rng, bits), adc_sample(&mut rng, bits));
+        buffer.push(z);
+        if to_sign_magnitude(z.re, bits) % 2 == 1 { count += 1; }
     };
 
+    println!("Percent Mag Hi: {}\n", (count as f32) / (n as f32)); 
     return buffer;
 }
 
-fn correlate(a: &Vec<DataType>, b: &Vec<DataType>) -> Complex<i32> {
+
+fn correlate(a: &Vec<DataType>, b: &Vec<DataType>) -> DataType {
     // Complex Correlation of antennas a and b signals
-    // (a + ib)*(c - id) = a*c + b*d +ib*c -ia*d
-    // = (a*c + b*d) + i(b*c) - (a*d)
     
     let mut re: i32 = 0;
     let mut im: i32 = 0;
     
     for i in 0..a.capacity() {
-        re += a[i].re*b[i].re + a[i].im*b[i].im;
-        im += a[i].im*b[i].re - a[i].re*b[i].im;
+        let z = a[i]*b[i].conj();
+        re += z.re;
+        im += z.im;
     }
-    
+
     return Complex::new(re,im);
 }
 
@@ -109,7 +117,7 @@ struct Args {
     #[arg(short, long, default_value_t = 1)]
     bits: u8,
 
-    /// Number of samples
+    /// Number of samples to generate
     #[arg(short, long, default_value_t = 1024)]
     samples: usize,
 }
@@ -123,7 +131,7 @@ fn main() -> std::io::Result<()> {
     let mut data: Vec<Vec<DataType>> = Vec::with_capacity(args.ant.into());
     
     for i in 0..args.ant {
-        println!("Antenna {}!", i);
+        println!("Antenna {}", i);
         let buffer = create_data(args.samples, args.bits);
         data.push(buffer); // println!("{:?}", &buffer);
     }
