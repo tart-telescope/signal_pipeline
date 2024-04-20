@@ -2,4 +2,9 @@
 *.pdf
 *.vcd
 *.out
+logs/
 target/
+*.log
+impl/
+
+misc-verilog-cores/

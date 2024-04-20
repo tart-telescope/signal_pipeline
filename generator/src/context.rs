@@ -1,5 +1,8 @@
-use crate::chunked::Chunked;
+use log::{debug, error, info, warn};
+use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use crate::chunked::Chunked;
 
 /**
  * Stores the working data for partitioning the set of visibility calculations
@@ -14,22 +17,22 @@ use std::fmt;
  * of the antenna signals, and the 'a_mux_counts' & 'b_mux_counts' arrays store
  * the current number of inputs assigned to each MUX.
  */
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq)]
 pub struct Context {
     /* Basic graph settings and properties */
-    num_antennas: usize,
-    clock_multiplier: usize,
-    no_means: bool,
-    verbose: bool,
-    num_edges: usize,
-    num_units: usize,
-    mux_width: usize,
+    pub num_antennas: usize,
+    pub clock_multiplier: usize,
+    pub no_means: bool,
+    pub verbose: bool,
+    pub num_edges: usize,
+    pub num_units: usize,
+    pub mux_width: usize,
 
     /* Lists of edges, nodes, and their number of occurrences */
-    edges_array: Vec<(usize, usize)>,
-    edges_count: Vec<usize>,
-    pairs_count: Vec<usize>,
-    nodes_count: Vec<usize>,
+    pub edges_array: Vec<(usize, usize)>,
+    pub edges_count: Vec<usize>,
+    pub pairs_count: Vec<usize>,
+    pub nodes_count: Vec<usize>,
 
     /* (Current, A- & B-) MUX assignments */
     pub a_mux_array: Chunked<usize>,
@@ -245,7 +248,7 @@ impl Context {
      *  Computed by expanding out the expressions for the upper-triangular
      *  matrix coordinates to array-index.
      */
-    fn calc_edge_index(&self, node_a: usize, node_b: usize) -> usize {
+    pub fn calc_edge_index(&self, node_a: usize, node_b: usize) -> usize {
         let src = if node_a > node_b { node_b } else { node_a };
         let dst = if node_a > node_b { node_a } else { node_b };
         assert!(src < dst);
@@ -319,6 +322,8 @@ impl Context {
         let mut node = 0;
         let mut edges = 0;
 
+        debug!("Clearing any current edge & mean assignments.");
+        // std::process::exit(1);
         self.reset();
 
         while node < self.num_antennas {
@@ -538,7 +543,7 @@ impl Context {
         for u in 0..self.num_units {
             scores.push(self.improve_unit_score(u));
         }
-        println!("Scores: {:?}", scores);
+        info!("Scores: {:?}", scores);
     }
 
     /**
@@ -612,7 +617,7 @@ impl Context {
         &self,
         unit: usize,
         node: usize,
-        next: usize,
+        _next: usize,
     ) -> usize {
         // Compute score for removing an unnecessary node
         let score = if self.a_mux_array[unit].contains(&node) {
@@ -723,18 +728,16 @@ impl Context {
     pub fn assign_edges(&mut self, cont: bool) -> Option<Chunked<usize>> {
         let ranks = self.sorted_edges();
         if self.edges_count[ranks[0]] == 0 {
-            eprintln!("Not all edges have been covered!");
+            error!("Not all edges have been covered!");
             let mut i = 0;
-            eprint!("Missing: ");
+            let mut missing: Vec<String> = Vec::new();
             while self.edges_count[ranks[i]] == 0 {
                 let (a, b) = self.edges_array[ranks[i]];
-                if i > 0 {
-                    eprint!(", ");
-                }
-                eprint!("{} -> {}", a, b);
+                missing.push(format!("{} -> {}", a, b));
                 i += 1;
             }
-            eprintln!("  (num = {})", i);
+            let edges = missing.join(", ");
+            error!("Missing: {}  (num = {})", edges, i);
             return None;
         }
 
@@ -768,496 +771,15 @@ impl Context {
             {
                 units.push(u, k);
             } else if !cont {
-                eprintln!("No solution, as there is no free correlator!\n");
+                error!("No solution, as there is no free correlator!\n");
                 return None;
             } else {
                 let (a, b) = self.edges_array[k];
-                println!("Failed to route edge: {} -> {}", a, b);
+                warn!("Failed to route edge: {} -> {}", a, b);
             }
         }
 
         Some(units)
-    }
-
-    // todo: this method is a bit too greedy, and does not consider whether
-    //   there exists solutions for remaining means, when choosing pairs for
-    //   each step.
-    // todo: the 'means_assign(..)' function is better?
-    pub fn assign_means(
-        &mut self,
-        units: Chunked<usize>,
-    ) -> Option<Chunked<(usize, usize)>> {
-        // Compute the nodes from least- to most- frequent
-        let mut nodes: Vec<usize> = (0..self.num_antennas).collect();
-        nodes.sort_by_key(|p| self.nodes_count[*p]);
-
-        /*
-        let mut freqs = self.means_set(units.clone());
-        freqs.sort_unstable_by_key(|(_, c)| *c);
-        if freqs.len() < self.num_antennas {
-            eprintln!("Cannot place all signal-means calculations!\n  {:?} (len = {})", freqs.clone(), freqs.len());
-            return None;
-        }
-        let mut nodes = freqs
-            .clone()
-            .into_iter()
-            .map(|(i, _)| i)
-            .collect::<Vec<usize>>();
-        */
-
-        let mut min_count = units.get_stride();
-        for i in 0..units.len() {
-            if min_count > units.count(i) {
-                min_count = units.count(i);
-            }
-        }
-
-        let stride = units.get_stride() - min_count;
-        let mut means: Chunked<(usize, usize)> =
-            Chunked::new(stride, units.len());
-        let mut prev = nodes.len();
-
-        while !nodes.is_empty() {
-            // Find the emptiest correlator unit that contains the two least-
-            // frequent nodes ...
-            let mut ranks: Vec<usize> = (0..self.num_units).collect();
-            ranks.sort_by_key(|p| units.count(*p) + means.count(*p));
-            // ranks.reverse();
-
-            for unit in ranks {
-                // Can we add to this unit?
-                if units.count(unit) + means.count(unit)
-                    >= self.clock_multiplier
-                {
-                    continue;
-                }
-
-                // Find the least two frequent nodes, and assign them
-                let mut a_node = usize::MAX;
-                let mut i = 0;
-                while i < nodes.len() {
-                    if self.a_mux_array[unit].contains(&nodes[i]) {
-                        a_node = nodes[i];
-                        break;
-                    }
-                    i += 1;
-                }
-
-                let mut b_node = usize::MAX;
-                let mut i = 0;
-                while i < nodes.len() {
-                    if self.b_mux_array[unit].contains(&nodes[i]) {
-                        b_node = nodes[i];
-                        break;
-                    }
-                    i += 1;
-                }
-
-                if a_node < usize::MAX && b_node < usize::MAX {
-                    means.push(unit, (a_node, b_node));
-                    nodes.retain(|&x| x != a_node && x != b_node);
-                    break;
-                }
-            }
-
-            if nodes.len() == prev {
-                // No nodes placed on this pass, so no solution
-                eprintln!("Cannot place all signal-means calculations!");
-                eprintln!("Remaining signal-means calculations to place:");
-                eprintln!("  {:?} (len = {})", nodes.clone(), nodes.len());
-                return None;
-            }
-            prev = nodes.len();
-        }
-
-        Some(means)
-    }
-
-    pub fn means_set(&self, units: Chunked<usize>) -> Vec<(usize, usize)> {
-        let length = self.num_antennas;
-        let mut count: Vec<usize> = vec![0; length];
-
-        for i in 0..units.len() {
-            if units.count(i) < self.clock_multiplier {
-                for j in self.a_mux_array[i].iter() {
-                    count[*j] += 1;
-                }
-                for j in self.b_mux_array[i].iter() {
-                    count[*j] += 1;
-                }
-            }
-        }
-
-        count
-            .iter()
-            .enumerate()
-            .filter_map(|(i, &x)| if x > 0 { Some((i, x)) } else { None })
-            .collect::<Vec<(usize, usize)>>()
-    }
-
-    pub fn means_assign(
-        &mut self,
-        units: Chunked<usize>,
-    ) -> Option<Chunked<(usize, usize)>> {
-        let mut freqs = self.means_set(units.clone());
-        freqs.sort_unstable_by_key(|(_, c)| *c);
-        if freqs.len() < self.num_antennas {
-            eprintln!("Cannot place all signal-means calculations!");
-            eprintln!("  {:?} (len = {})", freqs.clone(), freqs.len());
-            return None;
-        }
-        println!("freqs: {:?}", freqs);
-        let mut nodes = freqs
-            .clone()
-            .into_iter()
-            .map(|(i, _)| i)
-            .collect::<Vec<usize>>();
-        nodes.reverse();
-
-        let mut min_count = units.get_stride();
-        for i in 0..units.len() {
-            if min_count > units.count(i) {
-                min_count = units.count(i);
-            }
-        }
-
-        let stride = units.get_stride() - min_count;
-        let mut means: Chunked<(usize, usize)> =
-            Chunked::new(stride, units.len());
-
-        while !nodes.is_empty() {
-            let node = nodes.pop().unwrap();
-            let mut pairs = vec![usize::MAX; units.len()];
-            let mut scores = vec![0; units.len()];
-
-            for i in 0..units.len() {
-                if units.count(i) + means.count(i) >= self.clock_multiplier {
-                    continue;
-                }
-
-                // If we choose 'node', we need to also select a suitable pair
-                let a_mux = self.a_mux_array[i].contains(&node);
-                let mut others = if a_mux {
-                    self.b_mux_array[i].to_vec()
-                } else if self.b_mux_array[i].contains(&node) {
-                    self.a_mux_array[i].to_vec()
-                } else {
-                    continue;
-                };
-                others.retain(|x| nodes.contains(x));
-
-                if others.is_empty() {
-                    continue;
-                }
-
-                // See which of the remaining nodes can still be placed, if we
-                // assign the current 'node' to 'units[i]'.
-                let mut rest = vec![0; nodes.len()];
-                // let mut this = vec![0; nodes.len()];
-                let mut lut = vec![usize::MAX; self.num_antennas];
-                for (j, r) in nodes.iter().enumerate() {
-                    lut[*r] = j;
-                }
-
-                // Each 'rest' node must still be assignable, if we place 'node
-                // into 'units[i]'.
-                let mut anum = vec![0; nodes.len()];
-                let mut bnum = vec![0; nodes.len()];
-                for k in 0..units.len() {
-                    let diff =
-                        self.clock_multiplier - units.count(k) - means.count(k);
-                    if i == k {
-                        for &l in &others {
-                            // todo: want to find the unit that is "scarcest",
-                            //   while leaving the greatest remainging options
-                            // this[lut[l]] += free;
-                            rest[lut[l]] += 1;
-                            /*
-                            if a_mux {
-                                bnum[lut[l]] += 1;
-                            } else {
-                                anum[lut[l]] += 1;
-                            }
-                            */
-                        }
-                    } else if diff > 0 {
-                        for &l in &self.a_mux_array[k] {
-                            if lut[l] < usize::MAX {
-                                rest[lut[l]] += 1;
-                                anum[lut[l]] += 1;
-                            }
-                        }
-                        for &l in &self.b_mux_array[k] {
-                            if lut[l] < usize::MAX {
-                                rest[lut[l]] += 1;
-                                bnum[lut[l]] += 1;
-                            }
-                        }
-                    }
-                }
-
-                // No route for at least one of the remaining means calculations
-                if rest.contains(&0) {
-                    continue;
-                }
-
-                // Try to fill up the A-MUX and B-MUX at the same rates ...
-                let asu: usize = anum.iter().sum();
-                let bsu: usize = bnum.iter().sum();
-                let rem: usize = nodes.len() >> 1;
-                if asu < rem || bsu < rem {
-                    println!(
-                        "asum: {}, bsum: {} (remaining: {})",
-                        asu, bsu, rem
-                    );
-                    continue;
-                } else {
-                    println!(
-                        "nodes: ({}, {:?}) => asum: {}, bsum: {} (remaining: {})",
-                        node, nodes.clone(), asu, bsu, rem
-                    );
-                }
-
-                // todo: detect the case that selecting 'units[i]' for 'node'
-                //   results in too few solutions remaining for the 'others'?
-                /*
-                let mut sols = others.len();
-                for &j in &others {
-                    if rest[lut[j]] < 2 {
-                        sols -= 1;
-                    }
-                }
-
-                if others.len() > 1 && sols < 2 {
-                    eprintln!(
-                        "No means solution for 'unit: {}' and 'node: {}'",
-                        i, node
-                    );
-                    continue;
-                }
-                else {
-                    println!("Remaining (pair) solutions for 'unit: {}' and 'node: {}': {} (others.len() = {}, rest: {:?})",
-                        i, node, sols, others.len(), rest.clone(),
-                    );
-                }
-                */
-
-                // Find the least-common node in the other MUX
-                let mut pmin = usize::MAX;
-                let mut pidx = usize::MAX;
-                for (j, &p) in rest.iter().enumerate() {
-                    if others.contains(&nodes[j]) && p < pmin {
-                        pmin = p;
-                        pidx = nodes[j];
-                    }
-                }
-
-                if pmin < usize::MAX {
-                    // todo: can this underflow?
-                    let s = rest.into_iter().sum::<usize>()
-                        - if asu > bsu { asu - bsu } else { bsu - asu };
-                    scores[i] = s;
-                    // scores[i] = rest.into_iter().sum();
-                    pairs[i] = pidx;
-                }
-            }
-
-            // Find the best-scoring unit
-            let mut smax = usize::MIN;
-            let mut sidx = usize::MAX;
-            for (i, &s) in scores.iter().enumerate() {
-                if s > smax {
-                    smax = s;
-                    sidx = i;
-                }
-            }
-
-            if sidx < usize::MAX {
-                let pair = pairs[sidx];
-                means.push(sidx, (node, pair));
-                nodes.retain(|&x| x != pair);
-            } else {
-                nodes.push(node);
-                println!("{}", means);
-                println!("No solution, and remaining nodes: {:?}", nodes);
-                return None;
-            }
-        }
-
-        Some(means)
-    }
-
-    pub fn means_another(
-        &mut self,
-        units: Chunked<usize>,
-    ) -> Option<Chunked<(usize, usize)>> {
-        let mut freqs = self.means_set(units.clone());
-        freqs.sort_unstable_by_key(|(_, c)| *c);
-        if freqs.len() < self.num_antennas {
-            eprintln!("Cannot place all signal-means calculations!");
-            eprintln!("  {:?} (len = {})", freqs.clone(), freqs.len());
-            return None;
-        }
-        println!("freqs: {:?}", freqs);
-        let mut nodes = freqs
-            .clone()
-            .into_iter()
-            .map(|(i, _)| i)
-            .collect::<Vec<usize>>();
-        nodes.reverse();
-
-        let mut min_count = units.get_stride();
-        for i in 0..units.len() {
-            if min_count > units.count(i) {
-                min_count = units.count(i);
-            }
-        }
-
-        let stride = units.get_stride() - min_count;
-        let mut means: Chunked<(usize, usize)> =
-            Chunked::new(stride, units.len());
-
-        while !nodes.is_empty() {
-            let node = nodes.pop().unwrap();
-            let mut pairs = vec![usize::MAX; units.len()];
-            let mut scores = vec![0; units.len()];
-
-            for i in 0..units.len() {
-                let free =
-                    self.clock_multiplier - units.count(i) - means.count(i);
-                if free == 0 {
-                    continue;
-                }
-
-                // If we choose 'node', we need to also select a suitable pair
-                let a_mux = self.a_mux_array[i].contains(&node);
-                let mut others = if a_mux {
-                    self.b_mux_array[i].to_vec()
-                } else if self.b_mux_array[i].contains(&node) {
-                    self.a_mux_array[i].to_vec()
-                } else {
-                    continue;
-                };
-                others.retain(|x| nodes.contains(x));
-
-                if others.is_empty() {
-                    continue;
-                }
-
-                let mut lut = vec![usize::MAX; self.num_antennas];
-                for (j, r) in nodes.iter().enumerate() {
-                    lut[*r] = j;
-                }
-
-                // See which of the remaining nodes can still be placed, if we
-                // assign the current 'node' to 'units[i]'.
-                let mut rest = vec![0; nodes.len()];
-
-                // Each 'rest' node must still be assignable, if we place 'node
-                // into 'units[i]'.
-                let mut anum = vec![0; nodes.len()];
-                let mut bnum = vec![0; nodes.len()];
-                for k in 0..units.len() {
-                    let mut diff =
-                        self.clock_multiplier - units.count(k) - means.count(k);
-                    if i == k {
-                        for &l in &others {
-                            // todo: want to find the unit that is "scarcest",
-                            //   while leaving the greatest remainging options
-                            rest[lut[l]] += 1;
-                            if a_mux {
-                                bnum[lut[l]] += 1;
-                            } else {
-                                anum[lut[l]] += 1;
-                            }
-                        }
-                        diff -= 1;
-                    }
-                    if diff > 0 {
-                        for &l in &self.a_mux_array[k] {
-                            if lut[l] < usize::MAX {
-                                rest[lut[l]] += diff;
-                                anum[lut[l]] += diff;
-                            }
-                        }
-                        for &l in &self.b_mux_array[k] {
-                            if lut[l] < usize::MAX {
-                                rest[lut[l]] += diff;
-                                bnum[lut[l]] += diff;
-                            }
-                        }
-                    }
-                }
-
-                // No route for at least one of the remaining means calculations
-                if rest.contains(&0) {
-                    continue;
-                }
-
-                // Try to fill up the A-MUX and B-MUX at the same rates ...
-                let mut asu: usize = anum.iter().sum();
-                let mut bsu: usize = bnum.iter().sum();
-                if a_mux {
-                    asu += 1;
-                } else {
-                    bsu += 1
-                };
-                let rem: usize = nodes.len() >> 1;
-                if asu < rem || bsu < rem {
-                    println!(
-                        "asum: {}, bsum: {} (remaining: {})",
-                        asu, bsu, rem
-                    );
-                    continue;
-                } else {
-                    println!(
-                        "nodes: ({}, {:?}) => asum: {}, bsum: {} (remaining: {})",
-                        node, nodes.clone(), asu, bsu, rem
-                    );
-                }
-
-                // Find the least-common node in the other MUX
-                let mut pmin = usize::MAX;
-                let mut pidx = usize::MAX;
-                for (j, &p) in rest.iter().enumerate() {
-                    if others.contains(&nodes[j]) && p < pmin {
-                        pmin = p;
-                        pidx = nodes[j];
-                    }
-                }
-
-                if pmin < usize::MAX {
-                    // todo: can this underflow?
-                    let s = rest.into_iter().sum::<usize>()
-                        - if asu > bsu { asu - bsu } else { bsu - asu };
-                    scores[i] = s;
-                    pairs[i] = pidx;
-                }
-            }
-
-            // Find the best-scoring unit
-            let mut smax = usize::MIN;
-            let mut sidx = usize::MAX;
-            for (i, &s) in scores.iter().enumerate() {
-                if s > smax {
-                    smax = s;
-                    sidx = i;
-                }
-            }
-
-            if sidx < usize::MAX {
-                let pair = pairs[sidx];
-                means.push(sidx, (node, pair));
-                nodes.retain(|&x| x != pair);
-            } else {
-                nodes.push(node);
-                println!("{}", means);
-                println!("No solution, and remaining nodes: {:?}", nodes);
-                return None;
-            }
-        }
-
-        Some(means)
     }
 
     /**
@@ -1275,8 +797,9 @@ impl Context {
         self.verbose = verbose;
         if !self.no_means {
             self.place_means();
+            // println!("{}", self);
         } else if verbose {
-            println!("Skipping means ...");
+            info!("Skipping means ...");
         }
 
         // Filling both input MUXs of each correlator unit.

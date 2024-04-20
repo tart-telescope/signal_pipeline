@@ -1,31 +1,42 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Mon Sep 11 06:14:24 2023
+[*] Sun Mar 17 09:13:45 2024
 [*]
-[dumpfile] "/home/patrick/dev/signal_pipeline/vcd/correlate_tb.vcd"
-[dumpfile_mtime] "Mon Sep 11 06:13:28 2023"
-[dumpfile_size] 6500
-[savefile] "/home/patrick/dev/signal_pipeline/vcd/correlate_tb.gtkw"
+[dumpfile] "./correlate_tb.vcd"
+[dumpfile_mtime] "Sun Mar 17 09:13:10 2024"
+[dumpfile_size] 6890
+[savefile] "./correlate_tb.gtkw"
 [timestart] 0
 [size] 2560 1376
 [pos] -1 -1
-*-15.641764 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-15.641764 370000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [sst_width] 233
 [signals_width] 142
 [sst_expanded] 1
 [sst_vpaned_height] 414
 @28
 correlate_tb.clock
-correlate_tb.reset_n
-correlate_tb.src_frame
+[color] 3
 correlate_tb.src_start
+[color] 2
+correlate_tb.src_frame
 correlate_tb.src_done
+[color] 3
+correlate_tb.src_auto
+@24
+[color] 7
+correlate_tb.count[1:0]
+[color] 7
+correlate_tb.taddr[3:0]
+@28
 correlate_tb.cor_frame
 correlate_tb.cor_done
 @800200
 -source
 @28
+[color] 2
 correlate_tb.src_valid
+[color] 3
 correlate_tb.src_first
 correlate_tb.src_last
 correlate_tb.ai
@@ -37,11 +48,19 @@ correlate_tb.bq
 @800200
 -corr
 @29
+[color] 3
 correlate_tb.cor_valid
 @22
 correlate_tb.cor_rdata[3:0]
 correlate_tb.cor_idata[3:0]
 @1000200
 -corr
+@24
+correlate_tb.cnext[1:0]
+@28
+correlate_tb.tauto
+@24
+[color] 2
+correlate_tb.tnext[3:0]
 [pattern_trace] 1
 [pattern_trace] 0

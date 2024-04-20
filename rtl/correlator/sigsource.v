@@ -4,73 +4,58 @@
  *
  * Note: Two pipeline stages.
  */
-module sigsource (  /*AUTOARG*/
-    clock,
-    reset_n,
-    // Inputs
-    valid_i,
-    first_i,
-    last_i,
-    taddr_i,
-    idata_i,
-    qdata_i,
-    // Outputs
-    valid_o,
-    first_o,
-    last_o,
-    ai_o,
-    aq_o,
-    bi_o,
-    bq_o
+module sigsource #(
+    parameter integer WIDTH = 32,  // Number of antennas/signals
+    localparam integer MSB = WIDTH - 1,
+    // parameter integer SBITS = 5,
+    localparam integer SBITS = $clog2(WIDTH),
+    localparam integer SSB = SBITS - 1,
+
+    parameter integer MUX_N = 7,  // Number of assigned A-/B- MUX inputs
+    // parameter integer XBITS = 3,  // Input MUX source-select bit-width
+    localparam integer XBITS = $clog2(MUX_N),  // Input MUX source-select bit-width
+    localparam integer XSB = XBITS - 1,
+
+    parameter integer TRATE = 30,  // Time-multiplexing rate
+    // parameter integer TBITS = 5,  // Input MUX bits
+    localparam integer TBITS = $clog2(TRATE),  // Input MUX bits
+    localparam integer TSB = TBITS - 1,
+
+    localparam integer PBITS = SBITS * MUX_N,  // Signal taps for A-/B- MUX inputs
+    localparam integer PSB   = PBITS - 1,
+
+    localparam integer QBITS = TRATE * XBITS,  // Time-interval to MUX-sel bits
+    localparam integer QSB   = QBITS - 1,
+
+    // todo: produce these values using the 'generator' utility
+    parameter unsigned [PSB:0] ATAPS = {PBITS{1'bx}},
+    parameter unsigned [PSB:0] BTAPS = {PBITS{1'bx}},
+
+    parameter unsigned [QSB:0] ASELS = {QBITS{1'bx}},
+    parameter unsigned [QSB:0] BSELS = {QBITS{1'bx}}
+) (
+    input clock,
+    input reset,
+
+    // Interleaved, AXI4-Stream like antenna IQ source-data inputs
+    input valid_i,
+    input first_i,
+    input next_i,
+    input last_i,
+    input [TSB:0] taddr_i,
+    input [MSB:0] idata_i,
+    input [MSB:0] qdata_i,
+
+    // Output IQ, A- & B- signals to the correlator
+    output reg valid_o,
+    output reg first_o,
+    output reg next_o,
+    output reg last_o,
+    output reg ai_o,
+    output reg aq_o,
+    output reg bi_o,
+    output reg bq_o
 );
-
-  parameter integer WIDTH = 32;  // Number of antennas/signals
-  parameter integer SBITS = 5;
-
-  parameter integer XBITS = 3;  // Input MUX source-select bit-width
-  parameter integer MUX_N = 7;  // Number of assigned A-/B- MUX inputs
-
-  parameter integer TRATE = 30;  // Time-multiplexing rate
-  parameter integer TBITS = 5;
-
-  localparam integer MSB = WIDTH - 1;
-  localparam integer SSB = SBITS - 1;
-  localparam integer XSB = XBITS - 1;
-  localparam integer TSB = TBITS - 1;
-
-  localparam integer PBITS = SBITS * MUX_N;  // Signal taps for A-/B- MUX inputs
-  localparam integer PSB = PBITS - 1;
-
-  localparam integer QBITS = TRATE * XBITS;  // Time-interval to MUX-sel bits
-  localparam integer QSB = QBITS - 1;
-
-  // todo: produce these values using the 'generator' utility
-  parameter unsigned [PSB:0] ATAPS = {PBITS{1'bx}};
-  parameter unsigned [PSB:0] BTAPS = {PBITS{1'bx}};
-
-  parameter unsigned [QSB:0] ASELS = {QBITS{1'bx}};
-  parameter unsigned [QSB:0] BSELS = {QBITS{1'bx}};
-
-
-  input clock;
-  input reset_n;
-
-  // Interleaved, AXI4-Stream like antenna IQ source-data inputs
-  input valid_i;
-  input first_i;
-  input last_i;
-  input [TSB:0] taddr_i;
-  input [MSB:0] idata_i;
-  input [MSB:0] qdata_i;
-
-  // Output IQ, A- & B- signals to the correlator
-  output reg valid_o;
-  output reg first_o;
-  output reg last_o;
-  output reg ai_o;
-  output reg aq_o;
-  output reg bi_o;
-  output reg bq_o;
 
 
   /**
@@ -87,15 +72,15 @@ module sigsource (  /*AUTOARG*/
     for (ii = 0; ii < TRATE; ii = ii + 1) begin : gen_mux_sels
 
       initial begin
-        a_sels[ii] = ASELS[ii*TBITS+TSB:ii*TBITS];
-        b_sels[ii] = BSELS[ii*TBITS+TSB:ii*TBITS];
+        a_sels[ii] = ASELS[ii*XBITS+XSB:ii*XBITS];
+        b_sels[ii] = BSELS[ii*XBITS+XSB:ii*XBITS];
       end
 
     end  // gen_mux_sels
   endgenerate
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       asel <= XZERO;
       bsel <= XZERO;
     end else begin
@@ -131,16 +116,18 @@ module sigsource (  /*AUTOARG*/
   /**
    * A- & B- inputs MUXs that select the output antenna (IQ) signals.
    */
-  reg valid, first, last;
+  reg valid, first, next, last;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       {valid_o, valid} <= 2'b00;
       {first_o, first} <= 2'b00;
+      {next_o, next}   <= 2'b00;
       {last_o, last}   <= 2'b00;
     end else begin
       {valid_o, valid} <= {valid, valid_i};
       {first_o, first} <= {first, first_i};
+      {next_o, next}   <= {next, next_i};
       {last_o, last}   <= {last, last_i};
     end
 

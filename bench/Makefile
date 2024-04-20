@@ -2,17 +2,34 @@
 all:	doc sim
 
 #
-#  Icarus Verilog settings
+#  Icarus Verilog sources & settings
 ##
+
+LIBDIR	:= ../lib/misc-verilog-cores
+DDR3DIR	:= $(LIBDIR)/ddr3
+USB_DIR	:= $(LIBDIR)/usb
+
+# Various cores & modules
+ARCH	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/arch/*.v))
+AXIS	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/axis/*.v))
+DDR3	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/ddr3/*.v))
+FIFO	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/fifo/*.v))
+MISC	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/misc/*.v))
+SPI	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/spi/*.v))
+UART	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/uart/*.v))
+USB	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/usb/*.v))
+
+# Correlator cores & testbenches
+RTL	:= ../rtl
+CORR	:= $(wildcard $(RTL)/correlator/*.v)
+VERLIB	:= $(ARCH) $(AXIS) $(CORR) $(DDR3) $(FIFO) $(MISC) $(SPI) $(UART) $(USB)
+
+# Icarus settings
 IVC	?= iverilog
 VERINC	:= ../include/
-VEROPT	:= -g2005-sv -D__icarus -Wall -I$(VERINC)
+VEROPT	:= -g2005-sv -D__icarus -Wall -I$(VERINC) -I$(DDR3DIR) -I$(USB_DIR)
 
-RTL	= ../rtl
-MISC	= $(wildcard $(RTL)/misc/*.v)
-CORR	= $(wildcard $(RTL)/correlator/*.v)
-VERLIB	= $(MISC) $(CORR)
-
+# Testbenches
 VERTOP	?= $(wildcard *_tb.v)
 VEROUT	?= $(VERTOP:%.v=../build/%.out)
 VCDOUT	?= ../vcd
@@ -20,7 +37,6 @@ VCDOUT	?= ../vcd
 sim:	$(VEROUT) build
 
 build:
-	echo $(VERINC)
 	@mkdir -p $(VCDOUT)
 
 ../build/%.out: %.v $(VERLIB)

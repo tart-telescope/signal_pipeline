@@ -1,0 +1,23 @@
+<?xml version="1" encoding="UTF-8"?>
+<!DOCTYPE gowin-fpga-project>
+<Project>
+    <Template>FPGA</Template>
+    <Version>5</Version>
+    <Device name="GW2A-18C" pn="GW2A-LV18PG256C8/I7">gw2a18c-011</Device>
+    <FileList>
+        <File path="top.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/usb/bulk_ep_axis_bridge.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/usb/bulk_ep_control.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/usb/bulk_ep_in.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/usb/bulk_ep_out.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/usb/ulpi_bulk_axis.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/usb/usb_packet.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/usb/usb_std_request.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/usb/usb_tlp.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/usb/usb_ulpi.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/usb/usb_xfer.v" type="file.verilog" enable="1"/>
+        <File path="../../rtl/spi/spi_layer.v" type="file.verilog" enable="1"/>
+        <File path="gw2a-tang-primer.cst" type="file.cst" enable="1"/>
+        <File path="gw2a-tang-primer.sdc" type="file.sdc" enable="1"/>
+    </FileList>
+</Project>

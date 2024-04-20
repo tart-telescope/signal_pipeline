@@ -1,0 +1,91 @@
+include "g"
+
+include "components_lib.box"
+include "connect_lib.box"
+
+
+
+bits_element	= Window[][
+	l	= .Put[lut4, (0,0)]
+	d	= .Put[dff, (35, 0)]
+	i0	= .Put[sig_in, l.Get["i0"]]
+	i1	= .Put[sig_in, l.Get["i1"]]
+	i2	= .Put[sig_in, l.Get["i2"]]
+	i3	= .Put[sig_in, l.Get["i3"]]
+	c	= .Put[cymux, (20,10)]
+	
+	// Wires & Junctions:
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.black]
+	w	= 1.0*scale
+	p0	= (l.Get["out"].x, d.Get["d"].y)
+	p1	= c.Get["out"] + (0, 25*scale)
+	p2	= (c.Get["out"].x, d.Get["r"].y)
+	p3	= d.Get["q"]+(25*scale, 0)
+	p4	= (c.Get["a"].x, d.Get["c"].y)-(25*scale, 0)
+	j0	= .Put[junc, p0]
+	w0	= .Line[w, l.Get["out"], p0]
+	w1	= .ConVH[w, PointList[p0, c.Get["s"]]]
+	w2	= .Line[w, p0, d.Get["d"]]
+	w3	= .Line[w, c.Get["out"], p1]
+	w4	= .ConVHV[w, PointList[c.Get["b"], p2]]
+	w5	= .Line[w, d.Get["q"], p3]
+
+	o	= .Put[sig_out, p3]
+	zero	= .Put[sig_in, p4]
+	Color[color.black]
+	w6	= .ConHV[w, PointList[zero.Get["out"], c.Get["a"]]]
+	
+	// Labels:
+	\ .Text[.Font["Helvetica", 12*scale], color.black, "0", zero.Get["label"]]
+	\ .Hot[	"cin", p2, "cout", p1,
+		"l0", i0.Get["label"], "l1", i1.Get["label"],
+		"l2", i2.Get["label"], "l3", i3.Get["label"],
+		"do", o.Get["label"]
+	]
+]
+
+visib	= Window[][
+	cyb1	= .Put[bits_element, (0, 0)]
+	cy_h	= cyb1.Get["cout"] - cyb1.Get["cin"]
+	cyb0	= .Put[bits_element, -cy_h]
+	cyb2	= .Put[bits_element, cy_h]
+	d_zf	= .Put[dff, cy_h*2.0+(35.0, 0.0)]
+	zf_o	= .Put[sig_out, d_zf.Get["q"]+(25*scale,0)]
+	one	= .Put[sig_in, cyb0.Get["cin"] - (7, 5)]
+	
+	// Wires:
+	Style[.Border[mywidth*scale, color.black]]
+	Color[color.black]
+	w	= 1.0*scale
+	w0	= .ConVH[w, PointList[cyb2.Get["cout"], d_zf.Get["d"]]]
+	w1	= .Line[w, d_zf.Get["q"], zf_o.Get["in"]]
+	w2	= .ConHV[w, PointList[one.Get["out"], cyb0.Get["cin"]]]
+	
+	// Labels:
+	Style[.Border[fwidth, color.black]]
+	\ .Text[.Font["Helvetica", 12*scale], color.black,
+		"a[2]", cyb2.Get["l0"];
+		"b[2]", cyb2.Get["l1"];
+		"m[0]", cyb2.Get["l2"];
+		"m[1]", cyb2.Get["l3"];
+		"a[1]", cyb1.Get["l0"];
+		"b[1]", cyb1.Get["l1"];
+		"m[0]", cyb1.Get["l2"];
+		"m[1]", cyb1.Get["l3"];
+		"a[0]", cyb0.Get["l0"];
+		"b[0]", cyb0.Get["l1"];
+		"m[0]", cyb0.Get["l2"];
+		"m[1]", cyb0.Get["l3"];
+		"ZF", zf_o.Get["label"];
+		"1", one.Get["label"];
+		"sum[2]", cyb2.Get["do"], .From[(0.2, 0.5)];
+		"sum[1]", cyb1.Get["do"];
+		"sum[0]", cyb0.Get["do"];
+	]
+
+	\ .Show[(cyb0.Get["l0"].x, one.Get["label"].y)-(3, 2),
+		(zf_o.Get["label"].x, d_zf.Get["s"].y)+(7, 0)
+	]
+	\ .Save["core-overview.pdf"]
+]

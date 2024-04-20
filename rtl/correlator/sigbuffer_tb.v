@@ -22,8 +22,9 @@ module sigbuffer_tb;
   // -- Globals -- //
 
   reg sig_clock = 1'b1;
-  reg buf_clock = 1'b1;
   reg reset_n = 1'bx;
+  reg buf_clock = 1'b1;
+  reg buf_reset = 1'bx;
 
   always #5 buf_clock <= ~buf_clock;
   always #25 sig_clock <= ~sig_clock;
@@ -36,7 +37,7 @@ module sigbuffer_tb;
   // -- Simulation stimulus -- //
 
   initial begin
-    $dumpfile("../vcd/sigbuffer_tb.vcd");
+    $dumpfile("sigbuffer_tb.vcd");
     $dumpvars;
 
     #15 reset_n <= 1'b0;
@@ -115,7 +116,7 @@ module sigbuffer_tb;
   reg buf_frame;
 
   always @(posedge buf_clock) begin
-    if (!reset_n) begin
+    if (buf_reset) begin
       buf_frame <= 1'b0;
       buf_done  <= 1'b0;
     end else begin
@@ -140,19 +141,19 @@ module sigbuffer_tb;
   sigbuffer #(
       .WIDTH(WIDTH),
       .TRATE(TRATE),
-      .TBITS(TBITS),
-      .COUNT(COUNT),
-      .CBITS(CBITS),
-      .BBITS(BBITS)
+      .LOOP0(LOOP0),
+      .LOOP1(LOOP1)
   ) SIGBUF0 (
-      .sig_clk(sig_clock),
-      .vis_clk(buf_clock),
-      .reset_n(reset_n),
       // Antenna/source signals
+      .sig_clk(sig_clock),
+      .reset_n(reset_n),
       .valid_i(sig_valid),
       .idata_i(sig_idata),
       .qdata_i(sig_qdata),
+
       // Delayed, up-rated, looped signals
+      .vis_clk(buf_clock),
+      .vis_rst(buf_reset),
       .valid_o(buf_valid),
       .first_o(buf_first),
       .last_o (buf_last),

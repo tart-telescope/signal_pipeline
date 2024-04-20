@@ -2,10 +2,10 @@
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
 [*] Mon Sep 11 02:57:42 2023
 [*]
-[dumpfile] "/home/patrick/dev/signal_pipeline/vcd/sigsource_tb.vcd"
+[dumpfile] "./sigsource_tb.vcd"
 [dumpfile_mtime] "Mon Sep 11 02:57:07 2023"
 [dumpfile_size] 15202
-[savefile] "/home/patrick/dev/signal_pipeline/vcd/sigsource_tb.gtkw"
+[savefile] "./sigsource_tb.gtkw"
 [timestart] 0
 [size] 2560 1376
 [pos] -1 -1

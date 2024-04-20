@@ -18,23 +18,24 @@ module correlate_tb;
   // -- Globals -- //
 
   reg clock = 1'b1;
-  reg reset_n = 1'bx;
+  reg reset = 1'bx;
 
   always #5 clock <= ~clock;
 
   reg src_start = 1'b0;
   reg src_done = 1'b0;
+  reg src_auto = 1'b0;  // todo: auto-correlation-ish ??
   reg cor_done = 1'b0;
 
 
   // -- Simulation stimulus -- //
 
   initial begin
-    $dumpfile("../vcd/correlate_tb.vcd");
+    $dumpfile("correlate_tb.vcd");
     $dumpvars;
 
-    #15 reset_n <= 1'b0;
-    #60 reset_n <= 1'b1;
+    #15 reset <= 1'b1;
+    #60 reset <= 1'b0;
 
     #20 src_start <= 1'b1;
     #10 src_start <= 1'b0;
@@ -48,11 +49,11 @@ module correlate_tb;
   initial #6000 $finish;
 
   // Finishing criteria
-  reg  cor_frame;
-  wire cor_valid;
+  reg cor_frame;
+  wire cor_valid, cor_frame_w;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       cor_frame <= 1'b0;
       cor_done  <= 1'b0;
     end else begin
@@ -76,10 +77,13 @@ module correlate_tb;
   reg [TSB:0] src_taddr;
 
   localparam unsigned [TSB:0] TZERO = {TBITS{1'b0}};
+  localparam integer TAUTO = TRATE - 2;
   localparam unsigned [CSB:0] CZERO = {CBITS{1'b0}};
 
   reg [TSB:0] taddr;
   wire [TSB:0] tnext = taddr + 1;
+  wire tauto = tnext >= TAUTO[TSB:0];
+  // wire tauto = taddr >= TAUTO[TSB:0];
   wire tlast = tnext == TRATE[TSB:0];
 
   reg [CSB:0] count;
@@ -89,10 +93,11 @@ module correlate_tb;
   wire src_frame = (src_start | src_valid) & ~src_done;
 
   always @(posedge clock) begin
-    if (!reset_n) begin
+    if (reset) begin
       src_done <= 1'b0;
       src_valid <= 1'b0;
       src_first <= 1'b0;
+      src_auto <= 1'b0;
       src_last <= 1'b0;
       count <= CZERO;
       taddr <= TZERO;
@@ -111,15 +116,18 @@ module correlate_tb;
         src_qdata <= $urandom;
       end else begin
         src_valid <= 1'b0;
+        src_auto  <= 1'b0;
       end
 
       if (clast) begin
         count <= CZERO;
         if (tlast) begin
+          src_auto <= 1'b0;
           src_done <= 1'b1;
           taddr <= TZERO;
         end else begin
           taddr <= tnext;
+          src_auto <= tauto;
         end
       end else if (src_frame) begin
         count <= cnext;
@@ -137,15 +145,13 @@ module correlate_tb;
   wire aq = src_qdata[0];
   wire bi = src_idata[1];
   wire bq = src_qdata[1];
-
-  wire src_auto = 1'b0;  // todo: auto-correlation-ish ??
   wire [MSB:0] cor_rdata, cor_idata;
 
   correlate #(
       .WIDTH(WIDTH)
   ) CORREL0 (
-      .clock  (clock),
-      .reset_n(reset_n),
+      .clock(clock),
+      .reset(reset),
 
       .valid_i(src_valid),
       .first_i(src_first),
@@ -156,9 +162,11 @@ module correlate_tb;
       .bi_i(bi),
       .bq_i(bq),
 
+      .frame_o(cor_frame_w),
       .valid_o(cor_valid),
-      .re_o(cor_rdata),
-      .im_o(cor_idata)
+      .rdata_o(cor_rdata),
+      .idata_o(cor_idata)
   );
+
 
 endmodule  // correlate_tb
