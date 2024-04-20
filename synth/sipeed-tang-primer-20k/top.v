@@ -149,9 +149,15 @@ module top #(
   end
 
 
-  // -- SDRAM -- //
+  //
+  //  SDRAM
+  ///
+  // Todo: ...
 
-  // -- Correlator -- //
+
+  //
+  //  Correlator
+  ///
 
   wire vis_start, vis_frame;
 
@@ -210,10 +216,18 @@ module top #(
   );
 
 
-  // -- Output SRAM's -- //
+  //
+  //  Output Buses and SRAM's
+  ///
+
+localparam integer USE_SPI = 0;
+localparam integer USE_USB = 0;
+localparam integer USE_UART = 1;
+localparam integer USE_LOOP = 0;
 
 
   // -- SPI connection to RPi -- //
+generate if (USE_SPI) : begin g_use_spi
 
   localparam integer PIPED = 1;
   localparam integer CHECK = 1;
@@ -260,9 +274,12 @@ module top #(
       .MISO   (MISO),
       .SSEL   (CS)
   );
+end  // g_use_spi
+endgenerate
 
 
   // -- USB ULPI Bulk transfer endpoint (IN & OUT) -- //
+generate if (USE_USB) : begin g_use_usb
 
   wire ulpi_data_t;
   wire [7:0] ulpi_data_o;
@@ -309,9 +326,12 @@ module top #(
       .m_axis_tlast_o (m_tlast),
       .m_axis_tdata_o (m_tdata)
   );
+end  // g_use_usb
+endgenerate
 
 
   // -- Just echo/loop IN <-> OUT -- //
+generate if (USE_LOOP) begin : g_use_loop
 
   // todo: switch to the synchronous FIFO core, and use a BSRAM for the memory.
   // `define __USE_ALEX_FIFO
@@ -386,5 +406,9 @@ module top #(
       .m_tdata_o (s_tdata)
   );
 `endif
+
+    end  // g_use_loop
+endgenerate
+
 
 endmodule  // top
