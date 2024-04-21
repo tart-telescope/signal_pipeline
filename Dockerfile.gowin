@@ -1,0 +1,54 @@
+FROM debian:bookworm
+MAINTAINER Tim Molteno "tim@elec.ac.nz"
+ARG DEBIAN_FRONTEND=noninteractive
+
+# debian setup
+RUN apt-get update -y && apt-get install -y \
+    build-essential
+
+RUN apt-get install -y bash git
+RUN apt-get install -y libglib2.0.0
+
+RUN rm -rf /var/lib/apt/lists/*
+
+
+#########################################################################################
+##
+## Install the Gowin tools. Requires a gowin download of the education edition
+##
+#########################################################################################
+
+WORKDIR /opt/gowin
+COPY Gowin_V1.9.9Beta-4_Education.tar.gz .
+RUN tar -zxf Gowin_V1.9.9Beta-4_Education.tar.gz
+
+#########################################################################################
+#
+###################   Now build the USB test ##############################
+#
+#########################################################################################
+WORKDIR /build
+RUN git clone --depth=1 --recurse-submodules https://github.com/psuggate/misc-verilog-cores.git
+
+WORKDIR /build/misc-verilog-cores/synth/sipeed-tang-primer-20k/
+
+RUN make -f Makefile.gowin GW_SH=/opt/gowin/IDE/bin/gw_sh
+
+
+#########################################################################################
+#
+###################   Now build the correlator ##############################
+#
+#########################################################################################
+WORKDIR /build
+RUN git clone --depth=1 --recurse-submodules https://github.com/tart-telescope/signal_pipeline.git
+WORKDIR /build/signal_pipeline/lib
+RUN ./verilog-axis.bash
+RUN ./misc-verilog-cores.bash
+
+WORKDIR /build/signal_pipeline/synth/sipeed-tang-primer-20k/
+
+RUN make -f Makefile.gowin GW_SH=/opt/gowin/IDE/bin/gw_sh
+
+
+
