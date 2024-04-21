@@ -149,14 +149,14 @@ fn main() -> std::io::Result<()> {
         for j in 0..s.capacity() {
             s[j] = data[j][i];
             
-            match bits{
+            match bits {
                 1 => {
                     write!(writer, "{:01b}{:01b}",to_sign_magnitude(s[j].re,bits), to_sign_magnitude(s[j].im,bits))?;
                 },
                 2 => {
                     write!(writer, "{:02b}{:02b}",to_sign_magnitude(s[j].re,bits), to_sign_magnitude(s[j].im,bits))?;
                 }
-                _ => println!("Only work with 1 or two bit sign magnitude data")
+                _ => println!("Only work with 1-bit or 2-bit sign magnitude data")
             }
         }
         write!(writer, "\n")?;
