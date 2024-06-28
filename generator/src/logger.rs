@@ -16,7 +16,7 @@ pub fn configure(
         flexi_logger::Duplicate::Warn
     };
     Logger::try_with_str(level)?
-        .log_to_file(FileSpec::default().directory(dir.clone()))
+        .log_to_file(FileSpec::default().directory(dir))
         .duplicate_to_stdout(dup)
         .write_mode(WriteMode::BufferAndFlush)
         .format(colour_format)

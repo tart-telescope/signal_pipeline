@@ -1,6 +1,4 @@
-
 `timescale 1ns / 100ps
-
 // Basic input module from a Max2769 set up for TART3 with single bit I and Q
 // This will need a bit of tweaking in real life in order to get the sampling to happen when the external data is valid. 
 // As the data is clocked at 8 MHz on the output, I suspect we can just use negedge to get something reasonable (after checking with an oscilloscope).

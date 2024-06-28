@@ -1,5 +1,5 @@
 use clap::Parser;
-use log::{debug, error, warn};
+use log::{debug, warn};
 use tart_dsp::{logger, Chunked, Context};
 
 /// Command line options for configuring the TART DSP, based on the number of

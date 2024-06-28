@@ -179,8 +179,8 @@ Module:
 Description:
 
 - Every `PSUMS` iterations (which has to be at least as large as `LOOP0`, or else values will be lost), an attached `correlate` core pushes a partial-visibility onto `vismerge` chain, and these are linearly-clocked until they reach a `visaccum` core.
-- A `vismerge` is essentially a pipeline register and an input MUX, so that multiple `correlate` outputs can be fed into a `vismerge` chain, which ends at a `visaccum` instance.
-- A `visaccum` core accumulates the input from its `vismerge` input-chain with its corresponding partial-visibility (stored in a local SRAM).
+- A `vismerge` instance is essentially a pipeline register and an input MUX, so that multiple `correlate` outputs can be fed into a `vismerge` chain, which ends at a `visaccum` instance.
+- The `visaccum` core accumulates the input from its `vismerge` input-chain with its corresponding partial-visibility (stored in a local SRAM).
 - After `COUNT` contributions, a `visaccum` core outputs each of the partial-visibility results, to be passed to the final accumulator (see Subsection \ref{sec:fin-acc}).
 - Inputs from multiple `visaccum` instances, via another (wider) `vismerge` chain, are accumulated within a `visfinal` instance, producing interleaved $\mathcal{R}$ and $\mathcal{I}$ components of the visibility computations.
 - A `visfinal` instance contains just one SRAM for interleaved Re and Im components of the partial-visibilities.

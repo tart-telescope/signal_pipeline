@@ -186,8 +186,8 @@ module tart_correlator (
           .TRATE(TRATE)
       ) CORR (
           // Inputs
-          .clock  (vis_clock),
-          .reset_n(reset_n),
+          .clock(vis_clock),
+          .reset(~reset_n),
 
           .valid_i(buf_valid_w),
           .first_i(buf_first_w),
@@ -225,8 +225,8 @@ module tart_correlator (
       .WIDTH(ACCUM),
       .SBITS(SBITS)
   ) ACCUM0 (
-      .clock  (vis_clock),
-      .reset_n(reset_n),
+      .clock(vis_clock),
+      .reset(~reset_n),
 
       // Inputs
       .valid_i(vlds[CORES]),
