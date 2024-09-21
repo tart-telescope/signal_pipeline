@@ -6,7 +6,7 @@ module top #(
     // -- Global 16.368 MHz clock oscillator -- //
     input CLK_16,
     input clk_26,
-    input rst_n,
+    input rst_n,   // Button 'S2' on the Sipeeed Tang Primer 20k dev-board
 
     // -- SPI interface to the RPi -- //
     input  SCLK,
@@ -20,33 +20,101 @@ module top #(
     input [ANTENNAS-1:0] Q1,
 
     // -- USB PHY (ULPI) -- //
-    output wire       ulpi_rst,
-    input  wire       ulpi_clk,
-    input  wire       ulpi_dir,
-    input  wire       ulpi_nxt,
-    output wire       ulpi_stp,
-    inout  wire [7:0] ulpi_data
+    output       ulpi_rst,
+    input        ulpi_clk,
+    input        ulpi_dir,
+    input        ulpi_nxt,
+    output       ulpi_stp,
+    inout  [7:0] ulpi_data,
+
+    // 1Gb DDR3 SDRAM pins
+    output ddr_ck,
+    output ddr_ck_n,
+    output ddr_cke,
+    output ddr_rst_n,
+    output ddr_cs,
+    output ddr_ras,
+    output ddr_cas,
+    output ddr_we,
+    output ddr_odt,
+    output [2:0] ddr_bank,
+    output [12:0] ddr_addr,
+    output [1:0] ddr_dm,
+    inout [1:0] ddr_dqs,
+    inout [1:0] ddr_dqs_n,
+    inout [15:0] ddr_dq
 );
 
-  localparam FPGA_VENDOR = "gowin";
-  localparam FPGA_FAMILY = "gw2a";
-  localparam [63:0] SERIAL_NUMBER = "FACE0123";
-
-  localparam HIGH_SPEED = 1'b1;
-  localparam CHANNEL_IN_ENABLE = 1'b1;
-  localparam CHANNEL_OUT_ENABLE = 1'b1;
-  localparam PACKET_MODE = 1'b0;
+  //
+  //  Some Constants
+  ///
 
   localparam integer COUNT_VALUE = 13_499_999;  // The number of times needed to time 0.5S
+  localparam SRAM_BYTES = 2048;
+
+  // -- USB Settings -- //
+
+  localparam DEBUG = 1;
+  localparam LOOPBACK = 1;
+  localparam USE_EP4_OUT = 1;
+
+  parameter [15:0] VENDOR_ID = 16'hF4CE;
+  parameter integer VENDOR_LENGTH = 19;
+  localparam integer VSB = VENDOR_LENGTH * 8 - 1;
+  parameter [VSB:0] VENDOR_STRING = "University of Otago";
+
+  parameter [15:0] PRODUCT_ID = 16'h0003;
+  parameter integer PRODUCT_LENGTH = 8;
+  localparam integer PSB = PRODUCT_LENGTH * 8 - 1;
+  parameter [PSB:0] PRODUCT_STRING = "TART USB";
+
+  parameter integer SERIAL_LENGTH = 8;
+  localparam integer SSB = SERIAL_LENGTH * 8 - 1;
+  parameter [SSB:0] SERIAL_STRING = "TART0001";
+
+  // USB-core end-point configuration
+  localparam ENDPOINT1 = 4'd1;
+  localparam ENDPOINT2 = 4'd2;
+  localparam ENDPOINT3 = 4'd3;
+  localparam ENDPOINT4 = 4'd4;
+
+  // Maximum packet lengths for each packet-type (up to 1024 & 64, respectively)
+  localparam integer MAX_PACKET_LENGTH = 512;
+  localparam integer MAX_CONFIG_LENGTH = 64;
+
+  // -- DDR3 SDRAM Parameters -- //
+
+  // DDR3 Settings //
+  localparam DDR3_WIDTH = 32;
+  localparam DFIFO_BYPASS = 1;
+
+  // So 16.368 MHz divided by 1, then x15 = 245.52 MHz.
+  localparam DDR_FREQ_MHZ = 125;
+  localparam CLK_IN_FREQ = "16.368";
+  localparam CLK_IDIV_SEL = 0;
+  localparam CLK_FBDV_SEL = 14;
+  localparam CLK_ODIV_SEL = 4;  // 8 ??
+  localparam CLK_SDIV_SEL = 2;
+
+  localparam WRITE_DELAY = 2'b01;  // In 1/4-cycle increments
+  localparam PHY_WR_DELAY = 3;
+  localparam PHY_RD_DELAY = 2;
 
 
-  // -- IOBs -- //
+  //
+  //  PLL Signals, Clocks, and Resets
+  ///
 
-  // -- PLL -- //
+  wire axi_clock, axi_reset, bus_rst_n;
+  wire usb_clock, usb_reset, usb_rst_n;
+  wire vis_clock, vis_reset, mem_reset;
 
-  wire axi_clk, axi_lock;
-  wire usb_clk, usb_rst_n;
-  wire vis_clock, vis_lock, vis_reset;
+  assign bus_rst_n = ~axi_reset;
+  assign usb_rst_n = ~usb_reset;
+
+`ifdef __do_not_use_ddr3
+
+  wire axi_lock, vis_lock;
 
   // So 27.0 MHz divided by 9, then x40 = 120 MHz.
   gowin_rpll #(
@@ -55,12 +123,13 @@ module top #(
       .FBDIV_SEL(39),  // ~= 40
       .ODIV_SEL(8)
   ) axi_rpll_inst (
-      .clkout(axi_clk),   // 120 MHz
+      .clkout(axi_clock),  // 120 MHz
       .lock  (axi_lock),
       .clkin (clk_26)
   );
 
   // Correlator clock domain runs at 15x the global clock for the radios.
+  // Also used as the DDR3 clock
   gowin_rpll #(
       .FCLKIN("16.368"),
       .IDIV_SEL(0),  // ~=  1
@@ -72,23 +141,20 @@ module top #(
       .clkin (CLK_16)
   );
 
+`endif  /* __do_not_use_ddr3 */
 
-  // -- Globalists -- //
+  // -- Resets -- //
 
   // Synchronous reset signal (when 'HI'), for the AXI clock-domain.
-  wire axi_rst;
-
   sync_reset #(
       .N(2)
   ) axi_sync_reset (
-      .clk(axi_clk),
+      .clk(axi_clock),
       .rst(~rst_n),
-      .out(axi_rst)
+      .out(axi_reset)
   );
 
   // Synchronous reset (active 'LO') for the correlator unit.
-  wire vis_rst_n;
-
   sync_reset #(
       .N(2)
   ) vis_sync_reset (
@@ -97,34 +163,12 @@ module top #(
       .out(vis_reset)
   );
 
-  // SPI clock, 24.0 MHz.
-  wire clock_b;
 
-  gowin_clkdiv #(
-      .DIV_MODE("5")
-  ) gowin_clkdiv_inst (
-      .hclkin(axi_clk),
-      .resetn(axi_lock),
-      .clkout(clock_b)
-  );
+  //
+  //  Signal Acquisition
+  ///
 
-  // Synchronous reset (active 'LO') for the SPI unit.
-  wire bus_rst_n;
-
-  sync_reset #(
-      .N(2)
-  ) bus_sync_reset (
-      .clk(clock_b),
-      .rst(rst_n),
-      .out(bus_rst_n)
-  );
-
-
-  // -- Acquisition -- //
-
-  reg [23:0] I_data;
-  reg [23:0] Q_data;
-
+  reg [23:0] I_data, Q_data;
   reg [23:0] count_value_reg;  // counter_value
   reg        count_value_flag;  // IO chaneg flag
   reg        RECONFIG_reg = 1'b0;  // Initial state
@@ -150,38 +194,10 @@ module top #(
 
 
   //
-  //  SDRAM
-  ///
-  // Todo: ...
-
-
-  //
   //  Correlator
   ///
 
   wire vis_start, vis_frame;
-
-  wire spi_stb, spi_ack, spi_cyc, spi_we;
-  wire [15:0] spi_adr;
-  wire [31:0] spi_real, spi_imag;
-
-  reg spi_wat = 1'b0;
-  reg [7:0] spi_dtx;
-
-  always @(posedge clock_b) begin
-    case (spi_adr[15:13])
-      3'b000:  spi_dtx <= spi_real[31:24];
-      3'b001:  spi_dtx <= spi_real[23:16];
-      3'b010:  spi_dtx <= spi_real[15:8];
-      3'b011:  spi_dtx <= spi_real[7:0];
-      3'b100:  spi_dtx <= spi_imag[31:24];
-      3'b101:  spi_dtx <= spi_imag[23:16];
-      3'b110:  spi_dtx <= spi_imag[15:8];
-      3'b111:  spi_dtx <= spi_imag[7:0];
-      default: $error("Yuck!");
-    endcase
-    spi_wat <= ~spi_ack;
-  end
 
   // Calculate visibilities for 4 antennas, with fixed MUX-inputs, for testing.
   toy_correlator #(
@@ -194,7 +210,7 @@ module top #(
       .SBITS(7)
   ) tart_correlator_inst (
       .sig_clock(CLK_16),
-      .bus_clock(clock_b),
+      .bus_clock(axi_clock),
       .bus_rst_n(bus_rst_n),
 
       .vis_clock(vis_clock),
@@ -220,195 +236,185 @@ module top #(
   //  Output Buses and SRAM's
   ///
 
-localparam integer USE_SPI = 0;
-localparam integer USE_USB = 0;
-localparam integer USE_UART = 1;
-localparam integer USE_LOOP = 0;
-
-
-  // -- SPI connection to RPi -- //
-generate if (USE_SPI) : begin g_use_spi
-
-  localparam integer PIPED = 1;
-  localparam integer CHECK = 1;
-
-  wire spi_rty, spi_err;
-  wire [7:0] spi_drx;
-
-  wire sys_status;
-  wire spi_busy, spi_oflow, spi_uflow;
-
-  wire spi_rst = ~bus_rst_n;
-
-  assign spi_rty = 1'b0;
-  assign spi_err = 1'b0;
-
-  spi_slave_wb #(
-      .WIDTH(8),
-      .ASYNC(1),
-      .PIPED(PIPED),
-      .CHECK(CHECK)
-  ) SPI0 (
-      .clk_i(clock_b),
-      .rst_i(spi_rst),
-
-      //  Wishbone master interface.
-      .cyc_o(spi_cyc),
-      .stb_o(spi_stb),
-      .we_o (spi_we),
-      .ack_i(spi_ack),
-      .wat_i(spi_wat),
-      .rty_i(spi_rty),
-      .err_i(spi_err),
-      .adr_o(spi_adr),
-      .dat_i(spi_dtx),
-      .dat_o(spi_drx),
-
-      .active_o  (spi_busy),
-      .status_i  (sys_status),
-      .overflow_o(spi_oflow),
-      .underrun_o(spi_uflow),
-
-      .SCK_pin(SCLK),
-      .MOSI   (MOSI),
-      .MISO   (MISO),
-      .SSEL   (CS)
-  );
-end  // g_use_spi
-endgenerate
-
-
   // -- USB ULPI Bulk transfer endpoint (IN & OUT) -- //
-generate if (USE_USB) : begin g_use_usb
 
-  wire ulpi_data_t;
-  wire [7:0] ulpi_data_o;
+  //
+  // Todo:
+  //  - MMIO interface to TART top-level control module ??
+  //  - better plumbing to DDR3 controller;
+  //
+  wire m2u_tvalid, m2u_tready, m2u_tlast, u2m_tvalid, u2m_tready, u2m_tlast;
+  wire [7:0] m2u_tdata, u2m_tdata;
 
-  assign ulpi_rst  = usb_rst_n;
-  assign usb_clk   = ~ulpi_clk;
-  assign ulpi_data = ulpi_data_t ? {8{1'bz}} : ulpi_data_o;
+  usb_ulpi_core #(
+      .VENDOR_ID(VENDOR_ID),
+      .VENDOR_LENGTH(VENDOR_LENGTH),
+      .VENDOR_STRING(VENDOR_STRING),
+      .PRODUCT_ID(PRODUCT_ID),
+      .PRODUCT_LENGTH(PRODUCT_LENGTH),
+      .PRODUCT_STRING(PRODUCT_STRING),
+      .SERIAL_LENGTH(SERIAL_LENGTH),
+      .SERIAL_STRING(SERIAL_STRING),
+      .ENDPOINT1(ENDPOINT1),
+      .ENDPOINT2(ENDPOINT2),
+      .MAX_PACKET_LENGTH(MAX_PACKET_LENGTH),
+      .MAX_CONFIG_LENGTH(MAX_CONFIG_LENGTH),
+      .DEBUG(DEBUG),
+      .USE_UART(0),
+      .ENDPOINTD(ENDPOINT3),
+      .ENDPOINT4(ENDPOINT4),
+      .USE_EP4_OUT(USE_EP4_OUT)
+  ) U_USB1 (
+      .osc_in(CLK_16),
+      .arst_n(rst_n),
 
-  wire s_tvalid, s_tready, s_tlast;
-  wire [7:0] s_tdata;
+      .ulpi_clk (ulpi_clk),
+      .ulpi_rst (ulpi_rst),
+      .ulpi_dir (ulpi_dir),
+      .ulpi_nxt (ulpi_nxt),
+      .ulpi_stp (ulpi_stp),
+      .ulpi_data(ulpi_data),
 
-  wire m_tvalid, m_tready, m_tlast;
-  wire [7:0] m_tdata;
+      // Todo: debug UART signals ...
+      .send_ni  (send_n),
+      .uart_rx_i(uart_rx),
+      .uart_tx_o(),
 
-  ulpi_bulk_axis #(
-      .FPGA_VENDOR(FPGA_VENDOR),
-      .FPGA_FAMILY(FPGA_FAMILY),
-      .HIGH_SPEED(HIGH_SPEED),
-      .SERIAL_NUMBER(SERIAL_NUMBER),
-      .CHANNEL_IN_ENABLE(CHANNEL_IN_ENABLE),
-      .CHANNEL_OUT_ENABLE(CHANNEL_OUT_ENABLE),
-      .PACKET_MODE(PACKET_MODE)
-  ) ulpi_bulk_axis_inst (
-      .ulpi_clock_i(usb_clk),
-      .ulpi_reset_o(usb_rst_n),
+      .usb_clock_o(usb_clock),
+      .usb_reset_o(usb_reset),
 
-      .ulpi_dir_i (ulpi_dir),
-      .ulpi_nxt_i (ulpi_nxt),
-      .ulpi_stp_o (ulpi_stp),
-      .ulpi_data_t(ulpi_data_t),
-      .ulpi_data_i(ulpi_data),
-      .ulpi_data_o(ulpi_data_o),
+      .configured_o(configured),
+      .conf_event_o(),
+      .conf_value_o(),
+      .crc_error_o (crc_error_w),
 
-      .aclk(axi_clk),
-      .aresetn(~axi_rst),
+      .blki_tvalid_i(m2u_tvalid),  // Extra 'BULK IN' EP data-path
+      .blki_tready_o(m2u_tready),
+      .blki_tlast_i (m2u_tlast),
+      .blki_tdata_i (m2u_tdata),
 
-      .s_axis_tvalid_i(s_tvalid),
-      .s_axis_tready_o(s_tready),
-      .s_axis_tlast_i (s_tlast),
-      .s_axis_tdata_i (s_tdata),
+      .blko_tvalid_o(u2m_tvalid),  // USB 'BULK OUT' EP data-path
+      .blko_tready_i(u2m_tready),
+      .blko_tlast_o (u2m_tlast),
+      .blko_tdata_o (u2m_tdata),
 
-      .m_axis_tvalid_o(m_tvalid),
-      .m_axis_tready_i(m_tready),
-      .m_axis_tlast_o (m_tlast),
-      .m_axis_tdata_o (m_tdata)
+      .blkx_tvalid_i(LOOPBACK ? m_tvalid : s_tvalid),  // USB 'BULK IN' EP data-path
+      .blkx_tready_o(s_tready),
+      .blkx_tlast_i (LOOPBACK ? m_tlast : s_tlast),
+      .blkx_tdata_i (LOOPBACK ? m_tdata : s_tdata),
+
+      .blky_tvalid_o(m_tvalid),  // USB 'BULK OUT' EP data-path
+      .blky_tready_i(LOOPBACK ? s_tready : m_tready),
+      .blky_tlast_o(m_tlast),
+      .blky_tdata_o(m_tdata)
   );
-end  // g_use_usb
-endgenerate
 
+  // -- Cross Between USB & AXI/DDR Clock Domans -- //
 
-  // -- Just echo/loop IN <-> OUT -- //
-generate if (USE_LOOP) begin : g_use_loop
-
-  // todo: switch to the synchronous FIFO core, and use a BSRAM for the memory.
-  // `define __USE_ALEX_FIFO
-`ifdef __USE_ALEX_FIFO
-  axis_async_fifo #(
-      .DEPTH(16),
-      .DATA_WIDTH(8),
-      .LAST_ENABLE(1),
-      .ID_ENABLE(0),
-      .DEST_ENABLE(0),
-      .USER_ENABLE(0),
-      .RAM_PIPELINE(1),
-      .OUTPUT_FIFO_ENABLE(0),
-      .FRAME_FIFO(0)
-  ) axis_async_fifo_inst (
-      .s_clk(axi_clk),
-      .s_rst(axi_rst),
-      .s_axis_tdata(m_tdata),
-      .s_axis_tkeep('bx),
-      .s_axis_tvalid(m_tvalid),
-      .s_axis_tready(m_tready),
-      .s_axis_tlast(m_tlast),
-      .s_axis_tid('bx),
-      .s_axis_tdest('bx),
-      .s_axis_tuser('bx),
-
-      .m_clk(axi_clk),
-      .m_rst(axi_rst),
-      .m_axis_tdata(s_tdata),
-      .m_axis_tkeep(),
-      .m_axis_tvalid(s_tvalid),
-      .m_axis_tready(s_tready),
-      .m_axis_tlast(s_tlast),
-      .m_axis_tid(),
-      .m_axis_tdest(),
-      .m_axis_tuser(),
-
-      .s_pause_req(1'b0),
-      .s_pause_ack(),
-      .m_pause_req(1'b0),
-      .m_pause_ack(),
-
-      .s_status_depth(),
-      .s_status_depth_commit(),
-      .s_status_overflow(),
-      .s_status_bad_frame(),
-      .s_status_good_frame(),
-
-      .m_status_depth(),
-      .m_status_depth_commit(),
-      .m_status_overflow(),
-      .m_status_bad_frame(),
-      .m_status_good_frame()
-  );
-`else  // Paddy FIFO
+  /*
   axis_afifo #(
       .WIDTH(8),
+      .TLAST(1),
       .ABITS(4)
-  ) axis_afifo_inst (
-      .s_aresetn(rst_n),
+  ) U_FIFO1 (
+      .aresetn(~usb_reset),
 
-      .s_aclk    (axi_clk),
-      .s_tvalid_i(m_tvalid),
-      .s_tready_o(m_tready),
-      .s_tlast_i (m_tlast),
-      .s_tdata_i (m_tdata),
+      .s_aclk  (usb_clock),
+      .s_tvalid(y_tvalid),
+      .s_tready(y_tready),
+      .s_tlast (y_tlast),
+      .s_tdata (y_tdata),
 
-      .m_aclk    (axi_clk),
-      .m_tvalid_o(s_tvalid),
-      .m_tready_i(s_tready),
-      .m_tlast_o (s_tlast),
-      .m_tdata_o (s_tdata)
+      .m_aclk  (axi_clock),
+      .m_tvalid(u2m_tvalid),
+      .m_tready(u2m_tready),
+      .m_tlast (u2m_tlast),
+      .m_tdata (u2m_tdata)
   );
-`endif
 
-    end  // g_use_loop
-endgenerate
+  axis_afifo #(
+      .WIDTH(8),
+      .TLAST(1),
+      .ABITS(4)
+  ) U_FIFO2 (
+      .aresetn(~usb_reset),
+
+      .s_aclk  (axi_clock),
+      .s_tvalid(m2u_tvalid),
+      .s_tready(m2u_tready),
+      .s_tlast (m2u_tlast),
+      .s_tdata (m2u_tdata),
+
+      .m_aclk  (usb_clock),
+      .m_tvalid(x_tvalid),
+      .m_tready(x_tready),
+      .m_tlast (x_tlast),
+      .m_tdata (x_tdata)
+  );
+*/
+
+  //
+  //  SDRAM
+  ///
+
+  //
+  // Todo:
+  //  - needs additional read- & write- ports, for radio-signals;
+  //  - plumb in the asynchronous FIFOs (above), for USB requests;
+  //
+
+  ddr3_top #(
+      .SRAM_BYTES  (SRAM_BYTES),
+      .DATA_WIDTH  (DDR3_WIDTH),
+      .DFIFO_BYPASS(DFIFO_BYPASS),
+      .PHY_WR_DELAY(PHY_WR_DELAY),
+      .PHY_RD_DELAY(PHY_RD_DELAY),
+      .LOW_LATENCY (0),
+      .WR_PREFETCH (0),
+      .WRITE_DELAY (WRITE_DELAY)
+  ) U_DDR1 (
+      .osc_in(CLK_16),  // TART radio clock, 16.368 MHz
+      .arst_n(rst_n),   // 'S2' button for async-reset
+
+      .bus_clock(usb_clock),
+      .bus_reset(usb_reset),
+
+      .ddr3_conf_o(ddr3_conf_w),
+      .ddr_clkx2_o(vis_clock),
+      .ddr_clock_o(axi_clock),
+      .ddr_reset_o(mem_reset),
+
+      // From USB or SPI
+      .s_tvalid(u2m_tvalid),
+      .s_tready(u2m_tready),
+      .s_tkeep (u2m_tkeep),
+      .s_tlast (u2m_tlast),
+      .s_tdata (u2m_tdata),
+
+      // To USB or SPI
+      .m_tvalid(m2u_tvalid),
+      .m_tready(m2u_tready),
+      .m_tkeep (m2u_tkeep),
+      .m_tlast (m2u_tlast),
+      .m_tdata (m2u_tdata),
+
+      // 1Gb DDR3 SDRAM pins
+      .ddr_ck(ddr_ck),
+      .ddr_ck_n(ddr_ck_n),
+      .ddr_cke(ddr_cke),
+      .ddr_rst_n(ddr_rst_n),
+      .ddr_cs(ddr_cs),
+      .ddr_ras(ddr_ras),
+      .ddr_cas(ddr_cas),
+      .ddr_we(ddr_we),
+      .ddr_odt(ddr_odt),
+      .ddr_bank(ddr_bank),
+      .ddr_addr(ddr_addr),
+      .ddr_dm(ddr_dm),
+      .ddr_dqs(ddr_dqs),
+      .ddr_dqs_n(ddr_dqs_n),
+      .ddr_dq(ddr_dq)
+  );
 
 
-endmodule  // top
+endmodule  /* top */
