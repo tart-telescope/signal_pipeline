@@ -1,7 +1,7 @@
 `timescale 1ns / 100ps
 module top #(
     parameter ANTENNAS = 24,
-    parameter WB_DATA_BITS = 8
+    parameter AXI_WIDTH = 8
 ) (
     // -- Global 16.368 MHz clock oscillator -- //
     input CLK_16,
