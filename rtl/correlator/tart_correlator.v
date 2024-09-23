@@ -1,96 +1,74 @@
 `timescale 1ns / 100ps
-module tart_correlator (
-    sig_clock,
-    vis_clock,
-    bus_clock,
-    reset_n,
+// FIXME: The `COUNT` parameter has to be the same as `CORES`, due to the way
+//   that results are pipelined? Explicitly, after summing `COUNT` values,
+//   this partial-sum is output onto the pipelined "MUX", to be sent to the
+//   accumulator FU?
+module tart_correlator #(
+    parameter integer WIDTH = 32,  // Number of antennas/signals
+    localparam integer WBITS = $clog2(WIDTH),
+    localparam integer MSB = WIDTH - 1,
 
-    sig_valid_i,
-    sig_last_i,
-    sig_idata_i,
-    sig_qdata_i,
+    // Source-signal multiplexor parameters
+    parameter  integer MUX_N = 7,
+    // parameter integer XBITS = 3,
+    localparam integer XBITS = $clog2(MUX_N),
+    localparam integer XSB   = XBITS - 1,
 
-    vis_start_o,
-    vis_frame_o,
+    parameter integer CORES = 18,  // Number of correlator cores
+    // parameter integer UBITS = 5,  // Log2(#cores)
+    localparam integer UBITS = $clog2(CORES),  // Log2(#cores)
+    localparam integer USB = UBITS - 1,
 
-    bus_revis_o,
-    bus_imvis_o,
-    bus_valid_o,
-    bus_ready_i,
-    bus_last_o
+    // Time-multiplexing rate, i.e., clock multiplier
+    parameter  integer TRATE = 30,
+    // parameter integer TBITS = 5,  // ceil(Log2(TRATE))
+    localparam integer TBITS = $clog2(TRATE),
+    localparam integer TSB   = TBITS - 1,
+
+    // Every 'COUNT' samples, compute partial-visibilities to accumumlate
+    parameter  integer LOOP0 = 3,
+    localparam integer LBITS = $clog2(LOOP0),
+    parameter  integer LOOP1 = 5,
+    localparam integer HBITS = $clog2(LOOP1),
+    localparam integer COUNT = LOOP0 * LOOP1,  // Number of terms in partial sums
+    localparam integer CBITS = $clog2(COUNT),  // Bit-width of loop-counter
+    localparam integer CSB   = CBITS - 1,
+
+    // parameter integer ADDR = 4,
+    // localparam integer ASB = ADDR - 1,
+    parameter integer ACCUM = 36,  // Bit-width of accumulators
+    parameter integer SBITS = 7,  // Bit-width of partial-sums
+    localparam integer SSB = SBITS - 1,
+
+    // Buffer SRAM parameters
+    localparam integer BBITS = 1,  // Number of bits for the bank-number
+    localparam integer WORDS = 1 << (BBITS + CBITS),  // Buffer SRAM size
+    localparam integer BANKS = BBITS << 1,
+    localparam integer BSB = BBITS - 1
+) (
+    input sig_clock,  // note: the clock from the radio RX ADC's
+    input vis_clock,  // note: must be (integer multiple) sync to 'sig_clock'
+    input bus_clock,  // note: typically ascynchronous, relative to the above
+    input reset_n,
+
+    // AXI4-Stream input for the visibilities
+    input [MSB:0] sig_idata_i,
+    input [MSB:0] sig_qdata_i,
+    input sig_valid_i,
+    input sig_last_i,  // todo: not useful?
+    output sig_ready_o,
+
+    // Control and status signals
+    output vis_start_o,
+    output vis_frame_o,
+
+    // AXI4-Stream output for the visibilities
+    output [ACCUM-1:0] bus_revis_o,
+    output [ACCUM-1:0] bus_imvis_o,
+    input bus_ready_i,
+    output bus_valid_o,
+    output bus_last_o
 );
-
-  // FIXME: The `COUNT` parameter has to be the same as `CORES`, due to the way
-  //   that results are pipelined? Explicitly, after summing `COUNT` values,
-  //   this partial-sum is output onto the pipelined "MUX", to be sent to the
-  //   accumulator FU?
-
-  parameter integer WIDTH = 32;  // Number of antennas/signals
-  localparam integer WBITS = $clog2(WIDTH);
-  localparam integer MSB = WIDTH - 1;
-
-  // Source-signal multiplexor parameters
-  parameter integer MUX_N = 7;
-  // parameter integer XBITS = 3;
-  localparam integer XBITS = $clog2(MUX_N);
-  localparam integer XSB = XBITS - 1;
-
-  parameter integer CORES = 18;  // Number of correlator cores
-  // parameter integer UBITS = 5;  // Log2(#cores)
-  localparam integer UBITS = $clog2(CORES);  // Log2(#cores)
-  localparam integer USB = UBITS - 1;
-
-  // Time-multiplexing rate; i.e., clock multiplier
-  parameter integer TRATE = 30;
-  // parameter integer TBITS = 5;  // ceil(Log2(TRATE))
-  localparam integer TBITS = $clog2(TRATE);
-  localparam integer TSB = TBITS - 1;
-
-  // Every 'COUNT' samples, compute partial-visibilities to accumumlate
-  parameter integer LOOP0 = 3;
-  localparam integer LBITS = $clog2(LOOP0);
-  parameter integer LOOP1 = 5;
-  localparam integer HBITS = $clog2(LOOP1);
-  localparam integer COUNT = LOOP0 * LOOP1;  // Number of terms in partial sums
-  localparam integer CBITS = $clog2(COUNT);  // Bit-width of loop-counter
-  localparam integer CSB = CBITS - 1;
-
-  // parameter integer ADDR = 4;
-  // localparam integer ASB = ADDR - 1;
-  parameter integer ACCUM = 36;  // Bit-width of accumulators
-  parameter integer SBITS = 7;  // Bit-width of partial-sums
-  localparam integer SSB = SBITS - 1;
-
-  // Buffer SRAM parameters
-  localparam integer BBITS = 1;  // Number of bits for the bank-number
-  localparam integer WORDS = 1 << (BBITS + CBITS);  // Buffer SRAM size
-  localparam integer BANKS = BBITS << 1;
-  localparam integer BSB = BBITS - 1;
-
-
-  input sig_clock;  // note: the clock from the radio RX ADC's
-  input vis_clock;  // note: must be (integer multiple) sync to 'sig_clock'
-  input bus_clock;  // note: typically ascynchronous, relative to the above
-  input reset_n;
-
-  // AXI4-Stream input for the visibilities
-  input [MSB:0] sig_idata_i;
-  input [MSB:0] sig_qdata_i;
-  input sig_valid_i;
-  input sig_last_i;  // todo: not useful?
-  output sig_ready_o;
-
-  // Control and status signals
-  output vis_start_o;
-  output vis_frame_o;
-
-  // AXI4-Stream output for the visibilities
-  output [ACCUM-1:0] bus_revis_o;
-  output [ACCUM-1:0] bus_imvis_o;
-  input bus_ready_i;
-  output bus_valid_o;
-  output bus_last_o;
-
 
   /**
    * Input-buffering SRAM's for (antenna) signal IQ data.
@@ -127,7 +105,6 @@ module tart_correlator (
       .qdata_o(buf_qdata_w)
   );
 
-
   // -- Correlator control-signals -- //
 
   localparam integer LZERO = {LBITS{1'b0}};
@@ -160,7 +137,6 @@ module tart_correlator (
       end
     end
   end
-
 
   /**
    *  Correlator array, with daisy-chained outputs.
@@ -209,7 +185,6 @@ module tart_correlator (
     end  // gen_corr_inst
   endgenerate
 
-
   /**
    *  Accumulates each of the partial-sums into the full-width visibilities.
    */
@@ -241,7 +216,6 @@ module tart_correlator (
       .revis_o(acc_revis),
       .imvis_o(acc_imvis)
   );
-
 
   /**
    *  Output SRAM's that store visibilities, while waiting to be sent to the
@@ -330,4 +304,4 @@ module tart_correlator (
     end
   end
 
-endmodule  // tart_correlator
+endmodule  /* tart_correlator */

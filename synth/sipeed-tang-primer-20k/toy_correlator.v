@@ -1,9 +1,15 @@
 `timescale 1ns / 100ps
 module toy_correlator #(
     parameter integer USE_ALEX_AFIFO = 1,
+    parameter AFIFO_DEPTH = 64,
+    parameter AXIS_OUTPUT = 1,
+    localparam AXIS_DWIDTH = 8,
+    localparam AXIS_DKEEPS = AXIS_DWIDTH / 8,
+    localparam DSB = AXIS_DWIDTH - 1,
+    localparam KSB = AXIS_DKEEPS - 1,
 
     parameter integer WIDTH = 4,  // Number of antennas/signals
-    localparam WBITS = $clog2(WIDTH),
+    localparam DBITS = $clog2(WIDTH),
     localparam MSB = WIDTH - 1,
 
     // Source-signal multiplexor parameters
@@ -31,6 +37,8 @@ module toy_correlator #(
 
     parameter integer ACCUM = 32,  // Bit-width of accumulators
     localparam integer VSB = ACCUM - 1,
+    localparam integer WBITS = ACCUM + ACCUM,
+    localparam integer WSB = ACCUM + VSB,
 
     parameter integer ABITS = 4,  // Bit-width of partial-sums
     localparam integer ASB = ABITS - 1,
@@ -48,7 +56,7 @@ module toy_correlator #(
     input areset_n,
 
     input bus_clock,  // SPI/USB clock for reading visibilities
-    input bus_rst_n,
+    input bus_reset,
 
     input vis_clock,  // Correlator clock
     input vis_reset,
@@ -68,7 +76,13 @@ module toy_correlator #(
     output [VSB:0] bus_imvis_o,
     output bus_valid_o,
     input bus_ready_i,
-    output bus_last_o
+    output bus_last_o,
+
+    output m_tvalid,
+    input m_tready,
+    output [KSB:0] m_tkeep,
+    output m_tlast,
+    output [DSB:0] m_tdata
 );
 
   /**
@@ -91,6 +105,7 @@ module toy_correlator #(
       .LOOP1(LOOP1)
   ) SIGBUF0 (
       // Antenna/source signals
+      // Default: 16.368 MHz
       .sig_clk(sig_clock),
       .reset_n(areset_n),
       .valid_i(sig_valid_i),
@@ -98,6 +113,7 @@ module toy_correlator #(
       .qdata_i(sig_qdata_i),
 
       // Delayed, up-rated, looped signals
+      // Default: 245.52 MHz
       .vis_clk(vis_clock),
       .vis_rst(vis_reset),
       .valid_o(buf_valid_w),
@@ -144,16 +160,16 @@ module toy_correlator #(
   // -- Antenna signal source-select -- //
 
   // Note: reverse-ordering
-  localparam [5:0] ATAPS = {2'b10, 2'b01, 2'b00}; // 2, 1, 0
-  localparam [5:0] BTAPS = {2'b11, 2'b10, 2'b01}; // 3, 2, 1
+  localparam [5:0] ATAPS = {2'b10, 2'b01, 2'b00};  // 2, 1, 0
+  localparam [5:0] BTAPS = {2'b11, 2'b10, 2'b01};  // 3, 2, 1
 
   localparam [7:0] AUTOS = 8'b1100_0000;
 
   // Note: these index into their respective 'xTAPS', in order to determine the
   //   actual radio-index.
   // Note: reverse-ordering
-  localparam [15:0] ASELS = { 2'b10, 2'b00, 2'b10, 2'b01, 2'b01, 2'b00, 2'b00, 2'b00 };
-  localparam [15:0] BSELS = { 2'b10, 2'b00, 2'b10, 2'b10, 2'b01, 2'b10, 2'b01, 2'b00 };
+  localparam [15:0] ASELS = {2'b10, 2'b00, 2'b10, 2'b01, 2'b01, 2'b00, 2'b00, 2'b00};
+  localparam [15:0] BSELS = {2'b10, 2'b00, 2'b10, 2'b10, 2'b01, 2'b10, 2'b01, 2'b00};
 
   correlator #(
       .WIDTH(WIDTH),
@@ -258,13 +274,29 @@ module toy_correlator #(
    *  Output SRAM's that store visibilities, while waiting to be sent to the
    *  host system.
    */
+
+  localparam KEEPS = WBITS / 8;
+
+  wire b_tvalid, b_tready, b_tlast, a_tvalid, a_tready, a_tlast;
+  wire [WSB:0] b_tdata;
+  wire [KSB:0] a_tkeep;
+  wire [DSB:0] a_tdata;
+
   wire acc_ready;
   wire [ACCUM+VSB:0] acc_tdata, bus_tdata;
 
-  assign acc_tdata   = {acc_revis, acc_imvis};
+  assign acc_tdata = {acc_revis, acc_imvis};
 
-  assign bus_revis_o = bus_tdata[ACCUM+VSB:ACCUM];
-  assign bus_imvis_o = bus_tdata[VSB:0];
+  // Output can be wide (and AXI-S-like)
+  assign bus_revis_o = AXIS_OUTPUT ? {ACCUM{1'bx}} : bus_tdata[ACCUM+VSB:ACCUM];
+  assign bus_imvis_o = AXIS_OUTPUT ? {ACCUM{1'bx}} : bus_tdata[VSB:0];
+
+  // Or, output can be narrow (and AXI-S)
+  assign m_tvalid = AXIS_OUTPUT ? a_tvalid : 1'b0;
+  assign a_tready = AXIS_OUTPUT ? m_tready : 1'b0;
+  assign m_tkeep = AXIS_OUTPUT ? a_tkeep : {AXIS_DKEEPS{1'b0}};
+  assign m_tlast = AXIS_OUTPUT ? a_tlast : 1'b0;
+  assign m_tdata = AXIS_OUTPUT ? a_tdata : {AXIS_DWIDTH{1'bx}};
 
   generate
     if (USE_ALEX_AFIFO) begin : g_alex_afifo
@@ -272,8 +304,8 @@ module toy_correlator #(
       // Notes:
       //  - a bit naughty, as some of the outputs are combinational ??
       axis_async_fifo #(
-          .DEPTH(64),
-          .DATA_WIDTH(ACCUM + ACCUM),
+          .DEPTH(AFIFO_DEPTH),
+          .DATA_WIDTH(WBITS),
           .LAST_ENABLE(1),
           .ID_ENABLE(0),
           .DEST_ENABLE(0),
@@ -294,16 +326,17 @@ module toy_correlator #(
           .s_axis_tdest(8'bx),
           .s_axis_tuser(1'bx),
 
+          // Default: 60.0 MHz, USB ULPI clock
           .m_clk(bus_clock),
-          .m_rst(~bus_rst_n),
-          .m_axis_tdata(bus_tdata),
+          .m_rst(bus_reset),
           .m_axis_tkeep(),
-          .m_axis_tvalid(bus_valid_o),
-          .m_axis_tready(bus_ready_i),
-          .m_axis_tlast(bus_last_o),
+          .m_axis_tvalid(b_tvalid),
+          .m_axis_tready(b_tready),
+          .m_axis_tlast(b_tlast),
           .m_axis_tid(),
           .m_axis_tdest(),
           .m_axis_tuser(),
+          .m_axis_tdata(b_tdata),
 
           .s_pause_req(1'b0),
           .s_pause_ack(),
@@ -325,11 +358,13 @@ module toy_correlator #(
 
     end else begin : g_tart_afifo
 
+      localparam ABITS = $clog2(AFIFO_DEPTH);
+
       // Notes:
       //  - not as mature/tested as Alex's AFIFO (above);
       axis_afifo #(
-          .WIDTH(ACCUM + ACCUM),
-          .ABITS(4)
+          .WIDTH(WBITS),
+          .ABITS(ABITS)
       ) U_AFIFO1 (
           .s_aresetn(areset_n),
 
@@ -339,15 +374,52 @@ module toy_correlator #(
           .s_tlast_i(acc_last),
           .s_tdata_i(acc_tdata),
 
+          // Default: 60.0 MHz, USB ULPI clock
           .m_aclk(bus_clock),
-          .m_tvalid_o(bus_valid_o),
-          .m_tready_i(bus_ready_i),
-          .m_tlast_o(bus_last_o),
-          .m_tdata_o(bus_tdata)
+          .m_tvalid_o(b_tvalid),
+          .m_tready_i(b_tready),
+          .m_tlast_o(b_tlast),
+          .m_tdata_o(b_tdata)
       );
 
     end
   endgenerate
+
+  axis_adapter #(
+      .S_DATA_WIDTH(WBITS),
+      .S_KEEP_ENABLE(1),
+      .S_KEEP_WIDTH(KEEPS),
+      .M_DATA_WIDTH(8),
+      .M_KEEP_ENABLE(1),
+      .M_KEEP_WIDTH(AXIS_DKEEPS),
+      .ID_ENABLE(0),
+      .ID_WIDTH(1),
+      .DEST_ENABLE(0),
+      .DEST_WIDTH(1),
+      .USER_ENABLE(0),
+      .USER_WIDTH(1)
+  ) U_ADAPT1 (
+      .clk(bus_clock),
+      .rst(bus_reset),
+
+      .s_axis_tvalid(b_tvalid),  // AXI-S input
+      .s_axis_tready(b_tready),
+      .s_axis_tkeep({AXIS_DKEEPS{b_tvalid}}),
+      .s_axis_tlast(b_tlast),
+      .s_axis_tid(1'b0),
+      .s_axis_tdest(1'b0),
+      .s_axis_tuser(1'b0),
+      .s_axis_tdata(b_tdata),
+
+      .m_axis_tvalid(a_tvalid),  // AXI-S output
+      .m_axis_tready(a_tready),
+      .m_axis_tkeep(a_tkeep),
+      .m_axis_tlast(a_tlast),
+      .m_axis_tid(),
+      .m_axis_tdest(),
+      .m_axis_tuser(),
+      .m_axis_tdata(a_tdata)
+  );
 
 
   // -- Simulation sanitisers -- //
@@ -356,7 +428,7 @@ module toy_correlator #(
 
   initial begin : dump_settings
     $display("Settings:");
-    $display(" + antennas:  %2d (index bits:  %2d)", WIDTH, WBITS);
+    $display(" + antennas:  %2d (index bits:  %2d)", WIDTH, DBITS);
     $display(" + mux-width: %2d (select bits: %2d)", MUX_N, XBITS);
   end
 
@@ -370,5 +442,4 @@ module toy_correlator #(
 
 `endif
 
-
-endmodule  // toy_correlator
+endmodule  /* toy_correlator */

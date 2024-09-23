@@ -1,12 +1,18 @@
 `timescale 1ns / 100ps
 module top #(
     parameter ANTENNAS = 24,
+    localparam ASB = ANTENNAS - 1,
     parameter AXI_WIDTH = 8
 ) (
     // -- Global 16.368 MHz clock oscillator -- //
     input CLK_16,
     input clk_26,
     input rst_n,   // Button 'S2' on the Sipeeed Tang Primer 20k dev-board
+
+    input send_n,  // 'S4' button for UART read-back
+
+    input  uart_rx,  // '/dev/ttyUSB1'
+    output uart_tx,
 
     // -- SPI interface to the RPi -- //
     input  SCLK,
@@ -15,9 +21,9 @@ module top #(
     input  CS,
 
     // -- Radio signals -- //
-    output RADIO_RECONFIG,
-    input [ANTENNAS-1:0] I1,
-    input [ANTENNAS-1:0] Q1,
+    // output RADIO_RECONFIG,
+    // input [ANTENNAS-1:0] I1,
+    // input [ANTENNAS-1:0] Q1,
 
     // -- USB PHY (ULPI) -- //
     output       ulpi_rst,
@@ -29,7 +35,7 @@ module top #(
 
     // 1Gb DDR3 SDRAM pins
     output ddr_ck,
-    output ddr_ck_n,
+    // output ddr_ck_n,
     output ddr_cke,
     output ddr_rst_n,
     output ddr_cs,
@@ -38,10 +44,10 @@ module top #(
     output ddr_we,
     output ddr_odt,
     output [2:0] ddr_bank,
-    output [12:0] ddr_addr,
+    output [13:0] ddr_addr,
     output [1:0] ddr_dm,
     inout [1:0] ddr_dqs,
-    inout [1:0] ddr_dqs_n,
+    // inout [1:0] ddr_dqs_n,
     inout [15:0] ddr_dq
 );
 
@@ -100,16 +106,17 @@ module top #(
   localparam PHY_WR_DELAY = 3;
   localparam PHY_RD_DELAY = 2;
 
+  assign uart_tx = 1'b1;
 
   //
   //  PLL Signals, Clocks, and Resets
   ///
 
-  wire axi_clock, axi_reset, bus_rst_n;
+  wire axi_clock, axi_reset, bus_reset;
   wire usb_clock, usb_reset, usb_rst_n;
   wire vis_clock, vis_reset, mem_reset;
 
-  assign bus_rst_n = ~axi_reset;
+  assign bus_reset = axi_reset;
   assign usb_rst_n = ~usb_reset;
 
 `ifdef __do_not_use_ddr3
@@ -124,7 +131,7 @@ module top #(
       .ODIV_SEL(8)
   ) axi_rpll_inst (
       .clkout(axi_clock),  // 120 MHz
-      .lock  (axi_lock),
+      .lock  (),
       .clkin (clk_26)
   );
 
@@ -148,19 +155,19 @@ module top #(
   // Synchronous reset signal (when 'HI'), for the AXI clock-domain.
   sync_reset #(
       .N(2)
-  ) axi_sync_reset (
-      .clk(axi_clock),
-      .rst(~rst_n),
-      .out(axi_reset)
+  ) U_AXI_RESET (
+      .clock(axi_clock),
+      .arstn(~rst_n),
+      .reset(axi_reset)
   );
 
   // Synchronous reset (active 'LO') for the correlator unit.
   sync_reset #(
       .N(2)
-  ) vis_sync_reset (
-      .clk(vis_clock),
-      .rst(~rst_n),
-      .out(vis_reset)
+  ) U_VIS_RESET (
+      .clock(vis_clock),
+      .arstn(~rst_n),
+      .reset(vis_reset)
   );
 
 
@@ -168,10 +175,12 @@ module top #(
   //  Signal Acquisition
   ///
 
-  reg [23:0] I_data, Q_data;
-  reg [23:0] count_value_reg;  // counter_value
-  reg        count_value_flag;  // IO chaneg flag
-  reg        RECONFIG_reg = 1'b0;  // Initial state
+  wire [ASB:0] I1, Q1;
+
+  reg [ASB:0] I_data, Q_data;
+  reg [ASB:0] count_value_reg;  // counter_value
+  reg         count_value_flag;  // IO chaneg flag
+  reg         RECONFIG_reg = 1'b0;  // Initial state
 
   assign RADIO_RECONFIG = RECONFIG_reg;
 
@@ -197,7 +206,7 @@ module top #(
   //  Correlator
   ///
 
-  wire vis_start, vis_frame;
+  wire vis_start, vis_frame, ddr3_conf_w;
 
   // Calculate visibilities for 4 antennas, with fixed MUX-inputs, for testing.
   toy_correlator #(
@@ -210,13 +219,13 @@ module top #(
       .SBITS(7)
   ) tart_correlator_inst (
       .sig_clock(CLK_16),
-      .bus_clock(axi_clock),
-      .bus_rst_n(bus_rst_n),
+      .bus_clock(usb_clock),
+      .bus_reset(usb_reset),
 
       .vis_clock(vis_clock),
       .vis_reset(vis_reset),
 
-      .sig_valid_i(axi_lock),
+      .sig_valid_i(ddr3_conf_w),
       .sig_last_i (1'b0),
       .sig_idata_i(I_data),
       .sig_qdata_i(Q_data),
@@ -224,10 +233,10 @@ module top #(
       .vis_start_o(vis_start),
       .vis_frame_o(vis_frame),
 
-      .bus_revis_o(spi_real),
-      .bus_imvis_o(spi_imag),
-      .bus_valid_o(spi_ack),
-      .bus_ready_i(spi_stb),
+      .bus_revis_o(),
+      .bus_imvis_o(),
+      .bus_valid_o(),
+      .bus_ready_i(1'b0),
       .bus_last_o ()
   );
 
@@ -243,7 +252,7 @@ module top #(
   //  - MMIO interface to TART top-level control module ??
   //  - better plumbing to DDR3 controller;
   //
-  wire m2u_tvalid, m2u_tready, m2u_tlast, u2m_tvalid, u2m_tready, u2m_tlast;
+  wire m2u_tvalid, m2u_tready, m2u_tlast, u2m_tvalid, u2m_tready, u2m_tkeep, u2m_tlast;
   wire [7:0] m2u_tdata, u2m_tdata;
 
   usb_ulpi_core #(
@@ -363,12 +372,21 @@ module top #(
   //  - plumb in the asynchronous FIFOs (above), for USB requests;
   //
 
+  assign ddr_addr[13] = 1'b0;
+  assign u2m_tkeep = u2m_tvalid;
+
   ddr3_top #(
       .SRAM_BYTES  (SRAM_BYTES),
       .DATA_WIDTH  (DDR3_WIDTH),
       .DFIFO_BYPASS(DFIFO_BYPASS),
       .PHY_WR_DELAY(PHY_WR_DELAY),
       .PHY_RD_DELAY(PHY_RD_DELAY),
+      .CLK_IN_FREQ (CLK_IN_FREQ),
+      .CLK_IDIV_SEL(CLK_IDIV_SEL),
+      .CLK_FBDV_SEL(CLK_FBDV_SEL),
+      .CLK_ODIV_SEL(CLK_ODIV_SEL),
+      .CLK_SDIV_SEL(CLK_SDIV_SEL),
+      .DDR_FREQ_MHZ(DDR_FREQ_MHZ),
       .LOW_LATENCY (0),
       .WR_PREFETCH (0),
       .WRITE_DELAY (WRITE_DELAY)
@@ -400,7 +418,7 @@ module top #(
 
       // 1Gb DDR3 SDRAM pins
       .ddr_ck(ddr_ck),
-      .ddr_ck_n(ddr_ck_n),
+      // .ddr_ck_n(ddr_ck_n),
       .ddr_cke(ddr_cke),
       .ddr_rst_n(ddr_rst_n),
       .ddr_cs(ddr_cs),
@@ -409,10 +427,10 @@ module top #(
       .ddr_we(ddr_we),
       .ddr_odt(ddr_odt),
       .ddr_bank(ddr_bank),
-      .ddr_addr(ddr_addr),
+      .ddr_addr(ddr_addr[12:0]),
       .ddr_dm(ddr_dm),
       .ddr_dqs(ddr_dqs),
-      .ddr_dqs_n(ddr_dqs_n),
+      // .ddr_dqs_n(ddr_dqs_n),
       .ddr_dq(ddr_dq)
   );
 

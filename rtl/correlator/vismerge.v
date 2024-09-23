@@ -32,6 +32,9 @@ module vismerge #(
   output [MSB:0] data_o
 );
 
+  reg vld1, vld0;
+  reg [MSB:0] dat1, dat0;
+
   // -- 2:1 interleaving for (partial sums of) real & imaginary visibilities -- //
 
   assign valid_o = vld0;

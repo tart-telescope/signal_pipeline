@@ -7,4 +7,6 @@ target/
 *.log
 impl/
 
+axi-ddr3-lite/
+axis-usb/
 misc-verilog-cores/
