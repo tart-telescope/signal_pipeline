@@ -6,18 +6,24 @@ all:	doc sim
 ##
 
 LIBDIR	:= ../lib/misc-verilog-cores
-DDR3DIR	:= $(LIBDIR)/ddr3
-USB_DIR	:= $(LIBDIR)/usb
+AXIDIR	:= $(LIBDIR)/axis
+DDRDIR	:= ../lib/axi-ddr3-lite
+USBDIR	:= ../lib/axis-usb
 
 # Various cores & modules
 ARCH	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/arch/*.v))
 AXIS	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/axis/*.v))
-DDR3	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/ddr3/*.v))
 FIFO	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/fifo/*.v))
 MISC	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/misc/*.v))
 SPI	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/spi/*.v))
 UART	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/uart/*.v))
-USB	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/usb/*.v))
+
+#DDR3_V	:= $(wildcard $(DDRDIR)/*.v $(DDRDIR)/arch/*.v $(DDRDIR)/extra/*.v)
+DDR3_V	:= $(wildcard $(DDRDIR)/*.v $(DDRDIR)/extra/*.v)
+DDR3	:= $(filter-out %_tb.v, $(DDR3_V))
+
+USB_V	:= $(wildcard $(LIBDIR)/usb/*.v)
+USB	:= $(filter-out %_tb.v, $(USB_V))
 
 # Correlator cores & testbenches
 RTL	:= ../rtl
@@ -27,7 +33,7 @@ VERLIB	:= $(ARCH) $(AXIS) $(CORR) $(DDR3) $(FIFO) $(MISC) $(SPI) $(UART) $(USB)
 # Icarus settings
 IVC	?= iverilog
 VERINC	:= ../include/
-VEROPT	:= -g2005-sv -D__icarus -Wall -I$(VERINC) -I$(DDR3DIR) -I$(USB_DIR)
+VEROPT	:= -g2005-sv -D__icarus -Wall -I$(VERINC) -I$(DDRDIR) -I$(USBDIR) -I$(AXIDIR)
 
 # Testbenches
 VERTOP	?= $(wildcard *_tb.v)

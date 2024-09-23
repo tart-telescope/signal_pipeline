@@ -52,13 +52,13 @@ module toy_correlator #(
     localparam integer BANKS = BBITS << 1,
     localparam integer BSB = BBITS - 1
 ) (
-    input sig_clock,  // 8.168 MHz sample-clock
+    input sig_clock,  // 16.368 MHz sample-clock
     input areset_n,
 
-    input bus_clock,  // SPI/USB clock for reading visibilities
+    input bus_clock,  // SPI/USB clock for reading visibilities (default: 60.0 MHz)
     input bus_reset,
 
-    input vis_clock,  // Correlator clock
+    input vis_clock,  // Correlator clock (default: 245.52 MHz)
     input vis_reset,
 
     // Status signals

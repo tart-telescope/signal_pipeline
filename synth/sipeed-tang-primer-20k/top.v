@@ -61,7 +61,6 @@ module top #(
   // -- USB Settings -- //
 
   localparam DEBUG = 1;
-  localparam LOOPBACK = 1;
   localparam USE_EP4_OUT = 1;
 
   parameter [15:0] VENDOR_ID = 16'hF4CE;
@@ -207,6 +206,8 @@ module top #(
   ///
 
   wire vis_start, vis_frame, ddr3_conf_w;
+  wire m_tvalid, m_tready, m_tlast;
+  wire [7:0] m_tdata;
 
   // Calculate visibilities for 4 antennas, with fixed MUX-inputs, for testing.
   toy_correlator #(
@@ -219,8 +220,6 @@ module top #(
       .SBITS(7)
   ) tart_correlator_inst (
       .sig_clock(CLK_16),
-      .bus_clock(usb_clock),
-      .bus_reset(usb_reset),
 
       .vis_clock(vis_clock),
       .vis_reset(vis_reset),
@@ -232,6 +231,16 @@ module top #(
 
       .vis_start_o(vis_start),
       .vis_frame_o(vis_frame),
+
+      // USB/SPI clock domain signals
+      .bus_clock(usb_clock),
+      .bus_reset(usb_reset),
+
+      .m_tvalid(m_tvalid),
+      .m_tready(m_tready),
+      .m_tkeep (),
+      .m_tlast (m_tlast),
+      .m_tdata (m_tdata),
 
       .bus_revis_o(),
       .bus_imvis_o(),
@@ -307,15 +316,15 @@ module top #(
       .blko_tlast_o (u2m_tlast),
       .blko_tdata_o (u2m_tdata),
 
-      .blkx_tvalid_i(LOOPBACK ? m_tvalid : s_tvalid),  // USB 'BULK IN' EP data-path
-      .blkx_tready_o(s_tready),
-      .blkx_tlast_i (LOOPBACK ? m_tlast : s_tlast),
-      .blkx_tdata_i (LOOPBACK ? m_tdata : s_tdata),
+      .blkx_tvalid_i(m_tvalid),  // USB 'BULK IN' EP data-path
+      .blkx_tready_o(m_tready),
+      .blkx_tlast_i (m_tlast),
+      .blkx_tdata_i (m_tdata),
 
-      .blky_tvalid_o(m_tvalid),  // USB 'BULK OUT' EP data-path
-      .blky_tready_i(LOOPBACK ? s_tready : m_tready),
-      .blky_tlast_o(m_tlast),
-      .blky_tdata_o(m_tdata)
+      .blky_tvalid_o(),  // USB 'BULK OUT' EP data-path
+      .blky_tready_i(1'b1),
+      .blky_tlast_o(),
+      .blky_tdata_o({Q1[3:0], I1[3:0]})
   );
 
   // -- Cross Between USB & AXI/DDR Clock Domans -- //
@@ -398,18 +407,18 @@ module top #(
       .bus_reset(usb_reset),
 
       .ddr3_conf_o(ddr3_conf_w),
-      .ddr_clkx2_o(vis_clock),
-      .ddr_clock_o(axi_clock),
+      .ddr_clkx2_o(vis_clock),    // (default: 245.52 MHz)
+      .ddr_clock_o(axi_clock),    // (default: 122.76 MHz)
       .ddr_reset_o(mem_reset),
 
-      // From USB or SPI
+      // From USB or SPI (default: 60.0 MHz)
       .s_tvalid(u2m_tvalid),
       .s_tready(u2m_tready),
       .s_tkeep (u2m_tkeep),
       .s_tlast (u2m_tlast),
       .s_tdata (u2m_tdata),
 
-      // To USB or SPI
+      // To USB or SPI (default: 60.0 MHz)
       .m_tvalid(m2u_tvalid),
       .m_tready(m2u_tready),
       .m_tkeep (m2u_tkeep),
@@ -418,7 +427,7 @@ module top #(
 
       // 1Gb DDR3 SDRAM pins
       .ddr_ck(ddr_ck),
-      // .ddr_ck_n(ddr_ck_n),
+      .ddr_ck_n(),
       .ddr_cke(ddr_cke),
       .ddr_rst_n(ddr_rst_n),
       .ddr_cs(ddr_cs),
@@ -430,7 +439,7 @@ module top #(
       .ddr_addr(ddr_addr[12:0]),
       .ddr_dm(ddr_dm),
       .ddr_dqs(ddr_dqs),
-      // .ddr_dqs_n(ddr_dqs_n),
+      .ddr_dqs_n(),
       .ddr_dq(ddr_dq)
   );
 
