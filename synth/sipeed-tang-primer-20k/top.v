@@ -249,6 +249,27 @@ module top #(
       .bus_last_o ()
   );
 
+  // Acquire raw data, buffer it, chunk it up into 'CHUNK'-sized packets, and
+  // then store these packets of raw-data to the DDR3 SDRAM.
+  acquire #(
+      .RADIOS(ANTENNAS),
+      .SRAM_BYTES(SRAM_BYTES)
+  ) U_ACQ1 (
+      .sig_clock(CLK_16),
+      .bus_clock(usb_clock),
+      .bus_reset(usb_reset),
+
+      .sig_valid_i(ddr3_conf_w),
+      .sig_last_i (1'b0),
+      .sig_idata_i(I_data),
+      .sig_qdata_i(Q_data),
+
+      .raw_tvalid_o(raw_tvalid),
+      .raw_tready_o(raw_tready),
+      .raw_tlast_o (raw_tlast),
+      .raw_tdata_o (raw_tdata)
+  );
+
 
   //
   //  Output Buses and SRAM's
@@ -370,6 +391,7 @@ module top #(
       .m_tdata (x_tdata)
   );
 */
+
 
   //
   //  SDRAM
