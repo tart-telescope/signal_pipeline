@@ -347,23 +347,6 @@ module tart_ddr3 #(
   wire [ISB:0] arid, rid;
   wire [MSB:0] rdata;
 
-  assign crvalid = BYPASS_ENABLE ? arvalid_w : 1'b0;
-  assign crid    = BYPASS_ENABLE ? arid_w : {REQID{1'bx}};
-  assign crlen   = BYPASS_ENABLE ? arlen_w : 8'bx;
-  assign crburst = BYPASS_ENABLE ? arburst_w : 2'bx;
-  assign craddr  = BYPASS_ENABLE ? araddr_w : {ADDRS{1'bx}};
-
-  assign arvalid = BYPASS_ENABLE ? 1'b0 : arvalid_w;
-  assign arid    = BYPASS_ENABLE ? {REQID{1'bx}} : arid_w;
-  assign arlen   = BYPASS_ENABLE ? 8'bx : arlen_w;
-  assign arburst = BYPASS_ENABLE ? 2'bx : arburst_w;
-  assign araddr  = BYPASS_ENABLE ? {ADDRS{1'bx}} : araddr_w;
-
-  assign arready_w = BYPASS_ENABLE ? crready : arready;
-
-  assign rready  = BYPASS_ENABLE ? 1'b0 : rready_w;
-  assign cready  = BYPASS_ENABLE ? rready_w : 1'b0;
-
   axi_ddr3_lite #(
       .DDR_FREQ_MHZ    (DDR_FREQ_MHZ),
       .DDR_ROW_BITS    (DDR_ROW_BITS),
@@ -376,7 +359,6 @@ module tart_ddr3 #(
       .AXI_ID_WIDTH    (REQID),
       .MEM_ID_WIDTH    (REQID),
       .DFIFO_BYPASS    (DFIFO_BYPASS),
-      .BYPASS_ENABLE   (BYPASS_ENABLE),
       .USE_PACKET_FIFOS(0)
   ) U_LITE (
       .arst_n(arst_n),  // Global, asynchronous reset
@@ -417,20 +399,6 @@ module tart_ddr3 #(
       .axi_rresp_o(rresp_w),
       .axi_rid_o(rid_w),
       .axi_rdata_o(rdata_w),
-
-      .byp_arvalid_i(crvalid),  // [optional] fast-read port
-      .byp_arready_o(crready),
-      .byp_araddr_i(craddr),
-      .byp_arid_i(crid),
-      .byp_arlen_i(crlen),
-      .byp_arburst_i(crburst),
-
-      .byp_rready_i(cready),
-      .byp_rvalid_o(cvalid),
-      .byp_rlast_o(clast),
-      .byp_rresp_o(cresp),
-      .byp_rid_o(cid),
-      .byp_rdata_o(cdata),
 
       .dfi_align_o(dfi_align),
       .dfi_calib_i(dfi_calib),
