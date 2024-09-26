@@ -16,9 +16,16 @@
 `endif  /* !__icarus */
 
 module tart_ddr3 #(
-    parameter SRAM_BYTES   = 2048,
-    parameter DATA_WIDTH   = 32,
+    parameter SRAM_BYTES = 2048,
     parameter DFIFO_BYPASS = 0,
+    parameter DATA_WIDTH = 32,
+    localparam MSB = DATA_WIDTH - 1,
+    parameter DATA_KEEPS = DATA_WIDTH / 8,
+    localparam SSB = DATA_KEEPS - 1,
+    parameter ADDR_WIDTH = 27,
+    localparam ASB = ADDR_WIDTH - 1,
+    parameter ID_WIDTH = 4,
+    localparam ISB = ID_WIDTH - 1,
 
     // Default clock-setup for 125 MHz DDR3 clock, from 27 MHz source
     parameter CLK_IN_FREQ = "27",
@@ -34,6 +41,20 @@ module tart_ddr3 #(
     parameter PHY_WR_DELAY = 3,
     parameter PHY_RD_DELAY = 3,
 
+    // Data-path widths
+    localparam DDR_DQ_WIDTH = 16,
+    localparam DSB = DDR_DQ_WIDTH - 1,
+
+    localparam DDR_DM_WIDTH = 2,
+    localparam QSB = DDR_DM_WIDTH - 1,
+
+    // Address widths
+    localparam DDR_ROW_BITS = 13,
+    localparam RSB = DDR_ROW_BITS - 1,
+
+    localparam DDR_COL_BITS = 10,
+    localparam CSB = DDR_COL_BITS - 1,
+
     // Trims an additional clock-cycle of latency, if '1'
     parameter LOW_LATENCY = 1'b0,  // 0 or 1
     parameter WR_PREFETCH = 1'b0,  // 0 or 1
@@ -46,12 +67,12 @@ module tart_ddr3 #(
     input osc_in,  // Default: 27.0 MHz
     input arst_n,  // 'S2' button for async-reset
 
-    input bus_clock,
+    input bus_clock,  // Default: 60.0 MHz
     input bus_reset,
 
     output ddr3_conf_o,
-    output ddr_reset_o,
-    output ddr_clock_o,
+    output ddr_reset_o,  // Default: 245.52 MHz
+    output ddr_clock_o,  // Default: 122.76 MHz
     output ddr_clkx2_o,
 
     // From USB or SPI
@@ -68,19 +89,19 @@ module tart_ddr3 #(
     output m_tlast,
     output [7:0] m_tdata,
 
-    // Raw data port
-    input axi_awvalid_i,  // AXI4 Write Address Port
+    // Raw-data Write Port (default: 122.76 MHz, DDR/AXI domain)
+    input axi_awvalid_i,  // AXI4 Write Address Channel
     output axi_awready_o,
-    input [ASB:0] axi_awaddr_i,
-    input [ISB:0] axi_awid_i,
-    input [7:0] axi_awlen_i,
     input [1:0] axi_awburst_i,
-    input axi_wvalid_i,  // AXI4 Write Data Port
+    input [7:0] axi_awlen_i,
+    input [ISB:0] axi_awid_i,
+    input [ASB:0] axi_awaddr_i,
+    input axi_wvalid_i,  // AXI4 Write Data Channel
     output axi_wready_o,
-    input [MSB:0] axi_wdata_i,
-    input [SSB:0] axi_wstrb_i,
     input axi_wlast_i,
-    output axi_bvalid_o,  // AXI4 Write Response
+    input [SSB:0] axi_wstrb_i,
+    input [MSB:0] axi_wdata_i,
+    output axi_bvalid_o,  // AXI4 Write Response Channel
     input axi_bready_i,
     output [1:0] axi_bresp_o,
     output [ISB:0] axi_bid_o,
@@ -96,61 +117,47 @@ module tart_ddr3 #(
     output ddr_we,
     output ddr_odt,
     output [2:0] ddr_bank,
-    output [12:0] ddr_addr,
-    output [1:0] ddr_dm,
-    inout [1:0] ddr_dqs,
-    inout [1:0] ddr_dqs_n,
-    inout [15:0] ddr_dq
+    output [RSB:0] ddr_addr,
+    output [QSB:0] ddr_dm,
+    inout [QSB:0] ddr_dqs,
+    inout [QSB:0] ddr_dqs_n,
+    inout [DSB:0] ddr_dq
 );
 
   // -- Constants -- //
 
-  // Data-path widths
-  localparam DDR_DQ_WIDTH = 16;
-  localparam DSB = DDR_DQ_WIDTH - 1;
-
-  localparam DDR_DM_WIDTH = 2;
-  localparam QSB = DDR_DM_WIDTH - 1;
-
-  // Address widths
-  localparam DDR_ROW_BITS = 13;
-  localparam RSB = DDR_ROW_BITS - 1;
-
-  localparam DDR_COL_BITS = 10;
-  localparam CSB = DDR_COL_BITS - 1;
-
-  localparam WIDTH = 32;
-  localparam MSB = WIDTH - 1;
-  localparam MASKS = WIDTH / 8;
-  localparam BSB = MASKS - 1;
-
-  // note: (AXI4) byte address, not burst-aligned address
+  // Note: (AXI4) byte address, not burst-aligned address
   localparam ADDRS = DDR_COL_BITS + DDR_ROW_BITS + 4;
-  localparam ASB = ADDRS - 1;
 
-  localparam REQID = 4;
-  localparam ISB = REQID - 1;
-
+  initial begin
+    if (ADDRS != ADDR_WIDTH) begin
+      $error("DDR3 memory-address width (%d) does not match AXI width (%d)", ADDRS, ADDR_WIDTH);
+      $fatal;
+    end
+    if (DATA_WIDTH != 2 * DDR_DQ_WIDTH) begin
+      $error("DDR3 data-bus width (%d) not compatible with AXI width (%d)", DDR_DQ_WIDTH,
+             DATA_WIDTH);
+      $fatal;
+    end
+  end
 
   // -- DDR3 Core and AXI Interconnect Signals -- //
 
-  // AXI4 Signals to/from the Memory Controller
-  wire awvalid, wvalid, wlast, bready, arvalid_w, rready_w;
-  wire awready, wready, bvalid, arready_w, rvalid_w, rlast_w;
-  wire [ISB:0] awid, arid_w, bid, rid_w;
-  wire [7:0] awlen, arlen_w;
-  wire [1:0] awburst, arburst_w;
-  wire [ASB:0] awaddr, araddr_w;
-  wire [BSB:0] wstrb;
-  wire [1:0] bresp, rresp_w;
-  wire [MSB:0] rdata_w, wdata;
+  // AXI4 Signals between Acquisition Unit and Memory Controller
+  wire acq_awvalid, acq_awready, acq_wvalid, acq_wready, acq_wlast;
+  wire acq_bvalid, acq_bready;
+  wire [1:0] acq_awburst, acq_bresp;
+  wire [7:0] acq_awlen;
+  wire [ISB:0] acq_awid, acq_bid;
+  wire [SSB:0] acq_wstrb;
+  wire [MSB:0] acq_wdata;
 
   // DFI <-> PHY
   wire dfi_rst_n, dfi_cke, dfi_cs_n, dfi_ras_n, dfi_cas_n, dfi_we_n;
   wire dfi_odt, dfi_wstb, dfi_wren, dfi_rden, dfi_valid, dfi_last;
   wire [  2:0] dfi_bank;
   wire [RSB:0] dfi_addr;
-  wire [BSB:0] dfi_mask;
+  wire [SSB:0] dfi_mask;
   wire [MSB:0] dfi_wdata, dfi_rdata;
 
   wire dfi_calib, dfi_align;
@@ -158,6 +165,26 @@ module tart_ddr3 #(
 
   wire clk_x2, clk_x1, locked;
   wire clock, reset;
+
+  // -- Signal Input & Output Assignments -- //
+
+  assign acq_awvalid = axi_awvalid_i;
+  assign axi_awready_o = acq_awready;
+  assign acq_awburst = axi_awburst_i;
+  assign acq_awlen = axi_awlen_i;
+  assign acq_awid = axi_awid_i;
+  assign acq_awaddr = axi_awaddr_i;
+
+  assign acq_wvalid = axi_wvalid_i;
+  assign axi_wready_o = acq_wready;
+  assign acq_wlast = axi_wlast_i;
+  assign acq_wstrb = axi_wstrb_i;
+  assign acq_wdata = axi_wdata_i;
+
+  assign axi_bvalid_o = acq_bvalid;
+  assign acq_bready = axi_bready_i;
+  assign axi_bid_o = acq_bid;
+  assign axi_bresp_o = acq_bresp;
 
   // TODO: set up this clock, as the DDR3 timings are quite fussy ...
 
@@ -176,8 +203,6 @@ module tart_ddr3 #(
 
   always #QCLK_DELAY dclk <= ~dclk;
   always #HCLK_DELAY mclk <= ~mclk;
-  // always #2.5 dclk <= ~dclk;
-  // always #5.0 mclk <= ~mclk;
   initial #20 lock_q = 0;
 
   always @(posedge mclk or negedge arst_n) begin
@@ -217,10 +242,20 @@ module tart_ddr3 #(
 
   // -- Processes & Dispatches Memory Requests -- //
 
+  // AXI4 Signals between USB and the Memory Controller //
+  wire usb_awvalid, usb_awready, usb_wvalid, usb_wready, usb_wlast;
+  wire usb_bvalid, usb_bready;
+  wire usb_arvalid, usb_arready, usb_rvalid, usb_rready, usb_rlast;
+  wire [1:0] usb_awburst, usb_bresp, usb_arburst, usb_rresp;
+  wire [7:0] usb_awlen, usb_arlen;
+  wire [ISB:0] usb_awid, usb_bid, usb_arid, usb_rid;
+  wire [SSB:0] usb_wstrb;
+  wire [MSB:0] usb_wdata, usb_rdata;
+
   memreq #(
       .FIFO_DEPTH(SRAM_BYTES * 8 / DATA_WIDTH),
       .DATA_WIDTH(DATA_WIDTH),
-      .STROBES(DATA_WIDTH / 8),
+      .STROBES(DATA_KEEPS),
       .WR_FRAME_FIFO(1)
   ) U_MEMREQ1 (
       .mem_clock(clock),  // DDR3 controller domain
@@ -244,82 +279,130 @@ module tart_ddr3 #(
       .m_tdata (m_tdata),
 
       // Write -address(), -data(), & -response ports(), to/from DDR3 controller
-      .awvalid_o(awvalid),
-      .awready_i(awready),
-      .awaddr_o(awaddr),
-      .awid_o(awid),
-      .awlen_o(awlen),
-      .awburst_o(awburst),
+      .awvalid_o(usb_awvalid),
+      .awready_i(usb_awready),
+      .awaddr_o(usb_awaddr),
+      .awid_o(usb_awid),
+      .awlen_o(usb_awlen),
+      .awburst_o(usb_awburst),
 
-      .wvalid_o(wvalid),
-      .wready_i(wready),
-      .wlast_o (wlast),
-      .wstrb_o (wstrb),
-      .wdata_o (wdata),
+      .wvalid_o(usb_wvalid),
+      .wready_i(usb_wready),
+      .wlast_o (usb_wlast),
+      .wstrb_o (usb_wstrb),
+      .wdata_o (usb_wdata),
 
-      .bvalid_i(bvalid),
-      .bready_o(bready),
-      .bresp_i(bresp),
-      .bid_i(bid),
+      .bvalid_i(usb_bvalid),
+      .bready_o(usb_bready),
+      .bresp_i(usb_bresp),
+      .bid_i(usb_bid),
 
       // Read -address & -data ports(), to/from the DDR3 controller
-      .arvalid_o(arvalid_w),
-      .arready_i(arready_w),
-      .araddr_o(araddr_w),
-      .arid_o(arid_w),
-      .arlen_o(arlen_w),
-      .arburst_o(arburst_w),
+      .arvalid_o(usb_arvalid),
+      .arready_i(usb_arready),
+      .araddr_o(usb_araddr),
+      .arid_o(usb_arid),
+      .arlen_o(usb_arlen),
+      .arburst_o(usb_arburst),
 
-      .rvalid_i(rvalid_w),
-      .rready_o(rready_w),
-      .rlast_i(rlast_w),
-      .rresp_i(rresp_w),
-      .rid_i(rid_w),
-      .rdata_i(rdata_w)
+      .rvalid_i(usb_rvalid),
+      .rready_o(usb_rready),
+      .rlast_i(usb_rlast),
+      .rresp_i(usb_rresp),
+      .rid_i(usb_rid),
+      .rdata_i(usb_rdata)
   );
 
-  // Todo ...
-  reg mux_q = 0;
-  reg sel_q = 1;
-  wire mux_tvalid, mux_tready, mux_tkeep, mux_tlast;
-  wire [7:0] mux_tdata;
+  // -- Write-MUX for 2x AXI Write Channels -- //
 
-  // Multiplexor for write-data from the SPI or USB core
-  axis_mux #(
+  // AXI4 MUX-Output Signals for Memory Writes //
+  wire mux_awvalid, mux_awready, mux_wvalid, mux_wready, mux_wlast;
+  wire mux_bvalid, mux_bready;
+  wire [1:0] mux_awburst, mux_bresp;
+  wire [7:0] mux_awlen;
+  wire [ISB:0] mux_awid, mux_bid;
+  wire [SSB:0] mux_wstrb;
+  wire [MSB:0] mux_wdata;
+
+  axi_crossbar_wr #(
       .S_COUNT(2),
-      .DATA_WIDTH(8),
-      .KEEP_ENABLE(1),
-      .KEEP_WIDTH(1),
-      .ID_ENABLE(0),
-      .ID_WIDTH(1),
-      .DEST_ENABLE(0),
-      .DEST_WIDTH(1),
-      .USER_ENABLE(0),
-      .USER_WIDTH(1)
-  ) U_MUX1 (
-      .clk(bus_clock),
-      .rst(bus_reset),
+      .M_COUNT(1),
+      .DATA_WIDTH(DATA_WIDTH),  // Default: 32b -> DDR3
+      .ADDR_WIDTH(ADDR_WIDTH),
+      .STRB_WIDTH(DATA_KEEPS),
+      .S_ID_WIDTH(ID_WIDTH),
+      .M_ID_WIDTH(ID_WIDTH),
+      .AWUSER_ENABLE(0),
+      .AWUSER_WIDTH(1),
+      .WUSER_ENABLE(0),
+      .WUSER_WIDTH(1),
+      .BUSER_ENABLE(0),
+      .BUSER_WIDTH(1),
+      .S_THREADS({32'd1, 32'd1}),
+      .S_ACCEPT({32'd1, 32'd1}),
+      .M_REGIONS(1),
+      .M_BASE_ADDR(0),
+      .M_ADDR_WIDTH(ADDR_WIDTH),
+      .M_CONNECT({{1'b1, 1'b1}}),
+      .M_ISSUE({32'd1}),
+      .M_SECURE({1'b0}),
+      .S_AW_REG_TYPE({2'd1, 2'd1}),  // Plain registers
+      .S_W_REG_TYPE({2'd2, 2'd2}),  // Skid buffers
+      .S_B_REG_TYPE({2'd1, 2'd1})  // Plain registers
+  ) U_XBAR1 (
+      .clk(clock),
+      .rst(reset),
 
-      .enable(mux_q),
-      .select(sel_q),
+      // AXI slave interfaces //
+      .s_axi_awvalid({acq_awvalid, usb_awvalid}),
+      .s_axi_awready({acq_awready, usb_awready}),
+      .s_axi_awsize({3'd2, 3'd2}),
+      .s_axi_awburst({acq_awburst, usb_awburst}),
+      .s_axi_awlen({acq_awlen, usb_awlen}),
+      .s_axi_awid   ({acq_awid, usb_awid}),
+      .s_axi_awaddr({acq_awaddr, usb_awaddr}),
+      .s_axi_awlock({1'b0, 1'b0}),
+      .s_axi_awcache({4'd3, 4'd3}),
+      .s_axi_awprot({3'd2, 3'd2}),
+      .s_axi_awqos({4'd0, 4'd0}),
+      .s_axi_awuser({1'b0, 1'b0}),
+      .s_axi_wvalid({acq_wvalid, usb_wvalid}),
+      .s_axi_wready({acq_wready, usb_wready}),
+      .s_axi_wlast({acq_wlast, usb_wlast}),
+      .s_axi_wuser({1'b0, 1'b0}),
+      .s_axi_wstrb({acq_wstrb, usb_wstrb}),
+      .s_axi_wdata({acq_wdata, usb_wdata}),
+      .s_axi_bvalid({acq_bvalid, usb_bvalid}),
+      .s_axi_bready({acq_bready, usb_bvalid}),
+      .s_axi_buser(),
+      .s_axi_bid({acq_bid, usb_bid}),
+      .s_axi_bresp({acq_bresp, usb_bresp}),
 
-      .s_axis_tvalid({raw_tvalid, u2m_tvalid}), // AXI input: 2x 8b
-      .s_axis_tready({raw_tready, u2m_tready}),
-      .s_axis_tkeep ({raw_tkeep, u2m_tkeep}),
-      .s_axis_tlast ({raw_tlast, u2m_tlast}),
-      .s_axis_tuser (2'bx),
-      .s_axis_tid   (2'bx),
-      .s_axis_tdest (2'bx),
-      .s_axis_tdata ({raw_tdata, u2m_tdata}),
-
-      .m_axis_tvalid(mux_tvalid), // AXI output: 8b
-      .m_axis_tready(mux_tready),
-      .m_axis_tkeep (mux_tkeep),
-      .m_axis_tlast (mux_tlast),
-      .m_axis_tuser (),
-      .m_axis_tid   (),
-      .m_axis_tdest (),
-      .m_axis_tdata (mux_tdata)
+      // AXI master interfaces //
+      .m_axi_awvalid(mux_awvalid),
+      .m_axi_awready(mux_awready),
+      .m_axi_awsize(),
+      .m_axi_awburst(mux_awburst),
+      .m_axi_awlen(mux_awlen),
+      .m_axi_awid(mux_awid),
+      .m_axi_awaddr(mux_awaddr),
+      .m_axi_awlock(),
+      .m_axi_awcache(),
+      .m_axi_awprot(),
+      .m_axi_awqos(),
+      .m_axi_awregion(),
+      .m_axi_awuser(),
+      .m_axi_wvalid(mux_wvalid),
+      .m_axi_wready(mux_wready),
+      .m_axi_wlast(mux_wlast),
+      .m_axi_wuser(),
+      .m_axi_wstrb(mux_wstrb),
+      .m_axi_wdata(mux_wdata),
+      .m_axi_bvalid(mux_bvalid),
+      .m_axi_bready(mux_bready),
+      .m_axi_bid(mux_bid),
+      .m_axi_bresp(mux_bresp),
+      .m_axi_buser()
   );
 
 
@@ -327,79 +410,62 @@ module tart_ddr3 #(
   //  DDR Core Under New Test
   ///
 
-  localparam BYPASS_ENABLE = RD_FASTPATH;
-
-  wire [QSB:0] dfi_dqs_p, dfi_dqs_n;
-  wire [1:0] dfi_wrdly;
-  wire [2:0] dfi_rddly;
-
-  wire crvalid, crready, cvalid, cready, clast;
-  wire [1:0] crburst, cresp;
-  wire [  7:0] crlen;
-  wire [ASB:0] craddr;
-  wire [ISB:0] crid, cid;
-  wire [MSB:0] cdata;
-
-  wire arvalid, arready, rvalid, rready, rlast;
-  wire [1:0] arburst, rresp;
-  wire [  7:0] arlen;
-  wire [ASB:0] araddr;
-  wire [ISB:0] arid, rid;
-  wire [MSB:0] rdata;
-
   axi_ddr3_lite #(
-      .DDR_FREQ_MHZ    (DDR_FREQ_MHZ),
-      .DDR_ROW_BITS    (DDR_ROW_BITS),
-      .DDR_COL_BITS    (DDR_COL_BITS),
-      .DDR_DQ_WIDTH    (DDR_DQ_WIDTH),
-      .PHY_WR_DELAY    (PHY_WR_DELAY),
-      .PHY_RD_DELAY    (PHY_RD_DELAY),
-      .WR_PREFETCH     (WR_PREFETCH),
-      .LOW_LATENCY     (LOW_LATENCY),
-      .AXI_ID_WIDTH    (REQID),
-      .MEM_ID_WIDTH    (REQID),
-      .DFIFO_BYPASS    (DFIFO_BYPASS),
-      .USE_PACKET_FIFOS(0)
+      .DDR_FREQ_MHZ(DDR_FREQ_MHZ),
+      .DDR_ROW_BITS(DDR_ROW_BITS),
+      .DDR_COL_BITS(DDR_COL_BITS),
+      .DDR_DQ_WIDTH(DDR_DQ_WIDTH),
+      .PHY_WR_DELAY(PHY_WR_DELAY),
+      .PHY_RD_DELAY(PHY_RD_DELAY),
+      .WR_PREFETCH (WR_PREFETCH),
+      .LOW_LATENCY (LOW_LATENCY),
+      .AXI_ID_WIDTH(ID_WIDTH),
+      .MEM_ID_WIDTH(ID_WIDTH),
+      .DFIFO_BYPASS(DFIFO_BYPASS),
+      .PACKET_FIFOS(0)
   ) U_LITE (
       .arst_n(arst_n),  // Global, asynchronous reset
 
-      .clock(clock),  // system clock
-      .reset(reset),  // synchronous reset
+      .clock(clock),  // Memory clock (default: 122.76 MHz)
+      .reset(reset),  // Synchronous reset
 
       .configured_o(ddr3_conf_o),
 
-      .axi_awvalid_i(awvalid),
-      .axi_awready_o(awready),
-      .axi_awaddr_i(awaddr),
-      .axi_awid_i(awid),
-      .axi_awlen_i(awlen),
-      .axi_awburst_i(awburst),
+      // Write Port: {ACQ, USB} -> DDR3 //
+      .axi_awvalid_i(mux_awvalid),
+      .axi_awready_o(mux_awready),
+      .axi_awaddr_i(mux_awaddr),
+      .axi_awid_i(mux_awid),
+      .axi_awlen_i(mux_awlen),
+      .axi_awburst_i(mux_awburst),
 
-      .axi_wvalid_i(wvalid),
-      .axi_wready_o(wready),
-      .axi_wlast_i (wlast),
-      .axi_wstrb_i (wstrb),
-      .axi_wdata_i (wdata),
+      .axi_wvalid_i(mux_wvalid),
+      .axi_wready_o(mux_wready),
+      .axi_wlast_i (mux_wlast),
+      .axi_wstrb_i (mux_wstrb),
+      .axi_wdata_i (mux_wdata),
 
-      .axi_bvalid_o(bvalid),
-      .axi_bready_i(bready),
-      .axi_bresp_o(bresp),
-      .axi_bid_o(bid),
+      .axi_bvalid_o(mux_bvalid),
+      .axi_bready_i(mux_bready),
+      .axi_bresp_o(mux_bresp),
+      .axi_bid_o(mux_bid),
 
-      .axi_arvalid_i(arvalid),
-      .axi_arready_o(arready),
-      .axi_araddr_i(araddr),
-      .axi_arid_i(arid),
-      .axi_arlen_i(arlen),
-      .axi_arburst_i(arburst),
+      // Read Port: DDR3 -> USB //
+      .axi_arvalid_i(usb_arvalid),
+      .axi_arready_o(usb_arready),
+      .axi_araddr_i(usb_araddr),
+      .axi_arid_i(usb_arid),
+      .axi_arlen_i(usb_arlen),
+      .axi_arburst_i(usb_arburst),
 
-      .axi_rvalid_o(rvalid_w),
-      .axi_rready_i(rready_w),
-      .axi_rlast_o(rlast_w),
-      .axi_rresp_o(rresp_w),
-      .axi_rid_o(rid_w),
-      .axi_rdata_o(rdata_w),
+      .axi_rvalid_o(usb_rvalid),
+      .axi_rready_i(usb_rready),
+      .axi_rlast_o(usb_rlast),
+      .axi_rresp_o(usb_rresp),
+      .axi_rid_o(usb_rid),
+      .axi_rdata_o(usb_rdata),
 
+      // Connection to/from the DDR3 PHY //
       .dfi_align_o(dfi_align),
       .dfi_calib_i(dfi_calib),
 

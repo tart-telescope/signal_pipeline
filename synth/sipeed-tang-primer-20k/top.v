@@ -1,8 +1,15 @@
 `timescale 1ns / 100ps
 module top #(
     parameter ANTENNAS = 24,
-    localparam ASB = ANTENNAS - 1,
-    parameter AXI_WIDTH = 8
+    localparam XSB = ANTENNAS - 1,
+             parameter ID_WIDTH = 4,
+             localparam ISB = ID_WIDTH - 1,
+    parameter AXI_WIDTH = 32,
+             localparam MSB = AXI_WIDTH -1,
+             parameter AXI_KEEPS = AXI_WIDTH / 8,
+             localparam SSB = AXI_KEEPS - 1,
+             parameter AXI_ADDRS = 27,
+             localparam ASB = AXI_ADDRS - 1
 ) (
     // -- Global 16.368 MHz clock oscillator -- //
     input CLK_16,
@@ -74,8 +81,8 @@ module top #(
   parameter [PSB:0] PRODUCT_STRING = "TART USB";
 
   parameter integer SERIAL_LENGTH = 8;
-  localparam integer SSB = SERIAL_LENGTH * 8 - 1;
-  parameter [SSB:0] SERIAL_STRING = "TART0001";
+  localparam integer NSB = SERIAL_LENGTH * 8 - 1;
+  parameter [NSB:0] SERIAL_STRING = "TART0001";
 
   // USB-core end-point configuration
   localparam ENDPOINT1 = 4'd1;
@@ -111,12 +118,12 @@ module top #(
   //  PLL Signals, Clocks, and Resets
   ///
 
-  wire axi_clock, axi_reset, bus_reset;
-  wire usb_clock, usb_reset, usb_rst_n;
-  wire vis_clock, vis_reset, mem_reset;
+  wire axi_clock, axi_reset;
+  wire usb_clock, usb_reset;
+  wire vis_clock, vis_reset;
+  wire sig_clock, sig_reset;
 
-  assign bus_reset = axi_reset;
-  assign usb_rst_n = ~usb_reset;
+  assign sig_clock = CLK_16;
 
 `ifdef __do_not_use_ddr3
 
@@ -151,22 +158,22 @@ module top #(
 
   // -- Resets -- //
 
-  // Synchronous reset signal (when 'HI'), for the AXI clock-domain.
-  sync_reset #(
-      .N(2)
-  ) U_AXI_RESET (
-      .clock(axi_clock),
-      .arstn(~rst_n),
-      .reset(axi_reset)
-  );
-
   // Synchronous reset (active 'LO') for the correlator unit.
   sync_reset #(
       .N(2)
-  ) U_VIS_RESET (
-      .clock(vis_clock),
+  ) U_VISRST (
+      .clock(vis_clock), // Default: 245.52 MHz
       .arstn(~rst_n),
       .reset(vis_reset)
+  );
+
+  // Synchronous reset (active 'LO') for the acquisition unit.
+  sync_reset #(
+      .N(2)
+  ) U_SIGRST (
+      .clock(sig_clock), // Default: 245.52 MHz
+      .arstn(~rst_n),
+      .reset(sig_reset)
   );
 
 
@@ -174,22 +181,31 @@ module top #(
   //  Signal Acquisition
   ///
 
-  wire [ASB:0] I1, Q1;
+  wire [XSB:0] I1, Q1;
 
-  reg [ASB:0] I_data, Q_data;
-  reg [ASB:0] count_value_reg;  // counter_value
+  reg [XSB:0] I_data, Q_data;
+  reg [XSB:0] count_value_reg;  // counter_value
   reg         count_value_flag;  // IO chaneg flag
   reg         RECONFIG_reg = 1'b0;  // Initial state
+
+  // AXI4 Signals between Acquisition Unit and Memory Controller
+  wire acq_awvalid, acq_awready, acq_wvalid, acq_wready, acq_wlast;
+  wire acq_bvalid, acq_bready;
+  wire [1:0] acq_awburst, acq_bresp;
+  wire [7:0] acq_awlen;
+  wire [ISB:0] acq_awid, acq_bid;
+  wire [SSB:0] acq_wstrb;
+  wire [MSB:0] acq_wdata;
 
   assign RADIO_RECONFIG = RECONFIG_reg;
 
   // Latch the data
-  always @(posedge CLK_16) begin
+  always @(posedge sig_clock) begin
     I_data <= I1;
     Q_data <= Q1;
   end
 
-  always @(posedge CLK_16) begin
+  always @(posedge sig_clock) begin
     if (count_value_reg <= COUNT_VALUE) begin  //not count to 0.5S
       count_value_reg  <= count_value_reg + 1'b1;  // Continue counting
       count_value_flag <= 1'b0;  // No flip flag
@@ -205,9 +221,22 @@ module top #(
   //  Correlator
   ///
 
+  reg start_q;
   wire vis_start, vis_frame, ddr3_conf_w;
   wire m_tvalid, m_tready, m_tlast;
   wire [7:0] m_tdata;
+
+  always @(posedge sig_clock) begin
+    if (sig_reset) begin
+      start_q <= 1'b0;
+    end else begin
+      if (ddr3_conf_w) begin
+        // Todo: currently auto-starts when the DDR3 is ready to receive raw
+        //   data.
+        start_q <= 1'b1;
+      end
+    end
+  end
 
   // Calculate visibilities for 4 antennas, with fixed MUX-inputs, for testing.
   toy_correlator #(
@@ -218,8 +247,8 @@ module top #(
       .LOOP1(5),
       .ACCUM(32),
       .SBITS(7)
-  ) tart_correlator_inst (
-      .sig_clock(CLK_16),
+  ) U_COR1 (
+      .sig_clock(sig_clock),
 
       .vis_clock(vis_clock),
       .vis_reset(vis_reset),
@@ -255,19 +284,30 @@ module top #(
       .RADIOS(ANTENNAS),
       .SRAM_BYTES(SRAM_BYTES)
   ) U_ACQ1 (
-      .sig_clock(CLK_16),
-      .bus_clock(usb_clock),
-      .bus_reset(usb_reset),
-
-      .sig_valid_i(ddr3_conf_w),
+      .sig_clock(sig_clock),
+      .sig_valid_i(ddr3_conf_w),  // Todo ...
       .sig_last_i (1'b0),
       .sig_idata_i(I_data),
       .sig_qdata_i(Q_data),
 
-      .raw_tvalid_o(raw_tvalid),
-      .raw_tready_o(raw_tready),
-      .raw_tlast_o (raw_tlast),
-      .raw_tdata_o (raw_tdata)
+      // AXI4 Raw-data Port
+      .mem_clock(axi_clock),  // Default: 122.76 MHz
+      .mem_reset(axi_reset),
+      .axi_awvalid_o(acq_awvalid),  // AXI4 Write Address Channel
+      .axi_awready_i(acq_awready),
+      .axi_awburst_o(acq_awburst),
+      .axi_awlen_o(acq_awlen),
+      .axi_awid_o(acq_awid),
+      .axi_awaddr_o(acq_awaddr),
+      .axi_wvalid_o(acq_wvalid),  // AXI4 Write Data Channel
+      .axi_wready_i(acq_wready),
+      .axi_wlast_o(acq_wlast),
+      .axi_wstrb_o(acq_wstrb),
+      .axi_wdata_o(acq_wdata),
+      .axi_bvalid_i(acq_bvalid),  // AXI4 Write Response Channel
+      .axi_bready_o(acq_bready),
+      .axi_bresp_i(acq_bresp),
+      .axi_bid_i(acq_bid)
   );
 
 
@@ -406,7 +446,7 @@ module top #(
   assign ddr_addr[13] = 1'b0;
   assign u2m_tkeep = u2m_tvalid;
 
-  ddr3_top #(
+  tart_ddr3 #(
       .SRAM_BYTES  (SRAM_BYTES),
       .DATA_WIDTH  (DDR3_WIDTH),
       .DFIFO_BYPASS(DFIFO_BYPASS),
@@ -431,7 +471,7 @@ module top #(
       .ddr3_conf_o(ddr3_conf_w),
       .ddr_clkx2_o(vis_clock),    // (default: 245.52 MHz)
       .ddr_clock_o(axi_clock),    // (default: 122.76 MHz)
-      .ddr_reset_o(mem_reset),
+      .ddr_reset_o(axi_reset),
 
       // From USB or SPI (default: 60.0 MHz)
       .s_tvalid(u2m_tvalid),
@@ -446,6 +486,25 @@ module top #(
       .m_tkeep (m2u_tkeep),
       .m_tlast (m2u_tlast),
       .m_tdata (m2u_tdata),
+
+      // Acquired raw radio data to the DDR3 controller
+      .axi_awvalid_i(acq_awvalid),
+      .axi_awready_o(acq_awready),
+      .axi_awaddr_i(acq_awaddr),
+      .axi_awid_i(acq_awid),
+      .axi_awlen_i(acq_awlen),
+      .axi_awburst_i(acq_awburst),
+
+      .axi_wvalid_i(acq_wvalid),
+      .axi_wready_o(acq_wready),
+      .axi_wlast_i (acq_wlast),
+      .axi_wstrb_i (acq_wstrb),
+      .axi_wdata_i (acq_wdata),
+
+      .axi_bvalid_o(acq_bvalid),
+      .axi_bready_i(acq_bready),
+      .axi_bresp_o(acq_bresp),
+      .axi_bid_o(acq_bid),
 
       // 1Gb DDR3 SDRAM pins
       .ddr_ck(ddr_ck),

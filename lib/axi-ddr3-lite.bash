@@ -4,7 +4,7 @@ TMP=`mktemp --directory`
 pushd ${TMP}
 git clone --depth=1 https://github.com/psuggate/axi-ddr3-lite.git
 cd axi-ddr3-lite
-git checkout a0dbd662c0188036655f05caa7dc0cfc33c5006c
+git checkout 7d161ae3cd79ae35461b2de4b9c954e7cff31fe6
 popd
 mkdir -p axi-ddr3-lite
 cp -a ${TMP}/axi-ddr3-lite/rtl/* axi-ddr3-lite/

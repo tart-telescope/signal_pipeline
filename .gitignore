@@ -10,3 +10,5 @@ impl/
 axi-ddr3-lite/
 axis-usb/
 misc-verilog-cores/
+verilog-axi/
+verilog-axis/
