@@ -53,8 +53,8 @@ module radio_dummy #(
   assign q_XNOR = q_LFSR[10] ^~ q_LFSR[7];
 
   initial begin
-    data_i <= 0;
-    data_q <= 0;
+    data_i = 0;
+    data_q = 0;
   end
 
   always @(posedge clk16 or negedge rst_n) begin
@@ -64,9 +64,9 @@ module radio_dummy #(
     end else begin
       i_LFSR <= {i_LFSR[9:1], i_XNOR};
       q_LFSR <= {q_LFSR[9:1], q_XNOR};
+      data_i <= i_LFSR[2];
+      data_q <= q_LFSR[2];
     end
-    data_i <= i_LFSR[2];
-    data_q <= q_LFSR[2];
   end
 
 endmodule

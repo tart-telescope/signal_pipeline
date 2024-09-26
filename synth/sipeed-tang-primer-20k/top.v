@@ -1,15 +1,15 @@
 `timescale 1ns / 100ps
 module top #(
-    parameter ANTENNAS = 24,
+    parameter ANTENNAS = 4,
     localparam XSB = ANTENNAS - 1,
-             parameter ID_WIDTH = 4,
-             localparam ISB = ID_WIDTH - 1,
+    parameter ID_WIDTH = 4,
+    localparam ISB = ID_WIDTH - 1,
     parameter AXI_WIDTH = 32,
-             localparam MSB = AXI_WIDTH -1,
-             parameter AXI_KEEPS = AXI_WIDTH / 8,
-             localparam SSB = AXI_KEEPS - 1,
-             parameter AXI_ADDRS = 27,
-             localparam ASB = AXI_ADDRS - 1
+    localparam MSB = AXI_WIDTH - 1,
+    parameter AXI_KEEPS = AXI_WIDTH / 8,
+    localparam SSB = AXI_KEEPS - 1,
+    parameter AXI_ADDRS = 27,
+    localparam ASB = AXI_ADDRS - 1
 ) (
     // -- Global 16.368 MHz clock oscillator -- //
     input CLK_16,
@@ -114,6 +114,7 @@ module top #(
 
   assign uart_tx = 1'b1;
 
+
   //
   //  PLL Signals, Clocks, and Resets
   ///
@@ -123,70 +124,103 @@ module top #(
   wire vis_clock, vis_reset;
   wire sig_clock, sig_reset;
 
-  assign sig_clock = CLK_16;
-
-`ifdef __do_not_use_ddr3
-
-  wire axi_lock, vis_lock;
-
-  // So 27.0 MHz divided by 9, then x40 = 120 MHz.
-  gowin_rpll #(
-      .FCLKIN("27"),
-      .IDIV_SEL(8),  // ~=  9
-      .FBDIV_SEL(39),  // ~= 40
-      .ODIV_SEL(8)
-  ) axi_rpll_inst (
-      .clkout(axi_clock),  // 120 MHz
-      .lock  (),
-      .clkin (clk_26)
-  );
-
-  // Correlator clock domain runs at 15x the global clock for the radios.
-  // Also used as the DDR3 clock
-  gowin_rpll #(
-      .FCLKIN("16.368"),
-      .IDIV_SEL(0),  // ~=  1
-      .FBDIV_SEL(14),  // ~= 15
-      .ODIV_SEL(8)
-  ) vis_rpll_inst (
-      .clkout(vis_clock),  // 245.52 MHz
-      .lock  (vis_lock),
-      .clkin (CLK_16)
-  );
-
-`endif  /* __do_not_use_ddr3 */
-
-  // -- Resets -- //
-
   // Synchronous reset (active 'LO') for the correlator unit.
   sync_reset #(
       .N(2)
   ) U_VISRST (
-      .clock(vis_clock), // Default: 245.52 MHz
-      .arstn(~rst_n),
+      .clock(vis_clock),  // Default: 245.52 MHz
+      .arstn(rst_n),
       .reset(vis_reset)
   );
 
-  // Synchronous reset (active 'LO') for the acquisition unit.
-  sync_reset #(
-      .N(2)
-  ) U_SIGRST (
-      .clock(sig_clock), // Default: 245.52 MHz
-      .arstn(~rst_n),
-      .reset(sig_reset)
+
+  //
+  //  TART Brains
+  ///
+
+  wire viz_tvalid, viz_tready, viz_tkeep, viz_tlast;
+  wire ctl_tvalid, ctl_tready, ctl_tlast;
+  wire res_tvalid, res_tready, res_tkeep, res_tlast;
+  wire [7:0] viz_tdata, ctl_tdata, res_tdata;
+  wire capture_en_w, acquire_en_w, correlator_w, visb_ready_w, ddr3_ready_w;
+
+  assign visb_ready_w = viz_tvalid;
+
+  // TART Configuration //
+  controller #(
+      .WIDTH(8)
+  ) U_CTRL1 (
+      .clock_in (CLK_16),
+      .areset_n (rst_n),
+      .sig_clk_o(sig_clock),
+      .sig_rst_o(sig_reset),
+
+      .bus_clock(usb_clock),
+      .bus_reset(usb_reset),
+
+      .s_tvalid(ctl_tvalid),
+      .s_tready(ctl_tready),
+      .s_tlast (ctl_tlast),
+      .s_tdata (ctl_tdata),
+
+      .v_tvalid(viz_tvalid),
+      .v_tready(viz_tready),
+      .v_tkeep (viz_tkeep),
+      .v_tlast (viz_tlast),
+      .v_tdata (viz_tdata),
+
+      .m_tvalid(res_tvalid),
+      .m_tready(res_tready),
+      .m_tlast (res_tlast),
+      .m_tkeep (res_tkeep),
+      .m_tdata (res_tdata),
+
+      .ddr3_ready_i(ddr3_ready_w),
+      .capture_en_o(capture_en_w),
+      .acquire_en_o(acquire_en_w),
+      .correlator_o(correlator_w),
+      .visibility_i(visb_ready_w)
   );
+
+
+  //
+  //  Fake Radios
+  ///
+
+  reg [XSB:0] dat_i = {ANTENNAS{1'b0}}, dat_q = {ANTENNAS{1'b0}};
+  wire [XSB:0] sig_i, sig_q;
+
+  genvar ant;
+  generate
+    for (ant = 0; ant < ANTENNAS; ant = ant + 1) begin
+      radio_dummy #(
+          .ANT_NUM(ant)
+      ) r0 (
+          .clk16(sig_clock),
+          .rst_n(~sig_reset),
+          .i1(dat_i[ant]),
+          .q1(dat_q[ant]),
+          .data_i(sig_i[ant]),
+          .data_q(sig_q[ant])
+      );
+    end
+  endgenerate
+
+  always @(posedge sig_clock) begin
+    dat_i <= sig_i;
+    dat_q <= sig_q;
+  end
 
 
   //
   //  Signal Acquisition
   ///
 
-  wire [XSB:0] I1, Q1;
-
   reg [XSB:0] I_data, Q_data;
   reg [XSB:0] count_value_reg;  // counter_value
   reg         count_value_flag;  // IO chaneg flag
   reg         RECONFIG_reg = 1'b0;  // Initial state
+  wire [XSB:0] I1, Q1;
 
   // AXI4 Signals between Acquisition Unit and Memory Controller
   wire acq_awvalid, acq_awready, acq_wvalid, acq_wready, acq_wlast;
@@ -198,11 +232,15 @@ module top #(
   wire [MSB:0] acq_wdata;
 
   assign RADIO_RECONFIG = RECONFIG_reg;
+  assign I1 = dat_i;
+  assign Q1 = dat_q;
 
   // Latch the data
   always @(posedge sig_clock) begin
-    I_data <= I1;
-    Q_data <= Q1;
+    if (capture_en_w) begin
+      I_data <= I1;
+      Q_data <= Q1;
+    end
   end
 
   always @(posedge sig_clock) begin
@@ -216,83 +254,22 @@ module top #(
     end
   end
 
-
-  //
-  //  Correlator
-  ///
-
-  reg start_q;
-  wire vis_start, vis_frame, ddr3_conf_w;
-  wire m_tvalid, m_tready, m_tlast;
-  wire [7:0] m_tdata;
-
-  always @(posedge sig_clock) begin
-    if (sig_reset) begin
-      start_q <= 1'b0;
-    end else begin
-      if (ddr3_conf_w) begin
-        // Todo: currently auto-starts when the DDR3 is ready to receive raw
-        //   data.
-        start_q <= 1'b1;
-      end
-    end
-  end
-
-  // Calculate visibilities for 4 antennas, with fixed MUX-inputs, for testing.
-  toy_correlator #(
-      .WIDTH(4),
-      .MUX_N(4),
-      .TRATE(30),
-      .LOOP0(3),
-      .LOOP1(5),
-      .ACCUM(32),
-      .SBITS(7)
-  ) U_COR1 (
-      .sig_clock(sig_clock),
-
-      .vis_clock(vis_clock),
-      .vis_reset(vis_reset),
-
-      .sig_valid_i(ddr3_conf_w),
-      .sig_last_i (1'b0),
-      .sig_idata_i(I_data),
-      .sig_qdata_i(Q_data),
-
-      .vis_start_o(vis_start),
-      .vis_frame_o(vis_frame),
-
-      // USB/SPI clock domain signals
-      .bus_clock(usb_clock),
-      .bus_reset(usb_reset),
-
-      .m_tvalid(m_tvalid),
-      .m_tready(m_tready),
-      .m_tkeep (),
-      .m_tlast (m_tlast),
-      .m_tdata (m_tdata),
-
-      .bus_revis_o(),
-      .bus_imvis_o(),
-      .bus_valid_o(),
-      .bus_ready_i(1'b0),
-      .bus_last_o ()
-  );
-
   // Acquire raw data, buffer it, chunk it up into 'CHUNK'-sized packets, and
   // then store these packets of raw-data to the DDR3 SDRAM.
   acquire #(
       .RADIOS(ANTENNAS),
       .SRAM_BYTES(SRAM_BYTES)
   ) U_ACQ1 (
-      .sig_clock(sig_clock),
-      .sig_valid_i(ddr3_conf_w),  // Todo ...
+      .sig_clock  (sig_clock),
+      .sig_valid_i(acquire_en_w),  // Todo ...
       .sig_last_i (1'b0),
       .sig_idata_i(I_data),
       .sig_qdata_i(Q_data),
 
-      // AXI4 Raw-data Port
       .mem_clock(axi_clock),  // Default: 122.76 MHz
       .mem_reset(axi_reset),
+
+      // AXI4 Raw-data Port
       .axi_awvalid_o(acq_awvalid),  // AXI4 Write Address Channel
       .axi_awready_i(acq_awready),
       .axi_awburst_o(acq_awburst),
@@ -312,17 +289,58 @@ module top #(
 
 
   //
+  //  Correlator
+  ///
+
+  wire vis_start, vis_frame;
+
+  // Calculate visibilities for 4 antennas, with fixed MUX-inputs, for testing.
+  toy_correlator #(
+      .WIDTH(4),
+      .MUX_N(4),
+      .TRATE(30),
+      .LOOP0(3),
+      .LOOP1(5),
+      .ACCUM(32),
+      .SBITS(7)
+  ) U_COR1 (
+      .sig_clock(sig_clock),
+
+      .sig_valid_i(correlator_w),
+      .sig_last_i (1'b0),
+      .sig_idata_i(I_data),
+      .sig_qdata_i(Q_data),
+
+      .vis_clock(vis_clock),
+      .vis_reset(vis_reset),
+
+      .vis_start_o(vis_start),
+      .vis_frame_o(vis_frame),
+
+      // USB/SPI clock domain signals
+      .bus_clock(usb_clock),
+      .bus_reset(usb_reset),
+
+      .m_tvalid(viz_tvalid),
+      .m_tready(viz_tready),
+      .m_tkeep (viz_tkeep),
+      .m_tlast (viz_tlast),
+      .m_tdata (viz_tdata),
+
+      .bus_revis_o(),
+      .bus_imvis_o(),
+      .bus_valid_o(),
+      .bus_ready_i(1'b0),
+      .bus_last_o ()
+  );
+
+
+  //
   //  Output Buses and SRAM's
   ///
 
-  // -- USB ULPI Bulk transfer endpoint (IN & OUT) -- //
-
-  //
-  // Todo:
-  //  - MMIO interface to TART top-level control module ??
-  //  - better plumbing to DDR3 controller;
-  //
-  wire m2u_tvalid, m2u_tready, m2u_tlast, u2m_tvalid, u2m_tready, u2m_tkeep, u2m_tlast;
+  wire m2u_tvalid, m2u_tready, m2u_tlast;
+  wire u2m_tvalid, u2m_tready, u2m_tkeep, u2m_tlast;
   wire [7:0] m2u_tdata, u2m_tdata;
 
   usb_ulpi_core #(
@@ -377,71 +395,21 @@ module top #(
       .blko_tlast_o (u2m_tlast),
       .blko_tdata_o (u2m_tdata),
 
-      .blkx_tvalid_i(m_tvalid),  // USB 'BULK IN' EP data-path
-      .blkx_tready_o(m_tready),
-      .blkx_tlast_i (m_tlast),
-      .blkx_tdata_i (m_tdata),
+      .blkx_tvalid_i(res_tvalid),  // USB 'BULK IN' EP data-path
+      .blkx_tready_o(res_tready),
+      .blkx_tlast_i (res_tlast),
+      .blkx_tdata_i (res_tdata),
 
-      .blky_tvalid_o(),  // USB 'BULK OUT' EP data-path
-      .blky_tready_i(1'b1),
-      .blky_tlast_o(),
-      .blky_tdata_o({Q1[3:0], I1[3:0]})
+      .blky_tvalid_o(ctl_tvalid),  // USB 'BULK OUT' EP data-path
+      .blky_tready_i(ctl_tready),
+      .blky_tlast_o (ctl_tlast),
+      .blky_tdata_o (ctl_tdata)
   );
-
-  // -- Cross Between USB & AXI/DDR Clock Domans -- //
-
-  /*
-  axis_afifo #(
-      .WIDTH(8),
-      .TLAST(1),
-      .ABITS(4)
-  ) U_FIFO1 (
-      .aresetn(~usb_reset),
-
-      .s_aclk  (usb_clock),
-      .s_tvalid(y_tvalid),
-      .s_tready(y_tready),
-      .s_tlast (y_tlast),
-      .s_tdata (y_tdata),
-
-      .m_aclk  (axi_clock),
-      .m_tvalid(u2m_tvalid),
-      .m_tready(u2m_tready),
-      .m_tlast (u2m_tlast),
-      .m_tdata (u2m_tdata)
-  );
-
-  axis_afifo #(
-      .WIDTH(8),
-      .TLAST(1),
-      .ABITS(4)
-  ) U_FIFO2 (
-      .aresetn(~usb_reset),
-
-      .s_aclk  (axi_clock),
-      .s_tvalid(m2u_tvalid),
-      .s_tready(m2u_tready),
-      .s_tlast (m2u_tlast),
-      .s_tdata (m2u_tdata),
-
-      .m_aclk  (usb_clock),
-      .m_tvalid(x_tvalid),
-      .m_tready(x_tready),
-      .m_tlast (x_tlast),
-      .m_tdata (x_tdata)
-  );
-*/
 
 
   //
   //  SDRAM
   ///
-
-  //
-  // Todo:
-  //  - needs additional read- & write- ports, for radio-signals;
-  //  - plumb in the asynchronous FIFOs (above), for USB requests;
-  //
 
   assign ddr_addr[13] = 1'b0;
   assign u2m_tkeep = u2m_tvalid;
@@ -468,9 +436,9 @@ module top #(
       .bus_clock(usb_clock),
       .bus_reset(usb_reset),
 
-      .ddr3_conf_o(ddr3_conf_w),
-      .ddr_clkx2_o(vis_clock),    // (default: 245.52 MHz)
-      .ddr_clock_o(axi_clock),    // (default: 122.76 MHz)
+      .ddr3_conf_o(ddr3_ready_w),
+      .ddr_clkx2_o(vis_clock),  // (default: 245.52 MHz)
+      .ddr_clock_o(axi_clock),  // (default: 122.76 MHz)
       .ddr_reset_o(axi_reset),
 
       // From USB or SPI (default: 60.0 MHz)

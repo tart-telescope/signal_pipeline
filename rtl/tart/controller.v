@@ -57,134 +57,109 @@
  *
  */
 module controller #(
-    parameter  integer WIDTH = 8,
+    parameter  integer WIDTH = 48,
     localparam integer MSB   = WIDTH - 1,
     localparam integer ABITS = 2,
     localparam integer ASB   = ABITS - 1,
     localparam integer STRBS = WIDTH / 8,
     localparam integer SSB   = STRBS - 1
 ) (
-    input clock_in,  // ~16.368 MHz on TART
-    input ulpi_clk,  // 60 MHz (if present)
-    input areset_n,
+    input areset_n,  // Default: button 'S2' on Tang 2k Primer dev-board
+    input clock_in,  // Default: 16.368 MHz on TART, or 27.0 MHz on dev-board
 
-    output axi_clk_o,
-    output axi_rst_o,
-    output ddr_clk_o,
-    output usb_clk_o,
-    output usb_rst_o,
-    output acq_clk_o,
+    output sig_clk_o,
+    output sig_rst_o,
 
-    output ulpi_rst_no,
+    // Set/cleared via USB commands //
     output tart_reset_o,
-
     output capture_en_o,
     output acquire_en_o,
     output correlator_o,
     input  visibility_i,
 
+    input ddr3_ready_i,
+
+    // USB clock domain signals
+    input bus_clock,  // Default: 60.0 MHz
+    input bus_reset,
+
+    // From USB
     input s_tvalid,
     output s_tready,
     input s_tlast,
     input [7:0] s_tdata,
 
+    // From correlator
+    input v_tvalid,
+    output v_tready,
+    input [SSB:0] v_tkeep,
+    input v_tlast,
+    input [MSB:0] v_tdata,
+
+    // To USB
     output m_tvalid,
     input m_tready,
+    output m_tkeep,
     output m_tlast,
     output [7:0] m_tdata
 );
 
+  //
+  // Todo:
+  //  - MMIO interface to TART top-level control module ??
+  //  - better plumbing to DDR3 controller;
+  //
 
   // -- Signals & State Registers -- //
 
-  reg [4:0] reset_count = 5'd0;
-  reg rst_q, cap_q, acq_q, cor_q;
-  wire clock;
-
+  reg cap_q, acq_q;
+  wire clock, reset;
 
   // -- I/O Assignments -- //
 
-  assign axi_clk_o = clock;
-  assign acq_clk_o = clock_in;
+  assign sig_clk_o = clock_in;
 
-  assign tart_reset_o = rst_q;
+  assign tart_reset_o = sig_rst_o;
   assign capture_en_o = cap_q;
   assign acquire_en_o = acq_q;
-  assign correlator_o = cor_q;
+  assign correlator_o = acq_q;
 
+  assign m_tvalid = v_tvalid;
+  assign v_tready = m_tready;
+  assign m_tkeep = v_tkeep;
+  assign m_tlast = v_tlast;
+  assign m_tdata = v_tdata;
 
   // -- Reset Logic -- //
 
-  always @(posedge clock or negedge areset_n) begin
-    if (!areset_n) begin
-      rst_q <= 1'b1;
+  assign clock = bus_clock;
+  assign reset = bus_reset;
+
+  // Synchronous reset (active 'LO') for the acquisition unit.
+  sync_reset #(
+      .N(2)
+  ) U_SIGRST (
+      .clock(sig_clk_o),  // Default: 16.368 MHz
+      .arstn(aresetn),
+      .reset(sig_rst_o)
+  );
+
+  // -- Correlator Start/Run/Stop -- //
+
+  reg dx1_q, dx0_q;
+
+  always @(posedge sig_clk_o) begin
+    if (sig_rst_o) begin
       cap_q <= 1'b0;
       acq_q <= 1'b0;
-      cor_q <= 1'b0;
     end else begin
-      rst_q <= ~reset_count[4];
-    end
-  end
+      cap_q <= 1'b1;
 
-  // Reset delay after clock starts
-  always @(posedge clock or negedge areset_n) begin
-    if (!areset_n) begin
-      reset_count <= 5'd0;
-    end else begin
-      if (!reset_count[4]) begin
-        reset_count <= reset_count + 5'd1;
-      end
+      // Todo: currently auto-starts when the DDR3 is ready to receive raw
+      //   data.
+      {acq_q, dx1_q, dx0_q} <= {dx1_q, dx0_q, ddr3_ready_i};
     end
   end
 
 
-  // -- AXI Lite FSM -- //
-
-  localparam [3:0] ST_IDLE = 4'h0;
-
-  reg [3:0] state;
-
-  always @(posedge clock) begin
-    if (rst_q) begin
-      state <= ST_IDLE;
-    end else begin
-      case (state)
-        ST_IDLE: begin
-          state <= state;
-        end
-        default: begin
-          state <= ST_IDLE;
-        end
-      endcase
-    end
-  end
-
-
-  // -- TART Main Clocks & Resets -- //
-
-  clock_reset #(
-      .GOWIN_GW2A(1),
-      .GOWIN_FCLKIN("27"),  // todo ...
-      .GOWIN_RPLL_IDIV(3)  // todo ...
-  ) U_AXI_AND_DDR_CLK1 (
-      .clock_in(clock_in),
-      .areset_n(areset_n),
-      .clock(clock),
-      .clk2x(ddr_clk_o),
-      .reset(axi_rst_o)
-  );
-
-
-  // -- USB ULPI Clocks and Resets (OPTIONAL) -- //
-
-  ulpi_reset U_ULPI_CLK_RST1 (
-      .ulpi_clk  (ulpi_clk),
-      .areset_n  (areset_n),
-      .sys_clock (clock),
-      .ulpi_rst_n(ulpi_rst_no),
-      .usb_clock (usb_clk_o),
-      .usb_reset (usb_rst_o)
-  );
-
-
-endmodule  // controller
+endmodule  /* controller */
