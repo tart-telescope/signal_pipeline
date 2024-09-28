@@ -4,7 +4,7 @@ TMP=`mktemp --directory`
 pushd ${TMP}
 git clone --depth=1 https://github.com/psuggate/axis-usb.git
 cd axis-usb
-git checkout 1a74de5eb868cff06d9c50ec253c8ed74c7968c8
+git checkout b3f14401ae30aec2441b6b5ecfe39354fddc3113
 popd
 mkdir -p axis-usb
 cp -a ${TMP}/axis-usb/rtl/* axis-usb/
