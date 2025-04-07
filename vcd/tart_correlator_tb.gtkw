@@ -1,0 +1,51 @@
+[*]
+[*] GTKWave Analyzer v3.3.116 (w)1999-2023 BSI
+[*] Mon Apr  7 04:25:02 2025
+[*]
+[dumpfile] "/home/patrick/dev/signal_pipeline/vcd/tart_correlator_tb.vcd"
+[dumpfile_mtime] "Mon Apr  7 04:19:30 2025"
+[dumpfile_size] 519554
+[savefile] "/home/patrick/dev/signal_pipeline/vcd/tart_correlator_tb.gtkw"
+[timestart] 0
+[size] 2560 1361
+[pos] -38 -38
+*-17.087585 100000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 278
+[signals_width] 150
+[sst_expanded] 1
+[sst_vpaned_height] 422
+@28
+tart_correlator_tb.reset_n
+tart_correlator_tb.tart_done
+@800200
+-Signal In
+@28
+tart_correlator_tb.sig_clock
+tart_correlator_tb.sig_valid
+tart_correlator_tb.sig_first
+tart_correlator_tb.sig_last
+tart_correlator_tb.sig_start
+tart_correlator_tb.sig_done
+@22
+tart_correlator_tb.sig_idata[15:0]
+tart_correlator_tb.sig_qdata[15:0]
+@1000200
+-Signal In
+@28
+tart_correlator_tb.bus_clock
+tart_correlator_tb.bus_valid
+tart_correlator_tb.bus_ready
+tart_correlator_tb.bus_last
+@22
+tart_correlator_tb.bus_rdata[19:0]
+tart_correlator_tb.bus_idata[19:0]
+@800201
+-Visibilities
+@29
+tart_correlator_tb.vis_clock
+tart_correlator_tb.vis_start
+tart_correlator_tb.vis_frame
+@1000201
+-Visibilities
+[pattern_trace] 1
+[pattern_trace] 0

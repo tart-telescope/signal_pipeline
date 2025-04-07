@@ -64,6 +64,17 @@ module toy_correlator_tb;
   end
 
 
+  // Synchronous reset (active 'LO') for the bus unit.
+  wire bus_rst;
+  sync_reset #(
+      .N(2)
+  ) U_VISRST (
+      .clock(bus_clk),
+      .arstn(rst_n),
+      .reset(bus_rst)
+  );
+
+
   //
   //  Fake Radios
   ///
@@ -181,7 +192,8 @@ module toy_correlator_tb;
       .sig_clock(sig_clk),
       .areset_n (rst_n),
       .bus_clock(bus_clk),
-      .bus_rst_n(rst_n),
+      // .bus_reset(~rst_n),
+      .bus_reset(bus_rst),
 
       .vis_clock(vis_clk),
       .vis_reset(~rst_n),
