@@ -11,6 +11,7 @@ cp -a ${TMP}/misc-verilog-cores/bench/arch misc-verilog-cores/sim/
 cp -a ${TMP}/misc-verilog-cores/rtl/arch misc-verilog-cores/
 cp -a ${TMP}/misc-verilog-cores/rtl/axis misc-verilog-cores/
 cp -a ${TMP}/misc-verilog-cores/rtl/ddr3 misc-verilog-cores/
+cp -a ${TMP}/misc-verilog-cores/synth/gowin-ddr3-test/memreq.v misc-verilog-cores/ddr3/
 cp -a ${TMP}/misc-verilog-cores/rtl/fifo misc-verilog-cores/
 cp -a ${TMP}/misc-verilog-cores/rtl/misc misc-verilog-cores/
 cp -a ${TMP}/misc-verilog-cores/rtl/spi  misc-verilog-cores/
