@@ -53,7 +53,7 @@ WORKDIR /build
 RUN git clone https://github.com/tart-telescope/signal_pipeline.git \
 && cd signal_pipeline \
 && git branch feature/toy_correlator \
-&& git checkout 26c70796591f5207ce4d54a13a4b39907a659106
+&& git checkout 2cb3a22d206ce6d99212ca05af17fc116cfcbde4
 
 WORKDIR /build/signal_pipeline/lib
 RUN ./verilog-axis.bash && ./verilog-axi.bash && ./misc-verilog-cores.bash
