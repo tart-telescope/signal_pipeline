@@ -3,7 +3,7 @@ TOP      := top
 FAMILY   := GW2A-18C
 DEVICE   := GW2A-LV18PG256C8/I7
 CST	 := gw2a-tang-primer.cst
-SDC	 := sdc
+SDC	 := gw2a-tang-primer.sdc
 GW_SH	 := /opt/gowin/IDE/bin/gw_sh
 
 VROOT 	 :=  $(dir $(abspath $(CURDIR)/..))
@@ -50,7 +50,9 @@ $(PROJECT).tcl: $(VERILOGS)
 	@for VAR in $?; do echo $$VAR | grep -s -q "\.v$$" && echo "add_file $$VAR" >> $(PROJECT).tcl; done
 	@echo "add_file ${CST}" >> $(PROJECT).tcl
 	@echo "add_file ${SDC}" >> $(PROJECT).tcl
-	@echo "set_option -include_dirs $(LIB)/axis/" >> $(PROJECT).tcl
+	@echo "set_option -include_path $(LIB)/axis/" >> $(PROJECT).tcl
+	@echo "set_option -include_path $(LIB)/ddr3/" >> $(PROJECT).tcl
+	@echo "set_option -include_path $(LIB)/usb/" >> $(PROJECT).tcl
 	@echo "set_option -top_module $(TOP)" >> $(PROJECT).tcl
 	@echo "set_option -verilog_std sysv2017" >> $(PROJECT).tcl
 	@echo "set_option -vhdl_std vhd2008" >> $(PROJECT).tcl
