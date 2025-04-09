@@ -362,28 +362,31 @@ module toy_correlator #(
 
       // Notes:
       //  - not as mature/tested as Alex's AFIFO (above);
+      //  - typically has higher Fmax, because all outputs are registered;
       axis_afifo #(
           .WIDTH(WBITS),
           .ABITS(ABITS)
       ) U_AFIFO1 (
-          .s_aresetn(areset_n),
+          .aresetn(areset_n),
 
           .s_aclk(vis_clock),
-          .s_tvalid_i(acc_valid),
-          .s_tready_o(acc_ready),
-          .s_tlast_i(acc_last),
-          .s_tdata_i(acc_tdata),
+          .s_tvalid(acc_valid),
+          .s_tready(acc_ready),
+          .s_tlast(acc_last),
+          .s_tdata(acc_tdata),
 
           // Default: 60.0 MHz, USB ULPI clock
           .m_aclk(bus_clock),
-          .m_tvalid_o(b_tvalid),
-          .m_tready_i(b_tready),
-          .m_tlast_o(b_tlast),
-          .m_tdata_o(b_tdata)
+          .m_tvalid(b_tvalid),
+          .m_tready(b_tready),
+          .m_tlast(b_tlast),
+          .m_tdata(b_tdata)
       );
 
     end
-  endgenerate
+  endgenerate /* g_tart_afifo */
+
+  wire [KEEPS-1:0] b_tkeeps_w = {KEEPS{b_tvalid}};
 
   axis_adapter #(
       .S_DATA_WIDTH(WBITS),
@@ -404,7 +407,7 @@ module toy_correlator #(
 
       .s_axis_tvalid(b_tvalid),  // AXI-S input
       .s_axis_tready(b_tready),
-      .s_axis_tkeep({AXIS_DKEEPS{b_tvalid}}),
+      .s_axis_tkeep(b_tkeeps_w),
       .s_axis_tlast(b_tlast),
       .s_axis_tid(1'b0),
       .s_axis_tdest(1'b0),

@@ -181,6 +181,7 @@ module toy_correlator_tb;
 
 
   toy_correlator #(
+      .USE_ALEX_AFIFO(0),
       .WIDTH(ANTENNA_NUM),
       .MUX_N(MUX_N),
       .TRATE(TRATE),

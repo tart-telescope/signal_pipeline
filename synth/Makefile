@@ -1,6 +1,10 @@
 .PHONY:	all doc clean
 all:	doc
 
+sim:
+	@make -C sipeed-tang-primer-20k sim
+
+
 #
 #  Documentation settings
 ##

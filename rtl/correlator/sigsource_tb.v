@@ -155,11 +155,11 @@ module sigsource_tb;
 
   sigsource #(
       .WIDTH(WIDTH),
-      .SBITS(SBITS),
-      .XBITS(XBITS),
+      // .SBITS(SBITS),
+      // .XBITS(XBITS),
       .MUX_N(MUX_N),
       .TRATE(TRATE),
-      .TBITS(TBITS),
+      // .TBITS(TBITS),
       .ATAPS(ATAPS),
       .BTAPS(BTAPS),
       .ASELS(ASELS),
