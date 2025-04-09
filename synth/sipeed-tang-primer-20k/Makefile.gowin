@@ -38,6 +38,7 @@ VERILOGS := top.v \
 	${RTL}/correlator/visaccum.v \
 	${RTL}/correlator/visfinal.v \
 	${RTL}/correlator/vismerge.v \
+	$(VROOT)/lib/verilog-axi/priority_encoder.v \
 	$(VROOT)/lib/verilog-axi/axi_register_wr.v \
 	$(VROOT)/lib/verilog-axi/axi_crossbar_wr.v \
 	$(VROOT)/lib/verilog-axi/axi_crossbar_addr.v \
