@@ -8,20 +8,38 @@ GW_SH	 := /opt/gowin/IDE/bin/gw_sh
 
 VROOT 	 :=  $(dir $(abspath $(CURDIR)/..))
 RTL	 = $(VROOT)/rtl
+LIB	 = $(VROOT)/lib
 BENCH	 = $(VROOT)/bench
 
+ARCH_V	:= $(wildcard $(LIB)/arch/*.v)
+AXIS_V	:= $(wildcard $(LIB)/axis/*.v)
+DDR3_V	:= $(wildcard $(LIB)/ddr3/*.v)
+FIFO_V	:= $(wildcard $(LIB)/fifo/*.v)
+MISC_V	:= $(wildcard $(LIB)/misc/*.v)
+SPI_V	:= $(wildcard $(LIB)/spi/*.v)
+UART_V	:= $(wildcard $(LIB)/uart/*.v)
+USB_V	:= $(wildcard $(LIB)/usb/*.v)
+VERLIB	:= $(filter-out %_tb.v, $(ARCH_V) $(AXIS_V) $(DDR3_V) $(FIFO_V) $(MISC_V) $(SPI_V) $(UART_V) $(USB_V))
+
 VERILOGS := top.v \
-        ${RTL}/usb/bulk_ep_axis_bridge.v \
-        ${RTL}/usb/bulk_ep_control.v \
-        ${RTL}/usb/bulk_ep_in.v \
-        ${RTL}/usb/bulk_ep_out.v \
-        ${RTL}/usb/ulpi_bulk_axis.v \
-        ${RTL}/usb/usb_packet.v \
-        ${RTL}/usb/usb_std_request.v \
-        ${RTL}/usb/usb_tlp.v \
-        ${RTL}/usb/usb_ulpi.v \
-        ${RTL}/usb/usb_xfer.v \
-        ${RTL}/spi/spi_layer.v
+	tart_ddr3.v \
+	sync_reset.v \
+	tart_spi.v \
+	toy_correlator.v \
+	${RTL}/radio/radio.v \
+	${RTL}/tart/acquire.v \
+	${RTL}/tart/clock_reset.v \
+	${RTL}/tart/controller.v \
+	${RTL}/correlator/accumulator.v \
+	${RTL}/correlator/correlate.v \
+	${RTL}/correlator/correlator.v \
+	${RTL}/correlator/sigbuffer.v \
+	${RTL}/correlator/sigsource.v \
+	${RTL}/correlator/tart_correlator.v \
+	${RTL}/correlator/visaccum.v \
+	${RTL}/correlator/visfinal.v \
+	${RTL}/correlator/vismerge.v \
+	$(VERLIB)
 
 
 gowin_build: impl/pnr/project.fs

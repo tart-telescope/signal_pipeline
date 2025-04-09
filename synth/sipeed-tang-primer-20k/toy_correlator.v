@@ -325,7 +325,7 @@ module toy_correlator #(
           .s_rst(vis_reset),
           .s_axis_tdata(acc_tdata),
           .s_axis_tkeep(8'bx),
-          .s_axis_tvalid(AXIS_OUTPUT & acc_valid),
+          .s_axis_tvalid(AXIS_OUTPUT && acc_valid),
           .s_axis_tready(acc_ready),
           .s_axis_tlast(acc_last),
           .s_axis_tid(8'bx),
@@ -337,7 +337,7 @@ module toy_correlator #(
           .m_rst(bus_reset),
           .m_axis_tkeep(),
           .m_axis_tvalid(b_tvalid),
-          .m_axis_tready(AXIS_OUTPUT & b_tready),
+          .m_axis_tready(AXIS_OUTPUT && b_tready),
           .m_axis_tlast(b_tlast),
           .m_axis_tid(),
           .m_axis_tdest(),
@@ -374,7 +374,7 @@ module toy_correlator #(
           .aresetn(areset_n),
 
           .s_aclk(vis_clock),
-          .s_tvalid(AXIS_OUTPUT & acc_valid),
+          .s_tvalid(AXIS_OUTPUT && acc_valid),
           .s_tready(acc_ready),
           .s_tlast(acc_last),
           .s_tdata(acc_tdata),
@@ -382,20 +382,13 @@ module toy_correlator #(
           // Default: 60.0 MHz, USB ULPI clock
           .m_aclk(bus_clock),
           .m_tvalid(b_tvalid),
-          .m_tready(AXIS_OUTPUT & b_tready),
+          .m_tready(AXIS_OUTPUT && b_tready),
           .m_tlast(b_tlast),
           .m_tdata(b_tdata)
       );
 
     end
   endgenerate /* g_tart_afifo */
-
-  generate if (!AXIS_OUTPUT) begin : g_bus_output
-    assign bus_tvalid = acc_valid;
-    assign bus_tdata = acc_tdata;
-
-    end
-  endgenerate /* g_bus_output */
 
   wire [KEEPS-1:0] b_tkeeps_w = {KEEPS{b_tvalid}};
 

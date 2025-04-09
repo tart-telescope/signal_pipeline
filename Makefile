@@ -1,4 +1,4 @@
-.PHONY:	all sim doc diagrams clean
+.PHONY:	all sim gowin doc diagrams clean
 all:
 	@make -C generator all
 	@make -C bench all
@@ -10,6 +10,8 @@ sim:
 	@make -C synth sim
 	@make -C build sim
 
+gowin:
+	@docker build -f Dockerfile.gowin .
 
 #
 #  Documentation settings

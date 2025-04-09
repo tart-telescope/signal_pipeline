@@ -211,7 +211,9 @@ module toy_correlator_tb;
       .bus_imvis_o(i_dat),
       .bus_valid_o(b_vld),
       .bus_ready_i(b_rdy),
-      .bus_last_o (b_lst)
+      .bus_last_o (b_lst),
+
+      .m_tready(1'b0)
   );
 
 

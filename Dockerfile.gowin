@@ -1,4 +1,5 @@
-FROM debian:bookworm
+FROM ubuntu:jammy
+# FROM debian:bookworm
 MAINTAINER Tim Molteno "tim@elec.ac.nz"
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -6,7 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y && apt-get install -y \
     build-essential
 
-RUN apt-get install -y bash git
+RUN apt-get install -y bash git wget
 RUN apt-get install -y libglib2.0.0
 
 RUN rm -rf /var/lib/apt/lists/*
@@ -19,8 +20,14 @@ RUN rm -rf /var/lib/apt/lists/*
 #########################################################################################
 
 WORKDIR /opt/gowin
-COPY Gowin_V1.9.9Beta-4_Education.tar.gz .
-RUN tar -zxf Gowin_V1.9.9Beta-4_Education.tar.gz
+# COPY Gowin_V1.9.9Beta-4_Education.tar.gz .
+# RUN tar -zxf Gowin_V1.9.9Beta-4_Education.tar.gz
+
+COPY Gowin_V1.9.8.11_Education_linux.tar.gz .
+RUN tar xvf Gowin_V1.9.8.11_Education_linux.tar.gz
+
+# RUN wget https://cdn.gowinsemi.com.cn/Gowin_V1.9.11.01_Education_Linux.tar.gz
+# RUN tar xvf Gowin_V1.9.11.01_Education_Linux.tar.gz
 
 #########################################################################################
 #
@@ -28,7 +35,9 @@ RUN tar -zxf Gowin_V1.9.9Beta-4_Education.tar.gz
 #
 #########################################################################################
 WORKDIR /build
-RUN git clone --depth=1 --recurse-submodules https://github.com/psuggate/misc-verilog-cores.git
+RUN git clone --depth=1 --recurse-submodules https://github.com/psuggate/misc-verilog-cores.git \
+&& cd misc-verilog-cores \
+&& git checkout 781dad6696dc2ac72457a7b34538f45d2d30c39e
 
 WORKDIR /build/misc-verilog-cores/synth/sipeed-tang-primer-20k/
 
@@ -49,6 +58,3 @@ RUN ./misc-verilog-cores.bash
 WORKDIR /build/signal_pipeline/synth/sipeed-tang-primer-20k/
 
 RUN make -f Makefile.gowin GW_SH=/opt/gowin/IDE/bin/gw_sh
-
-
-
