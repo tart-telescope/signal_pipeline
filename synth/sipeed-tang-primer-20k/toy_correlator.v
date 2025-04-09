@@ -1,7 +1,11 @@
 `timescale 1ns / 100ps
 module toy_correlator #(
     parameter integer USE_ALEX_AFIFO = 1,
-    parameter AFIFO_DEPTH = 64,
+    // parameter AFIFO_DEPTH = 1024,
+    // parameter AFIFO_DEPTH = 64,
+    parameter AFIFO_DEPTH = 16, // Anything larger will be expensive, on GW2A
+    localparam FBITS = $clog2(AFIFO_DEPTH),
+
     parameter AXIS_OUTPUT = 1,
     localparam AXIS_DWIDTH = 8,
     localparam AXIS_DKEEPS = AXIS_DWIDTH / 8,
@@ -288,8 +292,10 @@ module toy_correlator #(
   assign acc_tdata = {acc_revis, acc_imvis};
 
   // Output can be wide (and AXI-S-like)
-  assign bus_revis_o = AXIS_OUTPUT ? {ACCUM{1'bx}} : bus_tdata[ACCUM+VSB:ACCUM];
-  assign bus_imvis_o = AXIS_OUTPUT ? {ACCUM{1'bx}} : bus_tdata[VSB:0];
+  assign bus_valid_o = AXIS_OUTPUT ? 1'b0 : acc_valid;
+  assign bus_last_o  = AXIS_OUTPUT ? 1'b0 : acc_last;
+  assign bus_revis_o = AXIS_OUTPUT ? {ACCUM{1'bx}} : acc_revis[VSB:0];
+  assign bus_imvis_o = AXIS_OUTPUT ? {ACCUM{1'bx}} : acc_imvis[VSB:0];
 
   // Or, output can be narrow (and AXI-S)
   assign m_tvalid = AXIS_OUTPUT ? a_tvalid : 1'b0;
@@ -319,7 +325,7 @@ module toy_correlator #(
           .s_rst(vis_reset),
           .s_axis_tdata(acc_tdata),
           .s_axis_tkeep(8'bx),
-          .s_axis_tvalid(acc_valid),
+          .s_axis_tvalid(AXIS_OUTPUT & acc_valid),
           .s_axis_tready(acc_ready),
           .s_axis_tlast(acc_last),
           .s_axis_tid(8'bx),
@@ -331,7 +337,7 @@ module toy_correlator #(
           .m_rst(bus_reset),
           .m_axis_tkeep(),
           .m_axis_tvalid(b_tvalid),
-          .m_axis_tready(b_tready),
+          .m_axis_tready(AXIS_OUTPUT & b_tready),
           .m_axis_tlast(b_tlast),
           .m_axis_tid(),
           .m_axis_tdest(),
@@ -358,19 +364,17 @@ module toy_correlator #(
 
     end else begin : g_tart_afifo
 
-      localparam ABITS = $clog2(AFIFO_DEPTH);
-
       // Notes:
       //  - not as mature/tested as Alex's AFIFO (above);
       //  - typically has higher Fmax, because all outputs are registered;
       axis_afifo #(
           .WIDTH(WBITS),
-          .ABITS(ABITS)
+          .ABITS(FBITS)
       ) U_AFIFO1 (
           .aresetn(areset_n),
 
           .s_aclk(vis_clock),
-          .s_tvalid(acc_valid),
+          .s_tvalid(AXIS_OUTPUT & acc_valid),
           .s_tready(acc_ready),
           .s_tlast(acc_last),
           .s_tdata(acc_tdata),
@@ -378,13 +382,20 @@ module toy_correlator #(
           // Default: 60.0 MHz, USB ULPI clock
           .m_aclk(bus_clock),
           .m_tvalid(b_tvalid),
-          .m_tready(b_tready),
+          .m_tready(AXIS_OUTPUT & b_tready),
           .m_tlast(b_tlast),
           .m_tdata(b_tdata)
       );
 
     end
   endgenerate /* g_tart_afifo */
+
+  generate if (!AXIS_OUTPUT) begin : g_bus_output
+    assign bus_tvalid = acc_valid;
+    assign bus_tdata = acc_tdata;
+
+    end
+  endgenerate /* g_bus_output */
 
   wire [KEEPS-1:0] b_tkeeps_w = {KEEPS{b_tvalid}};
 
@@ -430,9 +441,13 @@ module toy_correlator #(
 `ifdef __icarus
 
   initial begin : dump_settings
+    $display;
+    $display("Toy Correlator Testbench");
     $display("Settings:");
     $display(" + antennas:  %2d (index bits:  %2d)", WIDTH, DBITS);
     $display(" + mux-width: %2d (select bits: %2d)", MUX_N, XBITS);
+    $display(" + output buffer size: %2d (pointer bits: %2d)", AFIFO_DEPTH, FBITS);
+    $display;
   end
 
   always @(posedge vis_clock) begin
@@ -444,5 +459,6 @@ module toy_correlator #(
   end
 
 `endif
+
 
 endmodule  /* toy_correlator */
