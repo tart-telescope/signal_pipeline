@@ -53,12 +53,14 @@ WORKDIR /build
 RUN git clone https://github.com/tart-telescope/signal_pipeline.git \
 && cd signal_pipeline \
 && git branch feature/toy_correlator \
-&& git checkout 5470154bcdee18ac507ae526d26ee95b33715e23
+&& git checkout c31e9a0add3456065ae83813f0b6cde96f8a0593
 
 WORKDIR /build/signal_pipeline/lib
-RUN ./verilog-axis.bash
-RUN ./misc-verilog-cores.bash
+RUN ./verilog-axis.bash && ./misc-verilog-cores.bash
 
 WORKDIR /build/signal_pipeline/synth/sipeed-tang-primer-20k/
+RUN sh -c "cp ../../lib/misc-verilog-cores/axis/*.vh ." \
+&& sh -c "cp ../../lib/misc-verilog-cores/ddr3/*.vh ." \
+&& sh -c "cp ../../lib/misc-verilog-cores/usb/*.vh ."
 
 RUN make -f Makefile.gowin GW_SH=/opt/gowin/IDE/bin/gw_sh

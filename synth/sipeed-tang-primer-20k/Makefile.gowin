@@ -28,7 +28,6 @@ VERILOGS := top.v \
 	toy_correlator.v \
 	${RTL}/radio/radio.v \
 	${RTL}/tart/acquire.v \
-	${RTL}/tart/clock_reset.v \
 	${RTL}/tart/controller.v \
 	${RTL}/correlator/accumulator.v \
 	${RTL}/correlator/correlate.v \
