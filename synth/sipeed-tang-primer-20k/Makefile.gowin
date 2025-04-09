@@ -8,7 +8,7 @@ GW_SH	 := /opt/gowin/IDE/bin/gw_sh
 
 VROOT 	 :=  $(dir $(abspath $(CURDIR)/..))
 RTL	 = $(VROOT)/rtl
-LIB	 = $(VROOT)/lib
+LIB	 = $(VROOT)/lib/misc-verilog-cores
 BENCH	 = $(VROOT)/bench
 
 ARCH_V	:= $(wildcard $(LIB)/arch/*.v)
