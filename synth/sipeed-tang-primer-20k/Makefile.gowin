@@ -38,6 +38,7 @@ VERILOGS := top.v \
 	${RTL}/correlator/visaccum.v \
 	${RTL}/correlator/visfinal.v \
 	${RTL}/correlator/vismerge.v \
+	$(VROOT)/lib/verilog-axi/axi_crossbar_wr.v \
 	$(VERLIB)
 
 
