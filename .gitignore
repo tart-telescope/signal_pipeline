@@ -6,6 +6,7 @@ logs/
 target/
 *.log
 impl/
+*.tar.gz
 
 axi-ddr3-lite/
 axis-usb/
