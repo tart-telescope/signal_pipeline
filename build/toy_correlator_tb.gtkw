@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.116 (w)1999-2023 BSI
-[*] Wed Apr  9 04:08:14 2025
+[*] Thu Apr 10 04:02:21 2025
 [*]
 [dumpfile] "/home/patrick/dev/signal_pipeline/build/toy_correlator_tb.vcd"
-[dumpfile_mtime] "Wed Apr  9 04:06:27 2025"
-[dumpfile_size] 566813
+[dumpfile_mtime] "Thu Apr 10 03:21:52 2025"
+[dumpfile_size] 566857
 [savefile] "/home/patrick/dev/signal_pipeline/build/toy_correlator_tb.gtkw"
-[timestart] 5585100
+[timestart] 5606000
 [size] 2560 1393
-[pos] -1 -1
-*-16.191883 6045000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] 2559 -33
+*-16.191883 6200000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] toy_correlator_tb.
 [treeopen] toy_correlator_tb.U_TOY1.
 [treeopen] toy_correlator_tb.U_TOY1.U_CORE1.
@@ -17,7 +17,7 @@
 [sst_width] 278
 [signals_width] 406
 [sst_expanded] 1
-[sst_vpaned_height] 873
+[sst_vpaned_height] 859
 @28
 toy_correlator_tb.rst_n
 @200
@@ -143,6 +143,8 @@ toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.valid
 -CorInt
 @1000200
 -Correlate
+@200
+-*** VisAccum
 @800200
 -Partial
 @28
@@ -192,6 +194,7 @@ toy_correlator_tb.U_TOY1.U_VISACC1.wr_adr[1:0]
 @28
 toy_correlator_tb.U_TOY1.acc_valid
 toy_correlator_tb.U_TOY1.acc_ready
+[color] 3
 toy_correlator_tb.U_TOY1.acc_last
 @22
 toy_correlator_tb.U_TOY1.acc_revis[31:0]
@@ -201,9 +204,8 @@ toy_correlator_tb.U_TOY1.acc_tdata[63:0]
 -AccInt
 @28
 toy_correlator_tb.U_TOY1.U_ACCUM1.frame_i
-@25
-toy_correlator_tb.U_TOY1.U_ACCUM1.count_i[25:0]
 @24
+toy_correlator_tb.U_TOY1.U_ACCUM1.count_i[25:0]
 toy_correlator_tb.U_TOY1.U_ACCUM1.count[25:0]
 @28
 toy_correlator_tb.U_TOY1.U_ACCUM1.cwrap
@@ -214,6 +216,8 @@ toy_correlator_tb.U_TOY1.U_ACCUM1.r_dat[31:0]
 toy_correlator_tb.U_TOY1.U_ACCUM1.i_dat[31:0]
 toy_correlator_tb.U_TOY1.U_ACCUM1.r_vis[31:0]
 toy_correlator_tb.U_TOY1.U_ACCUM1.i_vis[31:0]
+@25
+toy_correlator_tb.U_TOY1.U_ACCUM1.waddr[4:0]
 @28
 toy_correlator_tb.U_TOY1.U_ACCUM1.write
 toy_correlator_tb.U_TOY1.U_ACCUM1.wlast

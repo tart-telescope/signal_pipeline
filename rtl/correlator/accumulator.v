@@ -30,8 +30,8 @@ module accumulator #(
     input frame_i,
 
     input valid_i,
-    input first_i,
-    input last_i,
+    input first_i, // TODO: unconnected
+    input last_i,  // TODO: unconnected
     input [SSB:0] revis_i,
     input [SSB:0] imvis_i,
 

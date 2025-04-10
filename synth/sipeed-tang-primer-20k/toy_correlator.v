@@ -240,13 +240,14 @@ module toy_correlator #(
   /**
    *  Accumulates each of the partial-sums into the full-width visibilities.
    */
-  localparam LSB = ACCUM - SBITS;
+  localparam integer LSB = ACCUM - SBITS;
 
   wire [LSB:0] vis_limit = 3;
 
   wire [ACCUM-1:0] acc_revis, acc_imvis;
   wire acc_valid, acc_last;
 
+  // Note that this is setup all wrong.
   accumulator #(
       .CORES(LOOP0),
       .TRATE(TRATE),
@@ -279,7 +280,7 @@ module toy_correlator #(
    *  host system.
    */
 
-  localparam KEEPS = WBITS / 8;
+  localparam integer KEEPS = WBITS / 8;
 
   wire b_tvalid, b_tready, b_tlast, a_tvalid, a_tready, a_tlast;
   wire [WSB:0] b_tdata;
@@ -434,7 +435,7 @@ module toy_correlator #(
 
 `ifdef __icarus
 
-  localparam BUNCH = TRATE * LOOP1 * LOOP0;
+  localparam integer BUNCH = TRATE * LOOP1 * LOOP0;
 
   initial begin : dump_settings
     $display;

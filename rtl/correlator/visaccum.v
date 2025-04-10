@@ -1,15 +1,17 @@
-//
-// Read-Modify-Write pipelined accumulator, for the partial-sums from each of
-// the first-stage correlators.
-//
 `timescale 1ns / 100ps
+/**
+ * Read-Modify-Write pipelined accumulator, for the partial-sums from each of
+ * the first-stage correlators.
+ *
+ * Note:
+ *  - once 'frame_i' asserts, the counter is periodic, and 'valid_i' only
+ *    determines whether input values are accumulated, or not;
+ *  - this module cannot handle aperiodic sources;
+ */
 module visaccum #(
-    // Input bit-width
-    parameter  integer IBITS = 4,
+    parameter  integer IBITS = 4, // Input bit-width
     localparam integer ISB   = IBITS - 1,
-
-    // Output bit-width
-    parameter  integer OBITS = 7,
+    parameter  integer OBITS = 7, // Output bit-width
     localparam integer OSB   = OBITS - 1,
 
     // Number of partial-sums to loop over
@@ -39,7 +41,7 @@ module visaccum #(
     output [OSB:0] idata_o
 );
 
-  reg [OSB:0] rsram[PSUMS];
+  reg [OSB:0] rsram[PSUMS]; // SRAMs for the partial-sums
   reg [OSB:0] isram[PSUMS];
 
   reg [CSB:0] count;
@@ -95,7 +97,7 @@ module visaccum #(
   end
 
 
-  // -- Accumulator -- //
+  // -- Accumulate cycle -- //
 
   localparam [CSB:0] CZERO = {CBITS{1'b0}};
   localparam [CSB:0] OZERO = {OBITS{1'b0}};

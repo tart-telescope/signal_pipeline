@@ -1,16 +1,22 @@
 `timescale 1ns / 100ps
 /**
- *
+ * Final accumulator for (real & imaginary) partial-sums of the visibilities.
+ * 
+ * Note:
+ *  - expects the real- & imag- components to be interleaved (in-time), with
+ *    real values on even clock-cycles, and imaginary values on odd cycles;
+ *  - can handle sparse/aperiodic (but sequential) source data, as the counter
+ *    only increments when 'valid_i' is asserted;
+ * 
  * Todo:
  *  - currently incomplete, and just a "sketch" -- still relevant ??
  *
  */
 module visfinal #(
   // Input and output bit-widths
-  parameter integer IBITS = 7,
+  parameter integer IBITS = 7, // Input (partial-sum) bit-width
   localparam integer ISB = IBITS - 1,
-
-  parameter integer OBITS = 36,
+  parameter integer OBITS = 36, // Output (final-sum) bit-width
   localparam integer OSB = OBITS - 1,
 
   // Total number of visibility components, and the number of required address
