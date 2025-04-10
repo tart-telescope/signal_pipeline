@@ -41,7 +41,7 @@ module correlator #(
     input first_i,
     input next_i,
     input emit_i,
-    input last_i,
+    input last_i, // TODO: not connected
     input [TSB:0] taddr_i,
     input [MSB:0] idata_i,
     input [MSB:0] qdata_i,

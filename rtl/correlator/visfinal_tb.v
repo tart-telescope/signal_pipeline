@@ -100,8 +100,8 @@ module visfinal_tb;
   visfinal #(
       .IBITS(IBITS),
       .OBITS(OBITS),
-      .NSUMS(NSUMS),
-      .ABITS(ABITS)
+      // .ABITS(ABITS),
+      .NSUMS(NSUMS)
   ) VISFINAL0 (
       .clock (clock),
       .reset(~rst_n),

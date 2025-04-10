@@ -44,6 +44,8 @@ module top_tb;
   //  Simulation Stimulus
   ///
 
+`ifndef __icarus
+
   /**
    * Wrapper to the VPI model of a USB host, for providing the stimulus.
    */
@@ -117,6 +119,8 @@ module top_tb;
       .ddr_dqs_n(ddr_dqs_n),
       .ddr_dq(ddr_dq)
   );
+
+`endif
 
 
 endmodule  /* top_tb */

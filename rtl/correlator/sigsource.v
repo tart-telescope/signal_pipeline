@@ -7,17 +7,14 @@
 module sigsource #(
     parameter integer WIDTH = 32,  // Number of antennas/signals
     localparam integer MSB = WIDTH - 1,
-    // parameter integer SBITS = 5,
     localparam integer SBITS = $clog2(WIDTH),
     localparam integer SSB = SBITS - 1,
 
     parameter integer MUX_N = 7,  // Number of assigned A-/B- MUX inputs
-    // parameter integer XBITS = 3,  // Input MUX source-select bit-width
     localparam integer XBITS = $clog2(MUX_N),  // Input MUX source-select bit-width
     localparam integer XSB = XBITS - 1,
 
     parameter integer TRATE = 30,  // Time-multiplexing rate
-    // parameter integer TBITS = 5,  // Input MUX bits
     localparam integer TBITS = $clog2(TRATE),  // Input MUX bits
     localparam integer TSB = TBITS - 1,
 

@@ -181,6 +181,8 @@ module toy_correlator_tb;
 
 
   toy_correlator #(
+      .USE_ALEX_AFIFO(0),
+      .AXIS_OUTPUT(0),
       .WIDTH(ANTENNA_NUM),
       .MUX_N(MUX_N),
       .TRATE(TRATE),
@@ -192,7 +194,6 @@ module toy_correlator_tb;
       .sig_clock(sig_clk),
       .areset_n (rst_n),
       .bus_clock(bus_clk),
-      // .bus_reset(~rst_n),
       .bus_reset(bus_rst),
 
       .vis_clock(vis_clk),
@@ -210,7 +211,9 @@ module toy_correlator_tb;
       .bus_imvis_o(i_dat),
       .bus_valid_o(b_vld),
       .bus_ready_i(b_rdy),
-      .bus_last_o (b_lst)
+      .bus_last_o (b_lst),
+
+      .m_tready(1'b0)
   );
 
 
