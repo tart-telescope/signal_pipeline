@@ -266,7 +266,7 @@ module toy_correlator #(
       .revis_i(vis_rdata),
       .imvis_i(vis_idata),
 
-      // Outputs
+      // Outputs (vis clock domain)
       .valid_o(acc_valid),
       .last_o (acc_last),
       .revis_o(acc_revis),
@@ -292,6 +292,7 @@ module toy_correlator #(
   assign acc_tdata = {acc_revis, acc_imvis};
 
   // Output can be wide (and AXI-S-like)
+  // TODO: wrong unless bus clock domain is the same as the visibilities clock
   assign bus_valid_o = AXIS_OUTPUT ? 1'b0 : acc_valid;
   assign bus_last_o  = AXIS_OUTPUT ? 1'b0 : acc_last;
   assign bus_revis_o = AXIS_OUTPUT ? {ACCUM{1'bx}} : acc_revis[VSB:0];
@@ -433,13 +434,22 @@ module toy_correlator #(
 
 `ifdef __icarus
 
+  localparam BUNCH = TRATE * LOOP1 * LOOP0;
+
   initial begin : dump_settings
     $display;
     $display("Toy Correlator Testbench");
-    $display("Settings:");
-    $display(" + antennas:  %2d (index bits:  %2d)", WIDTH, DBITS);
-    $display(" + mux-width: %2d (select bits: %2d)", MUX_N, XBITS);
-    $display(" + output buffer size: %2d (pointer bits: %2d)", AFIFO_DEPTH, FBITS);
+    $display("Radio settings:");
+    $display(" + num antennas/radios: %5d (index bits:   %2d)", WIDTH, DBITS);
+    $display(" + capture buffer size: %5d (pointer bits: %2d)", COUNT, CBITS);
+    $display("Correlator settings:");
+    $display(" + clock mult.: %5d (select bits:  %2d)", TRATE, TBITS);
+    $display(" + packet size: %5d (address bits: %2d)", BUNCH, $clog2(BUNCH));
+    $display(" + num samples: %5d (counter bits: %2d)", COUNT, $clog2(COUNT));
+    $display(" + partial sums/core: %5d (counter bits: %2d)", LOOP0, LBITS);
+    $display(" + iterations/sum:    %5d (counter bits: %2d)", LOOP1, HBITS);
+    $display(" + src-mux width: %3d (select bits:  %2d)", MUX_N, XBITS);
+    $display(" + output buffer size: %4d (pointer bits: %2d)", AFIFO_DEPTH, FBITS);
     $display;
   end
 

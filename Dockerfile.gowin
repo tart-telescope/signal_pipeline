@@ -50,9 +50,11 @@ RUN make -f Makefile.gowin GW_SH=/opt/gowin/IDE/bin/gw_sh
 #
 #########################################################################################
 WORKDIR /build
-RUN git clone https://github.com/tart-telescope/signal_pipeline.git \
+
+RUN git clone --depth=1 https://github.com/tart-telescope/signal_pipeline.git \
 && cd signal_pipeline \
-&& git branch feature/toy_correlator
+&& git branch feature/toy_correlator \
+&& git checkout b505aabc10f1eea794328246ae3210badac89793
 
 WORKDIR /build/signal_pipeline/lib
 RUN ./verilog-axis.bash && ./verilog-axi.bash && ./misc-verilog-cores.bash
