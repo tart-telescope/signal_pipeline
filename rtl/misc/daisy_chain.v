@@ -12,7 +12,7 @@
  *  - make into a general-purpose module;
  *
  */
-module vismerge #(
+module daisy_chain #(
     parameter integer LENGTH = 3,
     parameter integer LSB = LENGTH - 1,
     parameter integer WIDTH = 7,
