@@ -44,5 +44,36 @@ module vismerge #(
   assign rdata_o = real_i[WSB:PBITS];
   assign idata_o = imag_i[WSB:PBITS];
 
+/*
+  // -- Output select & pipeline -- //
+
+  reg succs, frame;
+  reg [ASB:0] revis, imvis;
+
+  assign frame_o = frame;
+  assign valid_o = succs;
+  assign revis_o = revis;
+  assign imvis_o = imvis;
+
+  always @(posedge clock) begin
+    if (reset) begin
+      frame <= 1'b0;
+      succs <= 1'b0;
+      revis <= {ABITS{1'bx}};
+      imvis <= {ABITS{1'bx}};
+    end else begin
+      succs <= cor_valid | prevs_i;
+      frame <= cor_frame;
+
+      if (cor_valid) begin
+        revis <= cor_revis;
+        imvis <= cor_imvis;
+      end else begin
+        revis <= revis_i;
+        imvis <= imvis_i;
+      end
+    end
+  end
+*/
 
 endmodule  // vismerge

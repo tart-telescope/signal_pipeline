@@ -18,7 +18,7 @@ module correlate #(
     input bq_i,
 
     // AX4-Stream like interface, with no backpressure
-    output frame_o,
+    output frame_o, // todo: remove this from here?
     output valid_o,
     output [MSB:0] rdata_o,
     output [MSB:0] idata_o
@@ -101,4 +101,4 @@ module correlate #(
     end
   end
 
-endmodule  // correlate
+endmodule  /* correlate */
