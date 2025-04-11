@@ -14,8 +14,11 @@ module vischain #(
     parameter integer RADIOS = 32,
     localparam integer RSB = RADIOS - 1,
 
+    // Time-multiplexing is used, so used to map from timeslice to MUX indices
     parameter integer MUX_N = 7,  // A- & B- MUX widths
-    parameter integer TRATE = 30, // Time-multiplexing rate
+    parameter integer TRATE = 30,  // Time-multiplexing rate
+    localparam integer TBITS = $clog2(TRATE),  // Input MUX bits
+    localparam integer TSB = TBITS - 1,
 
     // todo: produce these values using the 'generator' utility
     parameter unsigned [PSB:0] ATAPS = {PBITS{1'bx}},
@@ -25,6 +28,11 @@ module vischain #(
     parameter unsigned [QSB:0] BSELS = {QBITS{1'bx}},
 
     parameter unsigned [TSB:0] AUTOS = {TBITS{1'bx}},
+
+    // Default is for the source signals to travel in the reverse direction,
+    // relative to the partial-visibilities, as this saves two cycles of delay
+    // (elements), per correlator-chain
+    parameter integer REVERSE = 1,
 
     // Parameters that determine (max) chain -length and -number
     parameter  integer LOOP0  = 3,
@@ -36,61 +44,91 @@ module vischain #(
     localparam integer ACCUM = ADDER + $clog2(LOOP1 + 1),
     localparam integer MSB   = ACCUM - 1
 ) (
+    // Visibilities clock-domain
     input clock,
     input reset,
 
-    input valid_i,
-    input [RSB:0] sig_ii,
-    input [RSB:0] sig_qi,
+    // Upstream radio-signal inputs
+    input sig_valid_i,
+    input sig_first_i,
+    input sig_next_i,
+    input sig_emit_i,
+    input sig_last_i,
+    input [TSB:0] addr_i,
+    input [RSB:0] sig_dati_i,
+    input [RSB:0] sig_datq_i,
 
-    // Delayed output signals
-    output valid_o,
-    output [RSB:0] sig_io,
-    output [RSB:0] sig_qo,
+    // Delayed radio-signal outputs
+    output sig_valid_o,
+    output sig_first_o,
+    output sig_next_o,
+    output sig_emit_o,
+    output sig_last_o,
+    output [TSB:0] addr_o,
+    output [RSB:0] sig_dati_o,
+    output [RSB:0] sig_datq_o,
 
-    // Loads new data from attached visibilities unit
-    input load_i,
-    input [MSB:0] re_i,
-    input [MSB:0] im_i,
-
-    // From preceding registers in the chain
-    input valid_i,
-    input [MSB:0] data_i,
-
-    // To the following registers in the chain
-    output valid_o,
-    output [MSB:0] data_o
+    // To next element of the accumulator chain
+    output vis_frame_o,
+    output vis_valid_o,
+    output vis_first_o,
+    output vis_last_o,
+    output [MSB:0] vis_real_o,
+    output [MSB:0] vis_imag_o
 );
+
+  localparam integer WBITS = LENGTH * ADDER;
+  localparam integer WSB = WBITS - 1;
+
 
   // -- Global Signals -- //
 
-  localparam integer SBITS = LENGTH * ACCUM;
-  localparam integer CBITS = (LENGTH + 1) * ACCUM;
+  // Correlator routing
+  wire [LSB:0] src_prev_w;
+  wire [WSB:0] src_real_w, src_imag_w;
+  wire [LSB:0] dst_frame_w, dst_next_w;
+  wire [WSB:0] dst_real_w, dst_imag_w;
 
-  wire [SBITS-1:0] adder_w;
-  wire [CBITS-1:0] chain_w;
+  // Correlator to accumulator routing
+  wire [LSB:0] cor_frame, cor_valid;
+  wire [WSB:0] cor_real_w, cor_imag_w;
 
 
   // -- Source-Signal Delay Unit -- //
 
-  sigdelay#(
-      .RADIOS(RADIOS),
-      .LOOP0 (LOOP0)
+  sigdelay #(
+      .RADIOS (RADIOS),
+      .REVERSE(REVERSE),
+      .TRATE  (TRATE),
+      .LOOP0  (LOOP0)
   ) U_DELAY1 (
       .clock(clock),
 
-      .valid_i(valid_i),  // Undelayed, source signals
-      .sig_ii(sig_ii),
-      .sig_qi(sig_qi),
+      .valid_i(sig_valid_i),  // Undelayed, source signals
+      .first_i(sig_first_i),
+      .next_i (sig_next_i),
+      .emit_i (sig_emit_i),
+      .last_i (sig_last_i),
+      .addr_i (sig_addr_i),
+      .sig_ii (sig_dati_i),
+      .sig_qi (sig_datq_i),
 
-      .valid_o(valid_o),  // Delayed output signals
-      .sig_io(sig_io),
-      .sig_qo(sig_qo)
+      .valid_o(sig_valid_o),  // Delayed, output signals
+      .first_o(sig_first_o),
+      .next_o (sig_next_o),
+      .emit_o (sig_emit_o),
+      .last_o (sig_last_o),
+      .addr_o (sig_addr_o),
+      .sig_io (sig_dati_o),
+      .sig_qo (sig_datq_o)
   );
 
 
   // -- Correlator Chain -- //
 
+  // Parallel (i.e., in phase) source-signals go in, and the outputs are
+  // daisy-chained together, so that they are sequential fed into the
+  // accumulator.
   correlator #(
       .WIDTH(RADIOS),
       .ABITS(ADDER),
@@ -105,54 +143,69 @@ module vischain #(
       .clock(clock),
       .reset(reset),
 
-      .valid_i(buf_valid_w),
-      .first_i(buf_first_w),
-      .next_i (buf_next_w),
-      .emit_i (buf_emit_w),
-      .last_i (buf_last_w),
-      .taddr_i(buf_taddr_w),
-      .idata_i(buf_idata_w),
-      .qdata_i(buf_qdata_w),
+      .valid_i(sig_valid_i),
+      .first_i(sig_first_i),
+      .next_i (sig_next_i),
+      .emit_i (sig_emit_i),
+      .last_i (sig_last_i),
+      .taddr_i(sig_addr_i),
+      .idata_i(sig_dati_i),
+      .qdata_i(sig_datq_i),
 
-      .prevs_i(1'b0),
-      .revis_i({ABITS{1'bx}}),
-      .imvis_i({ABITS{1'bx}}),
+      .prevs_i(src_prev_w),
+      .revis_i(src_real_w),
+      .imvis_i(src_imag_w),
 
-      .frame_o(cor_frame),
+      .frame_o(dst_frame_w),
+      .valid_o(dst_next_w),
+      .revis_o(dst_real_w),
+      .imvis_o(dst_imag_w)
+  );
+
+
+  // -- Outputs Daisy-Chain -- //
+
+  vismerge #(
+      .LENGTH(LENGTH),
+      .WIDTH (ADDER)
+  ) U_ROUTE1 (
+      .next_i (dst_next_w),
+      .real_i (dst_real_w),
+      .imag_i (dst_imag_w),
+      .prev_o (src_prev_w),
+      .real_o (src_real_w),
+      .imag_o (src_imag_w),
       .valid_o(cor_valid),
-      .revis_o(cor_revis),
-      .imvis_o(cor_imvis)
+      .rdata_o(cor_real_w),
+      .idata_o(cor_imag_w)
   );
 
 
   // -- Accumulator for Chain -- //
 
-  wire vis_frame, vis_valid, vis_first, vis_last;
-  wire [SSB:0] vis_rdata, vis_idata;
+  assign cor_frame = dst_frame_w[LSB];
 
-  // Note: this instance would normally be at the end of a `vismerge` "chain,"
-  //   which would typically be `LOOP0` in length.
   visaccum #(
       .IBITS(ABITS),
       .OBITS(SBITS),
       .PSUMS(LOOP0),
       .COUNT(LOOP1)
   ) U_VISACC1 (
-      .clock(vis_clock),
-      .reset(vis_reset),
+      .clock(clock),
+      .reset(reset),
 
       .frame_i(cor_frame),
       .valid_i(cor_valid),
-      .rdata_i(cor_revis),
-      .idata_i(cor_imvis),
+      .rdata_i(cor_real_w),
+      .idata_i(cor_imag_w),
 
-      .frame_o(vis_frame),
-      .valid_o(vis_valid),
-      .first_o(vis_first),
-      .last_o (vis_last),
-      .rdata_o(vis_rdata),
-      .idata_o(vis_idata)
+      .frame_o(vis_frame_o),
+      .valid_o(vis_valid_o),
+      .first_o(vis_first_o),
+      .last_o (vis_last_o),
+      .rdata_o(vis_real_o),
+      .idata_o(vis_imag_o)
   );
 
 
-endmodule  // vischain
+endmodule  /* vischain */

@@ -1,58 +1,48 @@
 `timescale 1ns / 100ps
 /**
- * Chain of values, with source-select 2:1 MUX, for loading data into the chain
- * from the attached functional units.
+ * Merge parallel outputs into a daisy-chain of values.
  *
  * Note:
- *  - the source units must not over-saturate the chain;
- *  - resource usage is $2*WIDTH+2$ LEs (LUT4 + DFF);
+ *  - just the routing, and generic enough to be reusable;
  *
  * Todo:
  *  - currently non-functioning, and just a "sketch" -- still relevant ??
  *
  */
 module vismerge #(
-  parameter integer WIDTH = 7,
-  localparam integer MSB = WIDTH - 1
+    parameter integer LENGTH = 3,
+    parameter integer LSB = LENGTH - 1,
+    parameter integer WIDTH = 7,
+    localparam integer MSB = WIDTH - 1,
+    localparam integer WBITS = LENGTH * WIDTH,
+    localparam integer WSB = WBITS - 1,
+    localparam integer PBITS = WBITS - LENGTH,
+    localparam integer PSB = PBITS - 1
 ) (
-  input clock,
-  input reset,
+    // From (parallel) outputs of correlators
+    input [LSB:0] next_i,
+    input [WSB:0] real_i,
+    input [WSB:0] imag_i,
 
-  // Loads new data from attached visibilities unit
-  input load_i,
-  input [MSB:0] re_i,
-  input [MSB:0] im_i,
+    // To (parallel) inputs of correlators
+    output [LSB:0] prev_o,
+    output [WSB:0] real_o,
+    output [WSB:0] imag_o,
 
-  // From preceding registers in the chain
-  input valid_i,
-  input [MSB:0] data_i,
-
-  // To the following registers in the chain
-  output valid_o,
-  output [MSB:0] data_o
+    // Daisy-chain outputs
+    output valid_o,
+    output rdata_o,
+    output [MSB:0] idata_o
 );
 
-  reg vld1, vld0;
-  reg [MSB:0] dat1, dat0;
 
-  // -- 2:1 interleaving for (partial sums of) real & imaginary visibilities -- //
+  assign prev_o  = {next_i[LENGTH-2:0], 1'b0};  // Todo: reverse-chaining!?
+  assign real_o  = {real_i[PSB:0], {WIDTH{1'bx}}};
+  assign imag_o  = {imag_i[PSB:0], {WIDTH{1'bx}}};
 
-  assign valid_o = vld0;
-  assign data_o  = dat0;
+  assign valid_o = next_i[LSB];
+  assign rdata_o = real_i[WSB:PBITS];
+  assign idata_o = imag_i[WSB:PBITS];
 
-  always @(posedge clock) begin
-    if (reset) begin
-      {vld0, vld1} <= 2'b00;
-      {dat0, dat1} <= {2 * WIDTH{1'bx}};
-    end else begin
-      if (load_i) begin
-        {vld0, vld1} <= 2'b11;
-        {dat0, dat1} <= {re_i, im_i};
-      end else begin
-        {vld0, vld1} <= {vld1, valid_i};
-        {dat0, dat1} <= {dat1, data_i};
-      end
-    end
-  end
 
 endmodule  // vismerge
