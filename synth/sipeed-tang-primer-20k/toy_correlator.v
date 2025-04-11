@@ -198,10 +198,6 @@ module toy_correlator #(
       .idata_i(buf_idata_w),
       .qdata_i(buf_qdata_w),
 
-      .prevs_i(1'b0),
-      .revis_i({ABITS{1'bx}}),
-      .imvis_i({ABITS{1'bx}}),
-
       .frame_o(cor_frame),
       .valid_o(cor_valid),
       .revis_o(cor_revis),

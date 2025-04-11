@@ -23,35 +23,37 @@ module vismerge #(
     localparam integer PSB = PBITS - 1
 ) (
     // From (parallel) outputs of correlators
-    input [LSB:0] par_valid_i,
-    input [WSB:0] par_rdata_i,
-    input [WSB:0] par_idata_i,
+    input [LSB:0] par_tvalid_i,
+   output [LSB:0] par_tready_o, // todo: not really possible !?
+   input [LSB:0] par_tlast_i,
+   input [KSB:0] par_tkeep_i, // todo: juice not worth the squeeze !?
+    input [WSB:0] par_tdata_i,
 
     // Daisy-chain outputs
-    output seq_valid_o,
-    output [MSB:0] seq_rdata_o,
-    output [MSB:0] seq_idata_o
+    output seq_tvalid_o,
+   input seq_tready_i,
+   output seq_tlast_o,
+    output [KSB:0] seq_tkeep_o,
+    output [MSB:0] seq_tdata_o
 );
 
   // -- State & Signals -- //
 
   reg [LSB:0] valid;
-  reg [WSB:0] rdata, idata;
+  reg [WSB:0] tdata;
   wire [LSB:0] src_valid_w;
-  wire [WSB:0] src_rdata_w, src_idata_w;
+  wire [WSB:0] src_tdata_w;
 
 
   // -- Output Assignments -- //
 
   assign seq_valid_o = valid[LSB];
-  assign seq_rdata_o = rdata[WSB:PBITS];
-  assign seq_idata_o = idata[WSB:PBITS];
+  assign seq_tdata_o = tdata[WSB:PBITS];
 
   // -- Internal Assignments -- //
 
   assign src_valid_w = {valid[LENGTH-2:0], 1'b0};  // Source valids
-  assign src_rdata_w = {rdata[(LENGTH-1)*WIDTH-1:WIDTH], {WIDTH{1'bx}}};
-  assign src_idata_w = {idata[(LENGTH-1)*WIDTH-1:WIDTH], {WIDTH{1'bx}}};
+  assign src_tdata_w = {tdata[(LENGTH-1)*WIDTH-1:WIDTH], {WIDTH{1'bx}}};
 
 
   // -- Output select & pipeline -- //
@@ -64,19 +66,16 @@ module vismerge #(
       always @(posedge clock) begin
         if (reset) begin
           valid[ii] <= 1'b0;
-          rdata[ii*WIDTH+MSB:ii*WIDTH] <= 'bx;
-          idata[ii*WIDTH+MSB:ii*WIDTH] <= 'bx;
+          tdata[ii*WIDTH+MSB:ii*WIDTH] <= 'bx;
         end else begin
           if (par_valid_i[ii]) begin
             // Push data onto chain from input source
             valid[ii] <= 1'b1;
-            rdata[ii*WIDTH+MSB:ii*WIDTH] <= par_rdata_i[ii*WIDTH+MSB:ii*WIDTH];
-            idata[ii*WIDTH+MSB:ii*WIDTH] <= par_idata_i[ii*WIDTH+MSB:ii*WIDTH];
+            tdata[ii*WIDTH+MSB:ii*WIDTH] <= par_tdata_i[ii*WIDTH+MSB:ii*WIDTH];
           end else begin
             // Forward data from upstream to downstream
             valid[ii] <= vld_w[ii];
-            rdata[ii*WIDTH+MSB:ii*WIDTH] <= src_rdata_w[ii*WIDTH+MSB:ii*WIDTH];
-            idata[ii*WIDTH+MSB:ii*WIDTH] <= src_idata_w[ii*WIDTH+MSB:ii*WIDTH];
+            tdata[ii*WIDTH+MSB:ii*WIDTH] <= src_tdata_w[ii*WIDTH+MSB:ii*WIDTH];
           end
         end
       end
@@ -85,4 +84,4 @@ module vismerge #(
   endgenerate
 
 
-endmodule  /* vismerge */
+endmodule  /* daisy_chain */

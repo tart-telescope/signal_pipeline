@@ -152,11 +152,6 @@ module vischain #(
       .idata_i(sig_dati_i),
       .qdata_i(sig_datq_i),
 
-      .prevs_i(src_prev_w),
-      .revis_i(src_real_w),
-      .imvis_i(src_imag_w),
-
-      .frame_o(dst_frame_w),
       .valid_o(dst_next_w),
       .revis_o(dst_real_w),
       .imvis_o(dst_imag_w)
@@ -169,15 +164,12 @@ module vischain #(
       .LENGTH(LENGTH),
       .WIDTH (ADDER)
   ) U_ROUTE1 (
-      .next_i (dst_next_w),
-      .real_i (dst_real_w),
-      .imag_i (dst_imag_w),
-      .prev_o (src_prev_w),
-      .real_o (src_real_w),
-      .imag_o (src_imag_w),
-      .valid_o(cor_valid),
-      .rdata_o(cor_real_w),
-      .idata_o(cor_imag_w)
+      .par_valid_i(dst_next_w),
+      .par_rdata_i(dst_real_w),
+      .par_idata_i(dst_imag_w),
+      .seq_valid_o(cor_valid),
+      .seq_rdata_o(cor_real_w),
+      .seq_idata_o(cor_imag_w)
   );
 
 

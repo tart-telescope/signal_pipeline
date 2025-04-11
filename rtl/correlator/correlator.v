@@ -1,7 +1,16 @@
-// TODO:
-//  - figure out how to parameterise the input MUXs
-//  - 'sigsource.v' for input MUXs
-//  - 'viscalc.v' for first-stage correlation
+/**
+ * Source-select MUXes, cross-correlator, auto-correlator, and partial
+ * accumulator for computing visibilities.
+ * 
+ * Note(s):
+ *  - uses precalculated "TAPS"-values for wiring-up just a subset of all of
+ *    the input signals to the multiplexors;
+ * 
+ * Todo:
+ *  - finish figuring-out how to parameterise the input MUXs;
+ *  - auto-correlations and testing;
+ * 
+ */
 `timescale 1ns / 100ps
 module correlator #(
     parameter integer WIDTH = 32,  // Number of antennas/signals
@@ -46,40 +55,13 @@ module correlator #(
     input [MSB:0] idata_i,
     input [MSB:0] qdata_i,
 
-    input prevs_i,
-    input [ASB:0] revis_i,  // Inputs of each stage are outputs of the previous
-    input [ASB:0] imvis_i,
-
-    output [ASB:0] revis_o,
-    output [ASB:0] imvis_o,
     output frame_o,
-    output valid_o
+    output valid_o,
+    output [MSB:0] revis_o,
+    output [MSB:0] imvis_o
 );
 
-
-  // -- Pipelined control-signals -- //
-  /*
-  reg last, next, valid;
-
-  always @(posedge clock) begin
-    if (reset) begin
-      valid <= 1'b0;
-      last  <= 1'b0;
-      next  <= 1'b0;
-    end else begin
-      valid <= valid_i;
-
-      if (valid) begin
-        last <= next_i;
-        next <= last;
-      end else begin
-        last <= 1'b0;
-        next <= 1'b0;
-      end
-    end
-  end
-*/
-
+  // Todo: auto-correlation
   reg [TSB:0] autos;
 
   always @(posedge clock) begin
@@ -89,7 +71,6 @@ module correlator #(
       autos <= {1'bx, autos[TSB:1]};
     end
   end
-
 
   // -- Antenna signal source-select -- //
 
@@ -126,7 +107,6 @@ module correlator #(
       .bq_o(mux_bq)
   );
 
-
   // -- Cross-correlator -- //
 
   wire auto = 1'b0;  // todo: ...
@@ -148,42 +128,10 @@ module correlator #(
       .bi_i(mux_bi),
       .bq_i(mux_bq),
       // Outputs
-      .frame_o(cor_frame),
-      .valid_o(cor_valid),
-      .rdata_o(cor_revis),
-      .idata_o(cor_imvis)
+      .frame_o(frame_o),
+      .valid_o(valid_o),
+      .rdata_o(revis_o),
+      .idata_o(imvis_o)
   );
 
-
-  // -- Output select & pipeline -- //
-
-  reg succs, frame;
-  reg [ASB:0] revis, imvis;
-
-  assign frame_o = frame;
-  assign valid_o = succs;
-  assign revis_o = revis;
-  assign imvis_o = imvis;
-
-  always @(posedge clock) begin
-    if (reset) begin
-      frame <= 1'b0;
-      succs <= 1'b0;
-      revis <= {ABITS{1'bx}};
-      imvis <= {ABITS{1'bx}};
-    end else begin
-      succs <= cor_valid | prevs_i;
-      frame <= cor_frame;
-
-      if (cor_valid) begin
-        revis <= cor_revis;
-        imvis <= cor_imvis;
-      end else begin
-        revis <= revis_i;
-        imvis <= imvis_i;
-      end
-    end
-  end
-
-
-endmodule  // correlator
+endmodule  /* correlator */
