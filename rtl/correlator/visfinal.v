@@ -13,32 +13,32 @@
  *
  */
 module visfinal #(
-  // Input and output bit-widths
-  parameter integer IBITS = 7, // Input (partial-sum) bit-width
-  localparam integer ISB = IBITS - 1,
-  parameter integer OBITS = 36, // Output (final-sum) bit-width
-  localparam integer OSB = OBITS - 1,
+    // Input and output bit-widths
+    parameter integer IBITS = 7,  // Input (partial-sum) bit-width
+    localparam integer ISB = IBITS - 1,
+    parameter integer OBITS = 36,  // Output (final-sum) bit-width
+    localparam integer OSB = OBITS - 1,
 
-  // Total number of visibility components, and the number of required address
-  // bits
-  parameter integer NSUMS = 1024,
-  localparam integer ABITS = $clog2(NSUMS),
-  localparam integer ASB = ABITS - 1
+    // Total number of visibility components, and the number of required address
+    // bits
+    parameter  integer NSUMS = 1024,
+    localparam integer ABITS = $clog2(NSUMS),
+    localparam integer ASB   = ABITS - 1
 ) (
-  input clock,
-  input reset,
+    input clock,
+    input reset,
 
-  // "Interleaved" AX4-Stream like interface, but with no backpressure
-  input valid_i,
-  input first_i,
-  input last_i,
-  input [ISB:0] data_i,
+    // "Interleaved" AX4-Stream like interface, but with no backpressure
+    input valid_i,
+    input first_i,
+    input last_i,
+    input [ISB:0] data_i,
 
-  // AX4-Stream like interface, but with no backpressure
-  output valid_o,
-  output first_o,
-  output last_o,
-  output [OSB:0] data_o
+    // AX4-Stream like interface, but with no backpressure
+    output valid_o,
+    output first_o,
+    output last_o,
+    output [OSB:0] data_o
 );
 
   //

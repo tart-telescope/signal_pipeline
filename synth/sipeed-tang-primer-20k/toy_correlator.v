@@ -3,7 +3,7 @@ module toy_correlator #(
     parameter integer USE_ALEX_AFIFO = 1,
     // parameter AFIFO_DEPTH = 1024,
     // parameter AFIFO_DEPTH = 64,
-    parameter AFIFO_DEPTH = 16, // Anything larger will be expensive, on GW2A
+    parameter AFIFO_DEPTH = 16,  // Anything larger will be expensive, on GW2A
     localparam FBITS = $clog2(AFIFO_DEPTH),
 
     parameter AXIS_OUTPUT = 1,
@@ -291,7 +291,7 @@ module toy_correlator #(
   // Output can be wide (and AXI-S-like)
   // TODO: wrong unless bus clock domain is the same as the visibilities clock
   assign bus_valid_o = AXIS_OUTPUT ? 1'b0 : acc_valid;
-  assign bus_last_o  = AXIS_OUTPUT ? 1'b0 : acc_last;
+  assign bus_last_o = AXIS_OUTPUT ? 1'b0 : acc_last;
   assign bus_revis_o = AXIS_OUTPUT ? {ACCUM{1'bx}} : acc_revis[VSB:0];
   assign bus_imvis_o = AXIS_OUTPUT ? {ACCUM{1'bx}} : acc_imvis[VSB:0];
 
@@ -371,22 +371,22 @@ module toy_correlator #(
       ) U_AFIFO1 (
           .aresetn(areset_n),
 
-          .s_aclk(vis_clock),
+          .s_aclk  (vis_clock),
           .s_tvalid(AXIS_OUTPUT && acc_valid),
           .s_tready(acc_ready),
-          .s_tlast(acc_last),
-          .s_tdata(acc_tdata),
+          .s_tlast (acc_last),
+          .s_tdata (acc_tdata),
 
           // Default: 60.0 MHz, USB ULPI clock
-          .m_aclk(bus_clock),
+          .m_aclk  (bus_clock),
           .m_tvalid(b_tvalid),
           .m_tready(AXIS_OUTPUT && b_tready),
-          .m_tlast(b_tlast),
-          .m_tdata(b_tdata)
+          .m_tlast (b_tlast),
+          .m_tdata (b_tdata)
       );
 
     end
-  endgenerate /* g_tart_afifo */
+  endgenerate  /* g_tart_afifo */
 
   wire [KEEPS-1:0] b_tkeeps_w = {KEEPS{b_tvalid}};
 

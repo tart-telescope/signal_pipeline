@@ -54,7 +54,7 @@ module vischain #(
     input sig_next_i,
     input sig_emit_i,
     input sig_last_i,
-    input [TSB:0] addr_i,
+    input [TSB:0] sig_addr_i,
     input [RSB:0] sig_dati_i,
     input [RSB:0] sig_datq_i,
 
@@ -64,7 +64,7 @@ module vischain #(
     output sig_next_o,
     output sig_emit_o,
     output sig_last_o,
-    output [TSB:0] addr_o,
+    output [TSB:0] sig_addr_o,
     output [RSB:0] sig_dati_o,
     output [RSB:0] sig_datq_o,
 
@@ -129,6 +129,11 @@ module vischain #(
   // Parallel (i.e., in phase) source-signals go in, and the outputs are
   // daisy-chained together, so that they are sequential fed into the
   // accumulator.
+  //
+  // todo:
+  //  - generate TAPS and SELS (and they need to be reverse-ordered, for this
+  //    chain;
+  //
   correlator #(
       .WIDTH(RADIOS),
       .ABITS(ADDER),
@@ -164,9 +169,13 @@ module vischain #(
       .LENGTH(LENGTH),
       .WIDTH (ADDER)
   ) U_ROUTE1 (
+      .clock(clock),
+      .reset(reset),
+
       .par_valid_i(dst_next_w),
       .par_rdata_i(dst_real_w),
       .par_idata_i(dst_imag_w),
+
       .seq_valid_o(cor_valid),
       .seq_rdata_o(cor_real_w),
       .seq_idata_o(cor_imag_w)

@@ -200,4 +200,4 @@ module visaccum #(
     end
   end
 
-endmodule  // visaccum
+endmodule  /* visaccum */

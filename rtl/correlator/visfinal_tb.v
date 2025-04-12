@@ -103,7 +103,7 @@ module visfinal_tb;
       // .ABITS(ABITS),
       .NSUMS(NSUMS)
   ) VISFINAL0 (
-      .clock (clock),
+      .clock(clock),
       .reset(~rst_n),
 
       .valid_i(vld_r),

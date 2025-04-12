@@ -10,6 +10,7 @@
  *
  * Todo:
  *  - make into a general-purpose module;
+ *  - reverse-ordering of the chain;
  *
  */
 module vismerge #(
@@ -22,6 +23,9 @@ module vismerge #(
     localparam integer PBITS = WBITS - LENGTH,
     localparam integer PSB = PBITS - 1
 ) (
+    input clock,
+    input reset,
+
     // From (parallel) outputs of correlators
     input [LSB:0] par_valid_i,
     input [WSB:0] par_rdata_i,

@@ -50,7 +50,7 @@ module correlator #(
     input first_i,
     input next_i,
     input emit_i,
-    input last_i, // TODO: not connected
+    input last_i,  // TODO: not connected
     input [TSB:0] taddr_i,
     input [MSB:0] idata_i,
     input [MSB:0] qdata_i,
@@ -91,8 +91,8 @@ module correlator #(
 
       .valid_i(valid_i),
       .first_i(first_i),
-      .next_i(next_i),
-      .last_i(emit_i),
+      .next_i (next_i),
+      .last_i (emit_i),
       .taddr_i(taddr_i),
       .idata_i(idata_i),
       .qdata_i(qdata_i),
@@ -118,16 +118,16 @@ module correlator #(
   ) CORRELATE0 (
       .clock(clock),
       .reset(reset),
-      // Inputs
+
       .valid_i(mux_valid),
       .first_i(mux_next),
       .last_i(mux_last),
-      .auto_i(auto),
+      .auto_i(auto),  // todo: generate auto-correlations
       .ai_i(mux_ai),
       .aq_i(mux_aq),
       .bi_i(mux_bi),
       .bq_i(mux_bq),
-      // Outputs
+
       .frame_o(frame_o),
       .valid_o(valid_o),
       .rdata_o(revis_o),
