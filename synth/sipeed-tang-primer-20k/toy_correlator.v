@@ -245,10 +245,10 @@ module toy_correlator #(
           .TRATE(TRATE),
           .LOOP0(LOOP0),
           .LOOP1(LOOP1),
-          .ATAPS(ATAPS),
-          .BTAPS(BTAPS),
-          .ASELS(ASELS),
-          .BSELS(BSELS),
+          .ATAPS({LOOP0{ATAPS}}), // todo: full-width A-taps
+          .BTAPS({LOOP0{BTAPS}}),
+          .ASELS({LOOP0{ASELS}}),
+          .BSELS({LOOP0{BSELS}}),
           .AUTOS(AUTOS)
       ) U_CORE1 (
           .clock(vis_clock),
@@ -475,12 +475,18 @@ module toy_correlator #(
 
   localparam integer BUNCH = TRATE * LOOP1 * LOOP0;
 
+  localparam integer TAP_WIDTH = MUX_N * TRATE;
+  localparam integer SEL_WIDTH = $clog2(MUX_N) * TRATE;
+
   initial begin : dump_settings
     $display;
     $display("Toy Correlator Testbench");
     $display("Radio settings:");
     $display(" + num antennas/radios: %5d (index bits:   %2d)", WIDTH, DBITS);
     $display(" + capture buffer size: %5d (pointer bits: %2d)", COUNT, CBITS);
+    $display("Generated settings:");
+    $display(" + tap-widths:  %5d", TAP_WIDTH);
+    $display(" + sel-widths:  %5d", SEL_WIDTH);
     $display("Correlator settings:");
     $display(" + clock mult.: %5d (select bits:  %2d)", TRATE, TBITS);
     $display(" + packet size: %5d (address bits: %2d)", BUNCH, $clog2(BUNCH));

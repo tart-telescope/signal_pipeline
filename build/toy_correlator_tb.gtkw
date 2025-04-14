@@ -1,23 +1,26 @@
 [*]
 [*] GTKWave Analyzer v3.3.116 (w)1999-2023 BSI
-[*] Thu Apr 10 04:02:21 2025
+[*] Mon Apr 14 22:01:12 2025
 [*]
 [dumpfile] "/home/patrick/dev/signal_pipeline/build/toy_correlator_tb.vcd"
-[dumpfile_mtime] "Thu Apr 10 03:21:52 2025"
-[dumpfile_size] 566857
+[dumpfile_mtime] "Mon Apr 14 21:58:53 2025"
+[dumpfile_size] 1148186
 [savefile] "/home/patrick/dev/signal_pipeline/build/toy_correlator_tb.gtkw"
-[timestart] 5606000
+[timestart] 593300
 [size] 2560 1393
-[pos] 2559 -33
-*-16.191883 6200000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -1 -1
+*-15.191883 790000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] toy_correlator_tb.
 [treeopen] toy_correlator_tb.U_TOY1.
-[treeopen] toy_correlator_tb.U_TOY1.U_CORE1.
-[treeopen] toy_correlator_tb.U_TOY1.U_CORE1.SIGSRC0.
+[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.
+[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.
+[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[0].
+[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[1].
+[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[2].
 [sst_width] 278
-[signals_width] 406
+[signals_width] 158
 [sst_expanded] 1
-[sst_vpaned_height] 859
+[sst_vpaned_height] 845
 @28
 toy_correlator_tb.rst_n
 @200
@@ -66,7 +69,7 @@ toy_correlator_tb.vis_clk
 toy_correlator_tb.U_TOY1.SIGBUF0.start
 [color] 2
 toy_correlator_tb.U_TOY1.SIGBUF0.frame
-@c00200
+@800200
 -Buffer
 @28
 [color] 2
@@ -89,27 +92,12 @@ toy_correlator_tb.U_TOY1.SIGBUF0.fired
 toy_correlator_tb.U_TOY1.SIGBUF0.ended
 @1401200
 -Int
+@1000200
 -Buffer
 @c00200
 -SigMUX
-@28
-[color] 2
-toy_correlator_tb.U_TOY1.U_CORE1.mux_valid
-[color] 3
-toy_correlator_tb.U_TOY1.U_CORE1.mux_first
-toy_correlator_tb.U_TOY1.U_CORE1.mux_next
-toy_correlator_tb.U_TOY1.U_CORE1.mux_last
-toy_correlator_tb.U_TOY1.U_CORE1.mux_ai
-toy_correlator_tb.U_TOY1.U_CORE1.mux_aq
-toy_correlator_tb.U_TOY1.U_CORE1.mux_bi
-toy_correlator_tb.U_TOY1.U_CORE1.mux_bq
 @800200
 -SigMUXInt
-@24
-[color] 7
-toy_correlator_tb.U_TOY1.U_CORE1.SIGSRC0.taddr_i[2:0]
-toy_correlator_tb.U_TOY1.U_CORE1.SIGSRC0.asel[1:0]
-toy_correlator_tb.U_TOY1.U_CORE1.SIGSRC0.bsel[1:0]
 @1000200
 -SigMUXInt
 @1401200
@@ -119,26 +107,25 @@ toy_correlator_tb.U_TOY1.U_CORE1.SIGSRC0.bsel[1:0]
 @800200
 -Correlate
 @28
-toy_correlator_tb.U_TOY1.cor_frame
 [color] 3
-toy_correlator_tb.U_TOY1.cor_valid
+toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[0].U_COREX.valid_o
 @22
-toy_correlator_tb.U_TOY1.cor_revis[3:0]
-toy_correlator_tb.U_TOY1.cor_imvis[3:0]
+toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[0].U_COREX.revis_o[3:0]
+toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[0].U_COREX.imvis_o[3:0]
+@28
+[color] 3
+toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[1].U_COREX.valid_o
+@22
+toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[1].U_COREX.revis_o[3:0]
+toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[1].U_COREX.imvis_o[3:0]
+@29
+[color] 3
+toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[2].U_COREX.valid_o
+@22
+toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[2].U_COREX.revis_o[3:0]
+toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[2].U_COREX.imvis_o[3:0]
 @c00200
 -CorInt
-@28
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.valid_i
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.first_i
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.last_i
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.ai_i
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.aq_i
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.bi_i
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.bq_i
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.vld_r
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.lst_r
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.frame
-toy_correlator_tb.U_TOY1.U_CORE1.CORRELATE0.valid
 @1401200
 -CorInt
 @1000200
@@ -159,32 +146,6 @@ toy_correlator_tb.U_TOY1.vis_rdata[6:0]
 toy_correlator_tb.U_TOY1.vis_idata[6:0]
 @c00200
 -ParInt
-@28
-toy_correlator_tb.U_TOY1.U_VISACC1.rd_cyc
-toy_correlator_tb.U_TOY1.U_VISACC1.rd_vld
-toy_correlator_tb.U_TOY1.U_VISACC1.rd_adr[1:0]
-@22
-toy_correlator_tb.U_TOY1.U_VISACC1.rr_src[3:0]
-toy_correlator_tb.U_TOY1.U_VISACC1.ri_src[3:0]
-toy_correlator_tb.U_TOY1.U_VISACC1.rr_sum[6:0]
-toy_correlator_tb.U_TOY1.U_VISACC1.ri_sum[6:0]
-@28
-toy_correlator_tb.U_TOY1.U_VISACC1.pwrap
-toy_correlator_tb.U_TOY1.U_VISACC1.czero
-@22
-toy_correlator_tb.U_TOY1.U_VISACC1.ar_src[6:0]
-toy_correlator_tb.U_TOY1.U_VISACC1.ai_src[6:0]
-toy_correlator_tb.U_TOY1.U_VISACC1.ar_sum[6:0]
-toy_correlator_tb.U_TOY1.U_VISACC1.ai_sum[6:0]
-@28
-toy_correlator_tb.U_TOY1.U_VISACC1.ac_adr[1:0]
-toy_correlator_tb.U_TOY1.U_VISACC1.ac_cyc
-toy_correlator_tb.U_TOY1.U_VISACC1.ac_vld
-toy_correlator_tb.U_TOY1.U_VISACC1.ac_lst
-toy_correlator_tb.U_TOY1.U_VISACC1.wr_cyc
-toy_correlator_tb.U_TOY1.U_VISACC1.wr_vld
-toy_correlator_tb.U_TOY1.U_VISACC1.wr_lst
-toy_correlator_tb.U_TOY1.U_VISACC1.wr_adr[1:0]
 @1401200
 -ParInt
 @1000200
@@ -216,7 +177,7 @@ toy_correlator_tb.U_TOY1.U_ACCUM1.r_dat[31:0]
 toy_correlator_tb.U_TOY1.U_ACCUM1.i_dat[31:0]
 toy_correlator_tb.U_TOY1.U_ACCUM1.r_vis[31:0]
 toy_correlator_tb.U_TOY1.U_ACCUM1.i_vis[31:0]
-@25
+@24
 toy_correlator_tb.U_TOY1.U_ACCUM1.waddr[4:0]
 @28
 toy_correlator_tb.U_TOY1.U_ACCUM1.write
