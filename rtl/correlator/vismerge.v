@@ -17,6 +17,7 @@ module vismerge #(
     parameter integer LENGTH = 3,
     parameter integer LSB = LENGTH - 1,
     parameter integer WIDTH = 7,
+    parameter integer REVERSE = 1,
     localparam integer MSB = WIDTH - 1,
     localparam integer WBITS = LENGTH * WIDTH,
     localparam integer WSB = WBITS - 1,
@@ -41,8 +42,9 @@ module vismerge #(
 
   reg [LSB:0] valid;
   reg [WSB:0] rdata, idata;
-  wire [LSB:0] src_valid_w;
+  wire [LSB:0] src_valid_w, rev_valid_w;
   wire [WSB:0] src_rdata_w, src_idata_w;
+  wire [WSB:0] rev_rdata_w, rev_idata_w;
 
 
   // -- Output Assignments -- //
@@ -54,8 +56,14 @@ module vismerge #(
   // -- Internal Assignments -- //
 
   assign src_valid_w = {valid[LENGTH-2:0], 1'b0};  // Source valids
-  assign src_rdata_w = {rdata[(LENGTH-1)*WIDTH-1:WIDTH], {WIDTH{1'bx}}};
-  assign src_idata_w = {idata[(LENGTH-1)*WIDTH-1:WIDTH], {WIDTH{1'bx}}};
+  assign src_rdata_w = {rdata[(LENGTH-1)*WIDTH-1:0], {WIDTH{1'bx}}};
+  assign src_idata_w = {idata[(LENGTH-1)*WIDTH-1:0], {WIDTH{1'bx}}};
+  // assign src_rdata_w = {rdata[(LENGTH-1)*WIDTH-1:WIDTH], {WIDTH{1'bx}}};
+  // assign src_idata_w = {idata[(LENGTH-1)*WIDTH-1:WIDTH], {WIDTH{1'bx}}};
+
+  assign rev_valid_w = {1'b0, valid[LENGTH-1:1]};  // Reversed valids
+  assign rev_rdata_w = {{WIDTH{1'bx}}, rdata[LENGTH*WIDTH-1:WIDTH]};
+  assign rev_idata_w = {{WIDTH{1'bx}}, idata[LENGTH*WIDTH-1:WIDTH]};
 
 
   // -- Output select & pipeline -- //
@@ -68,8 +76,8 @@ module vismerge #(
       always @(posedge clock) begin
         if (reset) begin
           valid[ii] <= 1'b0;
-          rdata[ii*WIDTH+MSB:ii*WIDTH] <= 'bx;
-          idata[ii*WIDTH+MSB:ii*WIDTH] <= 'bx;
+          rdata[ii*WIDTH+MSB:ii*WIDTH] <= {WIDTH{1'bx}};
+          idata[ii*WIDTH+MSB:ii*WIDTH] <= {WIDTH{1'bx}};
         end else begin
           if (par_valid_i[ii]) begin
             // Push data onto chain from input source
@@ -78,9 +86,13 @@ module vismerge #(
             idata[ii*WIDTH+MSB:ii*WIDTH] <= par_idata_i[ii*WIDTH+MSB:ii*WIDTH];
           end else begin
             // Forward data from upstream to downstream
-            valid[ii] <= vld_w[ii];
-            rdata[ii*WIDTH+MSB:ii*WIDTH] <= src_rdata_w[ii*WIDTH+MSB:ii*WIDTH];
-            idata[ii*WIDTH+MSB:ii*WIDTH] <= src_idata_w[ii*WIDTH+MSB:ii*WIDTH];
+            valid[ii] <= REVERSE ? rev_valid_w[ii] : src_valid_w[ii];
+            rdata[ii*WIDTH+MSB:ii*WIDTH] <= REVERSE ?
+                                            rev_rdata_w[ii*WIDTH+MSB:ii*WIDTH] :
+                                            src_rdata_w[ii*WIDTH+MSB:ii*WIDTH];
+            idata[ii*WIDTH+MSB:ii*WIDTH] <= REVERSE ?
+                                            rev_idata_w[ii*WIDTH+MSB:ii*WIDTH] :
+                                            src_idata_w[ii*WIDTH+MSB:ii*WIDTH];
           end
         end
       end

@@ -126,41 +126,51 @@ module vischain #(
 
   // -- Correlator Chain -- //
 
-  // Parallel (i.e., in phase) source-signals go in, and the outputs are
-  // daisy-chained together, so that they are sequential fed into the
-  // accumulator.
-  //
-  // todo:
-  //  - generate TAPS and SELS (and they need to be reverse-ordered, for this
-  //    chain;
-  //
-  correlator #(
-      .WIDTH(RADIOS),
-      .ABITS(ADDER),
-      .MUX_N(MUX_N),
-      .TRATE(TRATE),
-      .ATAPS(ATAPS),
-      .BTAPS(BTAPS),
-      .ASELS(ASELS),
-      .BSELS(BSELS),
-      .AUTOS(AUTOS)
-  ) U_COREX[0:LENGTH-1] (
-      .clock(clock),
-      .reset(reset),
+  localparam integer TAP_WIDTH = MUX_N * TRATE;
+  localparam integer SEL_WIDTH = $clog2(MUX_N) * TRATE;
 
-      .valid_i(sig_valid_i),
-      .first_i(sig_first_i),
-      .next_i (sig_next_i),
-      .emit_i (sig_emit_i),
-      .last_i (sig_last_i),
-      .taddr_i(sig_addr_i),
-      .idata_i(sig_dati_i),
-      .qdata_i(sig_datq_i),
+  genvar ii;
+  generate
+    for (ii = 0; ii < LOOP0; ii = ii + 1) begin : gen_corr_chain
 
-      .valid_o(dst_next_w),
-      .revis_o(dst_real_w),
-      .imvis_o(dst_imag_w)
-  );
+      // Parallel (i.e., in phase) source-signals go in, and the outputs are
+      // daisy-chained together, so that they are sequential fed into the
+      // accumulator.
+      //
+      // todo:
+      //  - generate TAPS and SELS (and they need to be reverse-ordered, for
+      //    this chain;
+      //
+      correlator #(
+          .WIDTH(RADIOS),
+          .ABITS(ADDER),
+          .MUX_N(MUX_N),
+          .TRATE(TRATE),
+          .ATAPS(ATAPS[TAP_WIDTH*(ii+1)-1:TAP_WIDTH*ii]),
+          .BTAPS(BTAPS[TAP_WIDTH*(ii+1)-1:TAP_WIDTH*ii]),
+          .ASELS(ASELS[SEL_WIDTH*(ii+1)-1:SEL_WIDTH*ii]),
+          .BSELS(BSELS[SEL_WIDTH*(ii+1)-1:SEL_WIDTH*ii]),
+          .AUTOS(AUTOS)
+      ) U_COREX[ii] (
+          .clock(clock),
+          .reset(reset),
+
+          .valid_i(sig_valid_i),
+          .first_i(sig_first_i),
+          .next_i (sig_next_i),
+          .emit_i (sig_emit_i),
+          .last_i (sig_last_i),
+          .taddr_i(sig_addr_i),
+          .idata_i(sig_dati_i),
+          .qdata_i(sig_datq_i),
+
+          .valid_o(dst_next_w[ii]), // todo: reverse this ordering
+          .revis_o(dst_real_w[WIDTH*(ii+1)-1:WIDTH*ii]), // todo: reverse this ordering
+          .imvis_o(dst_imag_w[WIDTH*(ii+1)-1:WIDTH*ii])  // todo: reverse this ordering
+      );
+
+    end  // gen_corr_chain
+  endgenerate
 
 
   // -- Outputs Daisy-Chain -- //
