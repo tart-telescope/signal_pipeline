@@ -10,9 +10,9 @@
  *
  */
 module vischain #(
-    // Number of (1-bit, IQ) signal sources
-    parameter integer RADIOS = 32,
-    localparam integer RSB = RADIOS - 1,
+    // Number of (1-bit, IQ) radio-channel signal sources
+    parameter  integer CHANS = 32,
+    localparam integer RSB   = CHANS - 1,
 
     // Time-multiplexing is used, so used to map from timeslice to MUX indices
     parameter integer MUX_N = 7,  // A- & B- MUX widths
@@ -21,9 +21,13 @@ module vischain #(
     localparam integer TSB = TBITS - 1,
 
     // todo: produce these values using the 'generator' utility
+    parameter integer PBITS = LOOP0 * MUX_N * TRATE,
+    localparam integer PSB = PBITS - 1,
     parameter unsigned [PSB:0] ATAPS = {PBITS{1'bx}},
     parameter unsigned [PSB:0] BTAPS = {PBITS{1'bx}},
 
+    parameter integer QBITS = LOOP0 * $clog2(MUX_N) * TRATE,
+    localparam integer QSB = QBITS - 1,
     parameter unsigned [QSB:0] ASELS = {QBITS{1'bx}},
     parameter unsigned [QSB:0] BSELS = {QBITS{1'bx}},
 
@@ -35,13 +39,15 @@ module vischain #(
     parameter integer REVERSE = 1,
 
     // Parameters that determine (max) chain -length and -number
-    parameter  integer LOOP0  = 3,
-    parameter  integer LOOP1  = 5,
+    parameter integer LOOP0 = 3,
+    parameter integer LOOP1 = 5,
     localparam integer LENGTH = LOOP0,
+    localparam integer LSB = LENGTH - 1,
 
     // Adder and accumulator bit-widths
-    localparam integer ADDER = $clog2(LOOP0 + 1) + 1,
-    localparam integer ACCUM = ADDER + $clog2(LOOP1 + 1),
+    parameter  integer ADDER = $clog2(LOOP0) + 2,
+    localparam integer ASB   = ADDER - 1,
+    localparam integer ACCUM = ADDER + $clog2(LOOP1),
     localparam integer MSB   = ACCUM - 1
 ) (
     // Visibilities clock-domain
@@ -86,18 +92,19 @@ module vischain #(
   // Correlator routing
   wire [LSB:0] src_prev_w;
   wire [WSB:0] src_real_w, src_imag_w;
+
   wire [LSB:0] dst_frame_w, dst_next_w;
   wire [WSB:0] dst_real_w, dst_imag_w;
 
   // Correlator to accumulator routing
-  wire [LSB:0] cor_frame, cor_valid;
-  wire [WSB:0] cor_real_w, cor_imag_w;
+  wire cor_frame, cor_valid;
+  wire [ASB:0] cor_real_w, cor_imag_w;
 
 
   // -- Source-Signal Delay Unit -- //
 
   sigdelay #(
-      .RADIOS (RADIOS),
+      .RADIOS (CHANS),
       .REVERSE(REVERSE),
       .TRATE  (TRATE),
       .LOOP0  (LOOP0)
@@ -110,8 +117,8 @@ module vischain #(
       .emit_i (sig_emit_i),
       .last_i (sig_last_i),
       .addr_i (sig_addr_i),
-      .sig_ii (sig_dati_i),
-      .sig_qi (sig_datq_i),
+      .sigi_i (sig_dati_i),
+      .sigq_i (sig_datq_i),
 
       .valid_o(sig_valid_o),  // Delayed, output signals
       .first_o(sig_first_o),
@@ -119,8 +126,8 @@ module vischain #(
       .emit_o (sig_emit_o),
       .last_o (sig_last_o),
       .addr_o (sig_addr_o),
-      .sig_io (sig_dati_o),
-      .sig_qo (sig_datq_o)
+      .sigi_o (sig_dati_o),
+      .sigq_o (sig_datq_o)
   );
 
 
@@ -142,7 +149,7 @@ module vischain #(
       //    this chain;
       //
       correlator #(
-          .WIDTH(RADIOS),
+          .WIDTH(CHANS),
           .ABITS(ADDER),
           .MUX_N(MUX_N),
           .TRATE(TRATE),
@@ -151,7 +158,7 @@ module vischain #(
           .ASELS(ASELS[SEL_WIDTH*(ii+1)-1:SEL_WIDTH*ii]),
           .BSELS(BSELS[SEL_WIDTH*(ii+1)-1:SEL_WIDTH*ii]),
           .AUTOS(AUTOS)
-      ) U_COREX[ii] (
+      ) U_COREX (
           .clock(clock),
           .reset(reset),
 
@@ -164,9 +171,9 @@ module vischain #(
           .idata_i(sig_dati_i),
           .qdata_i(sig_datq_i),
 
-          .valid_o(dst_next_w[ii]), // todo: reverse this ordering
-          .revis_o(dst_real_w[WIDTH*(ii+1)-1:WIDTH*ii]), // todo: reverse this ordering
-          .imvis_o(dst_imag_w[WIDTH*(ii+1)-1:WIDTH*ii])  // todo: reverse this ordering
+          .valid_o(dst_next_w[ii]),  // todo: reverse this ordering
+          .revis_o(dst_real_w[ADDER*(ii+1)-1:ADDER*ii]),  // todo: reverse this ordering
+          .imvis_o(dst_imag_w[ADDER*(ii+1)-1:ADDER*ii])  // todo: reverse this ordering
       );
 
     end  // gen_corr_chain
@@ -176,8 +183,9 @@ module vischain #(
   // -- Outputs Daisy-Chain -- //
 
   vismerge #(
-      .LENGTH(LENGTH),
-      .WIDTH (ADDER)
+      .LENGTH (LENGTH),
+      .REVERSE(REVERSE),
+      .WIDTH  (ADDER)
   ) U_ROUTE1 (
       .clock(clock),
       .reset(reset),
@@ -197,8 +205,8 @@ module vischain #(
   assign cor_frame = dst_frame_w[LSB];
 
   visaccum #(
-      .IBITS(ABITS),
-      .OBITS(SBITS),
+      .IBITS(ADDER),
+      .OBITS(ACCUM),
       .PSUMS(LOOP0),
       .COUNT(LOOP1)
   ) U_VISACC1 (

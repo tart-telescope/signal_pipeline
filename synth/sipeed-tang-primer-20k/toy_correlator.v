@@ -158,8 +158,6 @@ module toy_correlator #(
   /**
    *  Correlator array, with daisy-chained outputs.
    */
-  wire cor_frame, cor_valid;
-  wire [ASB:0] cor_revis, cor_imvis;
 
   // -- Antenna signal source-select -- //
 
@@ -175,62 +173,106 @@ module toy_correlator #(
   localparam [15:0] ASELS = {2'b10, 2'b00, 2'b10, 2'b01, 2'b01, 2'b00, 2'b00, 2'b00};
   localparam [15:0] BSELS = {2'b10, 2'b00, 2'b10, 2'b10, 2'b01, 2'b10, 2'b01, 2'b00};
 
-  correlator #(
-      .WIDTH(WIDTH),
-      .ABITS(ABITS),
-      .MUX_N(MUX_N),
-      .TRATE(TRATE),
-      .ATAPS(ATAPS),
-      .BTAPS(BTAPS),
-      .ASELS(ASELS),
-      .BSELS(BSELS),
-      .AUTOS(AUTOS)
-  ) U_CORE1 (
-      .clock(vis_clock),
-      .reset(vis_reset),
-
-      .valid_i(buf_valid_w),
-      .first_i(buf_first_w),
-      .next_i (buf_next_w),
-      .emit_i (buf_emit_w),
-      .last_i (buf_last_w),
-      .taddr_i(buf_taddr_w),
-      .idata_i(buf_idata_w),
-      .qdata_i(buf_qdata_w),
-
-      .frame_o(cor_frame),
-      .valid_o(cor_valid),
-      .revis_o(cor_revis),
-      .imvis_o(cor_imvis)
-  );
-
-
   wire vis_frame, vis_valid, vis_first, vis_last;
   wire [SSB:0] vis_rdata, vis_idata;
 
-  // Note: this instance would normally be at the end of a `vismerge` "chain,"
-  //   which would typically be `LOOP0` in length.
-  visaccum #(
-      .IBITS(ABITS),
-      .OBITS(SBITS),
-      .PSUMS(LOOP0),
-      .COUNT(LOOP1)
-  ) U_VISACC1 (
-      .clock(vis_clock),
-      .reset(vis_reset),
+  generate
+    if (0) begin : gen_naughty
 
-      .frame_i(cor_frame),
-      .valid_i(cor_valid),
-      .rdata_i(cor_revis),
-      .idata_i(cor_imvis),
+      wire cor_frame, cor_valid;
+      wire [ASB:0] cor_revis, cor_imvis;
 
-      .frame_o(vis_frame),
-      .valid_o(vis_valid),
-      .first_o(vis_first),
-      .last_o (vis_last),
-      .rdata_o(vis_rdata),
-      .idata_o(vis_idata)
-  );
+      correlator #(
+          .WIDTH(WIDTH),
+          .ABITS(ABITS),
+          .MUX_N(MUX_N),
+          .TRATE(TRATE),
+          .ATAPS(ATAPS),
+          .BTAPS(BTAPS),
+          .ASELS(ASELS),
+          .BSELS(BSELS),
+          .AUTOS(AUTOS)
+      ) U_CORE1 (
+          .clock(vis_clock),
+          .reset(vis_reset),
+
+          .valid_i(buf_valid_w),
+          .first_i(buf_first_w),
+          .next_i (buf_next_w),
+          .emit_i (buf_emit_w),
+          .last_i (buf_last_w),
+          .taddr_i(buf_taddr_w),
+          .idata_i(buf_idata_w),
+          .qdata_i(buf_qdata_w),
+
+          .frame_o(cor_frame),
+          .valid_o(cor_valid),
+          .revis_o(cor_revis),
+          .imvis_o(cor_imvis)
+      );
+
+      // Note: this instance would normally be at the end of a `vismerge` "chain,"
+      //   which would typically be `LOOP0` in length.
+      visaccum #(
+          .IBITS(ABITS),
+          .OBITS(SBITS),
+          .PSUMS(LOOP0),
+          .COUNT(LOOP1)
+      ) U_VISACC1 (
+          .clock(vis_clock),
+          .reset(vis_reset),
+
+          .frame_i(cor_frame),
+          .valid_i(cor_valid),
+          .rdata_i(cor_revis),
+          .idata_i(cor_imvis),
+
+          .frame_o(vis_frame),
+          .valid_o(vis_valid),
+          .first_o(vis_first),
+          .last_o (vis_last),
+          .rdata_o(vis_rdata),
+          .idata_o(vis_idata)
+      );
+
+    end // gen_naughty
+    else begin : gen_saintly
+
+      vischain #(
+          .CHANS(WIDTH),
+          .ADDER(ABITS),
+          .MUX_N(MUX_N),
+          .TRATE(TRATE),
+          .LOOP0(LOOP0),
+          .LOOP1(LOOP1),
+          .ATAPS(ATAPS),
+          .BTAPS(BTAPS),
+          .ASELS(ASELS),
+          .BSELS(BSELS),
+          .AUTOS(AUTOS)
+      ) U_CORE1 (
+          .clock(vis_clock),
+          .reset(vis_reset),
+
+          .sig_valid_i(buf_valid_w),
+          .sig_first_i(buf_first_w),
+          .sig_next_i (buf_next_w),
+          .sig_emit_i (buf_emit_w),
+          .sig_last_i (buf_last_w),
+          .sig_addr_i (buf_taddr_w),
+          .sig_dati_i (buf_idata_w),
+          .sig_datq_i (buf_qdata_w),
+
+          .vis_frame_o(vis_frame),
+          .vis_valid_o(vis_valid),
+          .vis_first_o(vis_first),
+          .vis_last_o (vis_last),
+          .vis_real_o (vis_rdata),
+          .vis_imag_o (vis_idata)
+      );
+
+    end  // gen_saintly
+  endgenerate
 
 
   /**

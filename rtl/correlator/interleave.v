@@ -28,7 +28,7 @@ module interleave #(
 );
 
   reg odd_q;
-  wire tvalid_w;
+  wire tvalid_w, tready_w;
   wire [USB:0] tdata_w;
   wire [ASB:0] level_w;
 

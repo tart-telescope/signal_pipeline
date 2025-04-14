@@ -85,6 +85,9 @@ module visblock #(
   wire [LSB:0] vis_frame_w, vis_valid_w, vis_first_w, vis_last_w;
   wire [WSB:0] vis_real_w, vis_imag_w;
 
+  wire cor_frame, cor_valid;
+  wire [MSB:0] cor_real_w, cor_imag_w, cor_revis, cor_imvis;
+
 
   // -- Correlator-Chain Instances -- //
 
@@ -166,8 +169,8 @@ module visblock #(
       .PSUMS(LOOP0),
       .COUNT(LOOP1)
   ) U_VISACC1 (
-      .clock(vis_clock),
-      .reset(vis_reset),
+      .clock(clock),
+      .reset(reset),
 
       .frame_i(cor_frame),
       .valid_i(cor_valid),

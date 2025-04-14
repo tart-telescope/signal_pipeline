@@ -144,6 +144,8 @@ module top #(
   wire [7:0] viz_tdata, ctl_tdata, res_tdata;
   wire capture_en_w, acquire_en_w, correlator_w, visb_ready_w, ddr3_ready_w;
 
+  wire configured, crc_error_w, m2u_tkeep;
+
   assign visb_ready_w = viz_tvalid;
 
   // TART Configuration //

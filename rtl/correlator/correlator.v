@@ -57,8 +57,8 @@ module correlator #(
 
     output frame_o,
     output valid_o,
-    output [MSB:0] revis_o,
-    output [MSB:0] imvis_o
+    output [ASB:0] revis_o,
+    output [ASB:0] imvis_o
 );
 
   // Todo: auto-correlation

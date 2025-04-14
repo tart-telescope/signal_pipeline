@@ -27,7 +27,9 @@ module sigdelay #(
     // chain outputs their 'LOOP0'-length chunks in succession
     parameter  integer LOOP0 = 3,
     localparam integer DELAY = REVERSE == 1 ? LOOP0 - 1 : LOOP0 + 1,
-    localparam integer DEPTH = 1 << $clog2(DELAY)
+    localparam integer DBITS = $clog2(DELAY + 1),
+    localparam integer DSB   = DBITS - 1,
+    localparam integer DEPTH = 1 << DBITS
 ) (
     input clock,  // Correlator clock domain
 
@@ -52,15 +54,17 @@ module sigdelay #(
     output [RSB:0] sigq_o
 );
 
+  wire [DSB:0] delay_w = DELAY[DSB:0];
+
   shift_register #(
       .WIDTH(RADIOS + RADIOS + TBITS + 5),
       .DEPTH(DEPTH)
   ) U_SRL1 (
       .clock (clock),
       .wren_i(1'b1),
-      .addr_i(DELAY),
+      .addr_i(delay_w),
       .data_i({addr_i, last_i, emit_i, next_i, first_i, valid_i, sigq_i, sigi_i}),
       .data_o({addr_o, last_o, emit_o, next_o, first_o, valid_o, sigq_o, sigi_o})
   );
 
-endmodule  // sigdelay
+endmodule  /* sigdelay */
