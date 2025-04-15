@@ -256,7 +256,7 @@ module toy_correlator #(
 
   // Note that this is setup all wrong.
   accumulator #(
-      .CORES(LOOP0),
+      .CORES(LOOP0*LOOP1),
       .TRATE(TRATE),
       .WIDTH(ACCUM),
       .SBITS(SBITS)

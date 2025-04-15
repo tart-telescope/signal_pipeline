@@ -51,7 +51,6 @@ module visblock #(
     localparam integer ACCUM = ADDER + $clog2(LOOP1),
 
     localparam integer PSUMS = LOOP0 * LOOP1,
-    localparam integer ABITS = ACCUM,
     localparam integer ASB   = ACCUM - 1,
     localparam integer SBITS = ACCUM + $clog2(TRATE),
     localparam integer MSB   = SBITS - 1,
@@ -182,7 +181,7 @@ module visblock #(
   // Note: this instance would normally be at the end of a `vismerge` "chain,"
   //   which would typically be `LOOP0` in length.
   visaccum #(
-      .IBITS(ABITS),
+      .IBITS(ACCUM),
       .OBITS(SBITS),
       .PSUMS(PSUMS),
       .COUNT(TRATE)

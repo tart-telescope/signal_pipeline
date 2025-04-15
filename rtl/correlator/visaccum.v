@@ -46,7 +46,7 @@ module visaccum #(
 
   reg [CSB:0] count;
   reg czero;
-  wire [CSB:0] cnext = count + 1;
+  wire [CBITS:0] cnext = count + 1;
   wire cwrap = cnext == COUNT;
 
 
@@ -144,7 +144,7 @@ module visaccum #(
           count  <= CZERO;
           ac_lst <= 1'b1;
         end else begin
-          count  <= cnext;
+          count  <= cnext[CSB:0];
           ac_lst <= 1'b0;
         end
       end else begin
