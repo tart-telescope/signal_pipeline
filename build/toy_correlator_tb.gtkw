@@ -1,27 +1,30 @@
 [*]
 [*] GTKWave Analyzer v3.3.116 (w)1999-2023 BSI
-[*] Tue Apr 15 00:41:14 2025
+[*] Tue Apr 15 02:53:57 2025
 [*]
 [dumpfile] "/home/patrick/dev/signal_pipeline/build/toy_correlator_tb.vcd"
-[dumpfile_mtime] "Tue Apr 15 00:38:38 2025"
-[dumpfile_size] 1094310
+[dumpfile_mtime] "Tue Apr 15 02:53:16 2025"
+[dumpfile_size] 6475151
 [savefile] "/home/patrick/dev/signal_pipeline/build/toy_correlator_tb.gtkw"
-[timestart] 687030
+[timestart] 0
 [size] 2560 1393
 [pos] -1 -1
-*-14.191883 785000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.191883 920000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] toy_correlator_tb.
 [treeopen] toy_correlator_tb.U_TOY1.
-[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.
-[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.
-[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[0].
-[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[1].
-[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[2].
-[treeopen] toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.U_ROUTE1.
+[treeopen] toy_correlator_tb.U_TOY1.U_BCORE1.
+[treeopen] toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[0].
+[treeopen] toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[0].U_XCHAIN.
+[treeopen] toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[1].
+[treeopen] toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[2].
+[treeopen] toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[3].
+[treeopen] toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[4].
+[treeopen] toy_correlator_tb.U_TOY1.U_BCORE1.U_ROUTE1.
+[treeopen] toy_correlator_tb.U_TOY1.U_CORE1.
 [sst_width] 278
-[signals_width] 166
+[signals_width] 158
 [sst_expanded] 1
-[sst_vpaned_height] 563
+[sst_vpaned_height] 554
 @28
 toy_correlator_tb.rst_n
 @200
@@ -41,7 +44,7 @@ toy_correlator_tb.a_lst
 toy_correlator_tb.a_dat[7:0]
 @1000200
 -Source
-@800200
+@c00200
 -Bus
 @28
 toy_correlator_tb.bus_clk
@@ -59,7 +62,6 @@ toy_correlator_tb.U_TOY1.bus_ready_i
 toy_correlator_tb.U_TOY1.bus_last_o
 @1401200
 -BusInt
-@1000200
 -Bus
 @28
 toy_correlator_tb.vis_clk
@@ -97,65 +99,72 @@ toy_correlator_tb.U_TOY1.SIGBUF0.ended
 -Int
 @1000200
 -Buffer
-@c00200
--SigMUX
-@800200
--SigMUXInt
-@1000200
--SigMUXInt
-@1401200
--SigMUX
 @200
 -** Correlator
-@800200
--Correlate
+@c00200
+-CorrelatorOut
 @28
+[color] 2
+toy_correlator_tb.U_TOY1.U_CORE1.vis_frame_o
 [color] 3
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[0].U_COREX.valid_o
+toy_correlator_tb.U_TOY1.U_CORE1.vis_valid_o
+toy_correlator_tb.U_TOY1.U_CORE1.vis_first_o
+toy_correlator_tb.U_TOY1.U_CORE1.vis_last_o
 @22
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[0].U_COREX.revis_o[3:0]
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[0].U_COREX.imvis_o[3:0]
+toy_correlator_tb.U_TOY1.U_CORE1.vis_real_o[6:0]
+toy_correlator_tb.U_TOY1.U_CORE1.vis_imag_o[6:0]
+@1401200
+-CorrelatorOut
 @28
+toy_correlator_tb.U_TOY1.U_CORE1.cor_frame
 [color] 3
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[1].U_COREX.valid_o
+toy_correlator_tb.U_TOY1.U_CORE1.cor_valid
 @22
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[1].U_COREX.revis_o[3:0]
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[1].U_COREX.imvis_o[3:0]
-@28
-[color] 3
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[2].U_COREX.valid_o
-@22
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[2].U_COREX.revis_o[3:0]
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.gen_corr_chain[2].U_COREX.imvis_o[3:0]
-@800200
--CorInt
-@28
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.dst_next_w[2:0]
-@22
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.dst_real_w[11:0]
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.dst_imag_w[11:0]
-@29
-[color] 3
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.cor_valid
-@22
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.cor_real_w[3:0]
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.cor_imag_w[3:0]
-@28
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.U_ROUTE1.valid[2:0]
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.U_ROUTE1.rev_valid_w[2:0]
-@22
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.U_ROUTE1.rev_rdata_w[11:0]
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.U_ROUTE1.rev_idata_w[11:0]
-@28
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.U_ROUTE1.src_valid_w[2:0]
-@22
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.U_ROUTE1.src_rdata_w[11:0]
-toy_correlator_tb.U_TOY1.gen_saintly.U_CORE1.U_ROUTE1.src_idata_w[11:0]
-@1000200
--CorInt
--Correlate
+toy_correlator_tb.U_TOY1.U_CORE1.cor_real_w[3:0]
+toy_correlator_tb.U_TOY1.U_CORE1.cor_imag_w[3:0]
 @200
 -*** VisAccum
+@22
+toy_correlator_tb.U_TOY1.U_BCORE1.vis_frame_w[4:0]
+@28
+toy_correlator_tb.U_TOY1.U_BCORE1.cor_valid_w
+@22
+toy_correlator_tb.U_TOY1.U_BCORE1.cor_real_w[6:0]
+toy_correlator_tb.U_TOY1.U_BCORE1.cor_imag_w[6:0]
+@800200
+-VisInt
+@28
+[color] 3
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[0].U_XCHAIN.vis_valid_o
+@22
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[0].U_XCHAIN.vis_real_o[6:0]
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[0].U_XCHAIN.vis_imag_o[6:0]
+@28
+[color] 3
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[1].U_XCHAIN.vis_valid_o
+@22
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[1].U_XCHAIN.vis_real_o[6:0]
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[1].U_XCHAIN.vis_imag_o[6:0]
+@28
+[color] 3
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[2].U_XCHAIN.vis_valid_o
+@22
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[2].U_XCHAIN.vis_real_o[6:0]
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[2].U_XCHAIN.vis_imag_o[6:0]
+@28
+[color] 3
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[3].U_XCHAIN.vis_valid_o
+@22
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[3].U_XCHAIN.vis_real_o[6:0]
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[3].U_XCHAIN.vis_imag_o[6:0]
+@28
+[color] 3
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[4].U_XCHAIN.vis_valid_o
+@22
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[4].U_XCHAIN.vis_real_o[6:0]
+toy_correlator_tb.U_TOY1.U_BCORE1.gen_vis_chains[4].U_XCHAIN.vis_imag_o[6:0]
+@1000200
+-VisInt
 @800200
 -Partial
 @28

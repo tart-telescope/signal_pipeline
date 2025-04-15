@@ -202,7 +202,8 @@ module vischain #(
 
   // -- Accumulator for Chain -- //
 
-  assign cor_frame = dst_frame_w[LSB];
+  // note: only correct when chain is fully-saturated
+  assign cor_frame = cor_valid;
 
   visaccum #(
       .IBITS(ADDER),
