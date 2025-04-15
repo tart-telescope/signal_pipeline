@@ -49,9 +49,9 @@ module vismerge #(
 
   // -- Output Assignments -- //
 
-  assign seq_valid_o = valid[LSB];
-  assign seq_rdata_o = rdata[WSB:PBITS];
-  assign seq_idata_o = idata[WSB:PBITS];
+  assign seq_valid_o = REVERSE ? valid[0] : valid[LSB];
+  assign seq_rdata_o = REVERSE ? rdata[MSB:0] : rdata[WSB:PBITS];
+  assign seq_idata_o = REVERSE ? idata[MSB:0] : idata[WSB:PBITS];
 
   // -- Internal Assignments -- //
 
@@ -80,6 +80,7 @@ module vismerge #(
           idata[ii*WIDTH+MSB:ii*WIDTH] <= {WIDTH{1'bx}};
         end else begin
           if (par_valid_i[ii]) begin
+            // $display("%10t: Chain-link '%d' latching", $time, ii);
             // Push data onto chain from input source
             valid[ii] <= 1'b1;
             rdata[ii*WIDTH+MSB:ii*WIDTH] <= par_rdata_i[ii*WIDTH+MSB:ii*WIDTH];

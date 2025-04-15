@@ -485,15 +485,15 @@ module toy_correlator #(
     $display(" + num antennas/radios: %5d (index bits:   %2d)", WIDTH, DBITS);
     $display(" + capture buffer size: %5d (pointer bits: %2d)", COUNT, CBITS);
     $display("Generated settings:");
-    $display(" + tap-widths:  %5d", TAP_WIDTH);
-    $display(" + sel-widths:  %5d", SEL_WIDTH);
+    $display(" + source-MUX width:  %5d (select bits:  %2d)", MUX_N, XBITS);
+    $display(" + MUX A/B tap-bits:  %5d", TAP_WIDTH);
+    $display(" + MUX A/B sel-bits:  %5d", SEL_WIDTH);
+    $display(" + partial sums/core: %5d (counter bits: %2d)", LOOP0, LBITS);
+    $display(" + iterations/accum.: %5d (counter bits: %2d)", LOOP1, HBITS);
     $display("Correlator settings:");
     $display(" + clock mult.: %5d (select bits:  %2d)", TRATE, TBITS);
     $display(" + packet size: %5d (address bits: %2d)", BUNCH, $clog2(BUNCH));
     $display(" + num samples: %5d (counter bits: %2d)", COUNT, $clog2(COUNT));
-    $display(" + partial sums/core: %5d (counter bits: %2d)", LOOP0, LBITS);
-    $display(" + iterations/sum:    %5d (counter bits: %2d)", LOOP1, HBITS);
-    $display(" + src-mux width: %3d (select bits:  %2d)", MUX_N, XBITS);
     $display(" + output buffer size: %4d (pointer bits: %2d)", AFIFO_DEPTH, FBITS);
     $display;
   end

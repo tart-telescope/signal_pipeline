@@ -133,7 +133,7 @@ module vischain #(
 
   // -- Correlator Chain -- //
 
-  localparam integer TAP_WIDTH = MUX_N * TRATE;
+  localparam integer TAP_WIDTH = $clog2(CHANS) * MUX_N;
   localparam integer SEL_WIDTH = $clog2(MUX_N) * TRATE;
 
   genvar ii;
