@@ -173,43 +173,10 @@ module toy_correlator #(
   localparam [15:0] ASELS = {2'b10, 2'b00, 2'b10, 2'b01, 2'b01, 2'b00, 2'b00, 2'b00};
   localparam [15:0] BSELS = {2'b10, 2'b00, 2'b10, 2'b10, 2'b01, 2'b10, 2'b01, 2'b00};
 
+  localparam integer LOOPS = LOOP0 * LOOP1;
+
   wire vis_frame, vis_valid, vis_first, vis_last;
   wire [SSB:0] vis_rdata, vis_idata;
-
-  vischain #(
-      .CHANS(WIDTH),
-      .ADDER(ABITS),
-      .MUX_N(MUX_N),
-      .TRATE(TRATE),
-      .LOOP0(LOOP0),
-      .LOOP1(LOOP1),
-      .ATAPS({LOOP0{ATAPS}}),  // todo: full-width A-taps
-      .BTAPS({LOOP0{BTAPS}}),
-      .ASELS({LOOP0{ASELS}}),
-      .BSELS({LOOP0{BSELS}}),
-      .AUTOS(AUTOS)
-  ) U_CORE1 (
-      .clock(vis_clock),
-      .reset(vis_reset),
-      /*
-      .vis_frame_o(vis_frame),
-      .vis_valid_o(vis_valid),
-      .vis_first_o(vis_first),
-      .vis_last_o (vis_last),
-      .vis_real_o (vis_rdata),
-      .vis_imag_o (vis_idata),
-*/
-      .sig_valid_i(buf_valid_w),
-      .sig_first_i(buf_first_w),
-      .sig_next_i(buf_next_w),
-      .sig_emit_i(buf_emit_w),
-      .sig_last_i(buf_last_w),
-      .sig_addr_i(buf_taddr_w),
-      .sig_dati_i(buf_idata_w),
-      .sig_datq_i(buf_qdata_w)
-  );
-
-  localparam integer LOOPS = LOOP0 * LOOP1;
 
   visblock #(
       .CHANS(WIDTH),
