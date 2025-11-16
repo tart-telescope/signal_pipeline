@@ -36,8 +36,8 @@ RUN tar xvf Gowin_V1.9.8.11_Education_linux.tar.gz
 #########################################################################################
 WORKDIR /build
 RUN git clone --depth=1 --recurse-submodules https://github.com/psuggate/misc-verilog-cores.git \
-&& cd misc-verilog-cores \
-&& git checkout 781dad6696dc2ac72457a7b34538f45d2d30c39e
+    && cd misc-verilog-cores \
+    && git checkout 856ade2728870367403c3c6fda9d150a61bbaa3d
 
 WORKDIR /build/misc-verilog-cores/synth/sipeed-tang-primer-20k/
 

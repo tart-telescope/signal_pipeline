@@ -13,3 +13,6 @@ axis-usb/
 misc-verilog-cores/
 verilog-axi/
 verilog-axis/
+
+# Created by build-system
+synth/sipeed-tang-primer-20k/toy-tart.tcl
