@@ -13,25 +13,35 @@ sim:
 # Settings for building the Docker image:
 UID	:= `id -u $(USER)`
 GID	:= `id -g $(USER)`
+ARGS	:= --build-arg USERNAME=$(USER) --build-arg USER_UID=$(UID) --build-arg
 
 # Settings for running Gowin synthesis within the Docker image:
 USERDIR	:= /home/$(USER)/:/home/$(USER):rw
 PASSWD	:= /etc/passwd:/etc/passwd:ro
 GROUP	:= /etc/group:/etc/group:ro
 VOLUMES	:= -v `pwd`:/build/signal_pipeline:rw -v $(PASSWD) -v $(GROUP) -v $(USERDIR)
-MAKE	:= cd /build/signal_pipeline/synth/sipeed-tang-primer-20k && make -f gowin.mk GW_SH=/opt/gowin/IDE/bin/gw_sh
+TOPDIR	:= /build/signal_pipeline/synth/sipeed-tang-primer-20k
+MAKE	:= make -f gowin.mk GW_SH=/opt/gowin/IDE/bin/gw_sh
 
 docker:
-	@docker build -f Dockerfile.gowin --build-arg USERNAME=$(USER) --build-arg USER_UID=$(UID) --build-arg USER_GID=$(GID) -t gowin-eda:latest .
+	@docker build -f Dockerfile.gowin $(ARGS) USER_GID=$(GID) -t gowin-eda:latest .
 
 gowin:	docker
-	@docker run $(VOLUMES) -e USER=$(USER) --user=$(UID):$(GID) --rm -it gowin-eda bash -c "$(MAKE)"
+	@docker run $(VOLUMES) -e USER=$(USER) --user=$(UID):$(GID) -w=$(TOPDIR) \
+--rm -it gowin-eda bash -c "$(MAKE)"
 
 synth:	docker
-	@docker run $(VOLUMES) -e USER=$(USER) --user=$(UID):$(GID) --rm -it gowin-eda bash
+	@docker run $(VOLUMES) -e USER=$(USER) --user=$(UID):$(GID) -w=$(TOPDIR) \
+--rm -it gowin-eda bash
 
+# Todo: does not work, yet ...
 ide:
 	@scripts/docker-gowin-ide.sh
+
+SYNDIR	:= `pwd`/synth/sipeed-tang-primer-20k
+BIT	:= $(SYNDIR)/impl/pnr/project.fs
+flash:	gowin
+	openFPGALoader --board tangprimer20k --write-sram $(BIT)
 
 #
 #  Documentation settings
@@ -71,6 +81,7 @@ doc:	$(PDF) $(PIC) $(PNG) $(INC) diagrams
 	@make -C synth doc
 
 clean:
+	@rm -f synth/sipeed-tang-primer-20k/toy-tart.tcl
 	rm -f $(PDF) $(LTX) $(PIC)
 
 # Implicit rules:

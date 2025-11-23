@@ -14,9 +14,10 @@ module top #(
     // -- Global 16.368 MHz clock oscillator -- //
     input CLK_16,
     input clk_26,
-    input rst_n,   // Button 'S2' on the Sipeeed Tang Primer 20k dev-board
+    input rst_n,   // Button 'S1' on the Sipeeed Tang Primer 20k dev-board
 
     input send_n,  // 'S4' button for UART read-back
+    output [5:2] leds,
 
     input  uart_rx,  // '/dev/ttyUSB1'
     output uart_tx,
@@ -28,7 +29,7 @@ module top #(
     input  CS,
 
     // -- Radio signals -- //
-    // output RADIO_RECONFIG,
+    output RADIO_RECONFIG,
     // input [ANTENNAS-1:0] I1,
     // input [ANTENNAS-1:0] Q1,
 
@@ -42,7 +43,6 @@ module top #(
 
     // 1Gb DDR3 SDRAM pins
     output ddr_ck,
-    // output ddr_ck_n,
     output ddr_cke,
     output ddr_rst_n,
     output ddr_cs,
@@ -54,7 +54,6 @@ module top #(
     output [13:0] ddr_addr,
     output [1:0] ddr_dm,
     inout [1:0] ddr_dqs,
-    // inout [1:0] ddr_dqs_n,
     inout [15:0] ddr_dq
 );
 
@@ -70,19 +69,19 @@ module top #(
   localparam DEBUG = 1;
   localparam USE_EP4_OUT = 1;
 
-  parameter [15:0] VENDOR_ID = 16'hF4CE;
-  parameter integer VENDOR_LENGTH = 19;
+  localparam [15:0] VENDOR_ID = 16'hF4CE;
+  localparam integer VENDOR_LENGTH = 19;
   localparam integer VSB = VENDOR_LENGTH * 8 - 1;
-  parameter [VSB:0] VENDOR_STRING = "University of Otago";
+  localparam [VSB:0] VENDOR_STRING = "University of Otago";
 
-  parameter [15:0] PRODUCT_ID = 16'h0003;
-  parameter integer PRODUCT_LENGTH = 8;
+  localparam [15:0] PRODUCT_ID = 16'h0003;
+  localparam integer PRODUCT_LENGTH = 8;
   localparam integer PSB = PRODUCT_LENGTH * 8 - 1;
-  parameter [PSB:0] PRODUCT_STRING = "TART USB";
+  localparam [PSB:0] PRODUCT_STRING = "TART USB";
 
-  parameter integer SERIAL_LENGTH = 8;
+  localparam integer SERIAL_LENGTH = 8;
   localparam integer NSB = SERIAL_LENGTH * 8 - 1;
-  parameter [NSB:0] SERIAL_STRING = "TART0001";
+  localparam [NSB:0] SERIAL_STRING = "TART0001";
 
   // USB-core end-point configuration
   localparam ENDPOINT1 = 4'd1;
@@ -143,8 +142,6 @@ module top #(
   wire res_tvalid, res_tready, res_tkeep, res_tlast;
   wire [7:0] viz_tdata, ctl_tdata, res_tdata;
   wire capture_en_w, acquire_en_w, correlator_w, visb_ready_w, ddr3_ready_w;
-
-  wire configured, crc_error_w, m2u_tkeep;
 
   assign visb_ready_w = viz_tvalid;
 
@@ -344,6 +341,11 @@ module top #(
   wire m2u_tvalid, m2u_tready, m2u_tlast;
   wire u2m_tvalid, u2m_tready, u2m_tkeep, u2m_tlast;
   wire [7:0] m2u_tdata, u2m_tdata;
+  wire [3:0] cbits;
+  wire configured, crc_error_w, ep1_rdy, ep2_rdy, ep3_rdy;
+
+  assign leds = {~cbits[3:0]};
+  assign cbits = {ep3_rdy, ep2_rdy, ep1_rdy, configured};
 
   usb_ulpi_core #(
       .VENDOR_ID(VENDOR_ID),
@@ -364,7 +366,7 @@ module top #(
       .ENDPOINT4(ENDPOINT4),
       .USE_EP4_OUT(USE_EP4_OUT)
   ) U_USB1 (
-      .osc_in(CLK_16),
+      .osc_in(clk_26),
       .arst_n(rst_n),
 
       .ulpi_clk (ulpi_clk),
@@ -408,10 +410,16 @@ module top #(
       .blky_tdata_o (ctl_tdata)
   );
 
+  assign ep1_rdy = U_USB1.U_TOP1.ep1_rdy_w;
+  assign ep2_rdy = U_USB1.U_TOP1.ep2_rdy_w;
+  assign ep3_rdy = U_USB1.U_TOP1.ep3_rdy_w | crc_error_w;
+
 
   //
   //  SDRAM
   ///
+
+  wire m2u_tkeep;
 
   assign ddr_addr[13] = 1'b0;
   assign u2m_tkeep = u2m_tvalid;

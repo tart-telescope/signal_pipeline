@@ -6,11 +6,13 @@ CST	 := gw2a-tang-primer.cst
 SDC	 := gw2a-tang-primer.sdc
 GW_SH	 := /opt/gowin/IDE/bin/gw_sh
 
-VROOT 	 :=  $(dir $(abspath $(CURDIR)/..))
+VROOT 	 := $(dir $(abspath $(CURDIR)/..))
 RTL	 = $(VROOT)/rtl
 LIB	 = $(VROOT)/lib/misc-verilog-cores
 BENCH	 = $(VROOT)/bench
+AXIDIR	:= $(VROOT)/lib/verilog-axi
 
+# Library cores and sources
 ARCH_V	:= $(wildcard $(LIB)/arch/*.v)
 AXIS_V	:= $(wildcard $(LIB)/axis/*.v)
 DDR3_V	:= $(wildcard $(LIB)/ddr3/*.v)
@@ -19,30 +21,20 @@ MISC_V	:= $(wildcard $(LIB)/misc/*.v)
 SPI_V	:= $(wildcard $(LIB)/spi/*.v)
 UART_V	:= $(wildcard $(LIB)/uart/*.v)
 USB_V	:= $(wildcard $(LIB)/usb/*.v)
-VERLIB	:= $(filter-out %_tb.v, $(ARCH_V) $(AXIS_V) $(DDR3_V) $(FIFO_V) $(MISC_V) $(SPI_V) $(UART_V) $(USB_V))
+AXI_V	:= $(AXIDIR)/priority_encoder.v $(AXIDIR)/axi_register_wr.v \
+	$(AXIDIR)/axi_crossbar_wr.v $(AXIDIR)/axi_crossbar_addr.v \
+	$(AXIDIR)/arbiter.v \
 
-VERILOGS := top.v \
-	tart_ddr3.v \
-	sync_reset.v \
-	tart_spi.v \
-	toy_correlator.v \
+VERLIB	:= $(filter-out %_tb.v, $(ARCH_V) $(AXIS_V) $(DDR3_V) $(FIFO_V) $(MISC_V) $(SPI_V) $(UART_V) $(USB_V) $(AXI_V))
+
+# TART sources
+CORR_V	:= $(filter-out %_tb.v, $(wildcard $(RTL)/correlator/*.v))
+TART_V	:= $(filter-out %_tb.v, $(wildcard *.v))
+
+VERILOGS := $(TART_V) $(CORR_V) \
 	${RTL}/radio/radio.v \
 	${RTL}/tart/acquire.v \
 	${RTL}/tart/controller.v \
-	${RTL}/correlator/accumulator.v \
-	${RTL}/correlator/correlate.v \
-	${RTL}/correlator/correlator.v \
-	${RTL}/correlator/sigbuffer.v \
-	${RTL}/correlator/sigsource.v \
-	${RTL}/correlator/tart_correlator.v \
-	${RTL}/correlator/visaccum.v \
-	${RTL}/correlator/visfinal.v \
-	${RTL}/correlator/vismerge.v \
-	$(VROOT)/lib/verilog-axi/priority_encoder.v \
-	$(VROOT)/lib/verilog-axi/axi_register_wr.v \
-	$(VROOT)/lib/verilog-axi/axi_crossbar_wr.v \
-	$(VROOT)/lib/verilog-axi/axi_crossbar_addr.v \
-	$(VROOT)/lib/verilog-axi/arbiter.v \
 	$(VERLIB)
 
 gowin_build: impl/pnr/project.fs
@@ -50,7 +42,7 @@ gowin_build: impl/pnr/project.fs
 $(PROJECT).tcl: $(VERILOGS)
 	@echo ${VERILOGS}
 	@echo "set_device -name $(FAMILY) $(DEVICE)" > $(PROJECT).tcl
-	@for VAR in $?; do echo $$VAR | grep -s -q "\.v$$" && echo "add_file $$VAR" >> $(PROJECT).tcl; done
+	@for VAR in $^; do echo $$VAR | grep -s -q "\.v$$" && echo "add_file $$VAR" >> $(PROJECT).tcl; done
 	@echo "add_file ${CST}" >> $(PROJECT).tcl
 	@echo "add_file ${SDC}" >> $(PROJECT).tcl
 	@echo "set_option -include_path $(LIB)/axis/" >> $(PROJECT).tcl

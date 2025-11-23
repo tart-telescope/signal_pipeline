@@ -65,7 +65,7 @@ module tart_ddr3 #(
     parameter CLOCK_SHIFT = 2'b10
 ) (
     input osc_in,  // Default: 27.0 MHz
-    input arst_n,  // 'S2' button for async-reset
+    input arst_n,  // 'S1' button for async-reset
 
     input bus_clock,  // Default: 60.0 MHz
     input bus_reset,
