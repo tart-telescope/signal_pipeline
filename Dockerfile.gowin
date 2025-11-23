@@ -4,14 +4,18 @@ MAINTAINER Tim Molteno "tim@elec.ac.nz"
 ARG DEBIAN_FRONTEND=noninteractive
 
 # debian setup
-RUN apt-get update -y && apt-get install -y \
-    build-essential
+RUN apt-get update -y && apt-get install -y build-essential bash git wget libglib2.0.0
 
-RUN apt-get install -y bash git wget
-RUN apt-get install -y libglib2.0.0
+# RUN apt-get install -y libwayland-dev qtbase5-dev qtbase5-dev-tools \
+#     qtbase5-private-dev qtquickcontrols2-5-dev qtquickcontrols2-5-private-dev \
+#     qtdeclarative5-dev qtdeclarative5-dev-tools qtdeclarative5-private-dev \
+#     libqt5waylandclient5-dev libqt5waylandcompositor5-dev qtwayland5-dev-tools \
+#     qtwayland5-private-dev qtsystems5-dev qtsystems5-private-dev \
+#     libqt5svg5-dev libqt5sql5-sqlite libqt5sensors5-dev libqt5serialport5-dev \
+#     libqt5networkauth5-dev libqt5websockets5-dev libqt5concurrent5 fonts-noto \
+#     qtxdg-dev-tools libqt5opengl5-dev qttools5-dev qttools5-dev-tools qtscript5-dev
 
-RUN rm -rf /var/lib/apt/lists/*
-
+# RUN rm -rf /var/lib/apt/lists/*
 
 #########################################################################################
 ##
@@ -67,15 +71,10 @@ RUN git clone --depth=1 https://github.com/tart-telescope/signal_pipeline.git \
 # ARG SIGVER=b505aabc10f1eea794328246ae3210badac89793
 # RUN git clone --depth=1 https://github.com/tart-telescope/signal_pipeline.git \
 #     && cd signal_pipeline \
-#     && git branch feature/toy_correlator \
 #     && git checkout $SIGVER
 
 WORKDIR /build/signal_pipeline/lib
 RUN ./verilog-axis.bash && ./verilog-axi.bash && ./misc-verilog-cores.bash
 
 WORKDIR /build/signal_pipeline/synth/sipeed-tang-primer-20k/
-# RUN sh -c "cp ../../lib/misc-verilog-cores/axis/*.vh ." \
-# && sh -c "cp ../../lib/misc-verilog-cores/ddr3/*.vh ." \
-# && sh -c "cp ../../lib/misc-verilog-cores/usb/*.vh ."
-
-RUN make -f Makefile.gowin GW_SH=/opt/gowin/IDE/bin/gw_sh
+RUN make -f gowin.mk GW_SH=/opt/gowin/IDE/bin/gw_sh

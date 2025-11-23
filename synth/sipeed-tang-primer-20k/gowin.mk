@@ -45,7 +45,6 @@ VERILOGS := top.v \
 	$(VROOT)/lib/verilog-axi/arbiter.v \
 	$(VERLIB)
 
-
 gowin_build: impl/pnr/project.fs
 
 $(PROJECT).tcl: $(VERILOGS)
@@ -73,6 +72,6 @@ impl/pnr/project.fs: $(PROJECT).tcl
 
 gowin_load: impl/pnr/project.fs
 	openFPGALoader -b tangprimer20k impl/pnr/project.fs -f
-	
+
 clean:
 	rm -f $(PROJECT).tcl

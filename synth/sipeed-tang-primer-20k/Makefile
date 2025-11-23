@@ -9,26 +9,12 @@ IVC	?= iverilog
 OPT	:= -g2005-sv -D__icarus -Wall -I$(LIBDIR)/usb/
 
 # Various cores & modules
-# ARCH	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/arch/*.v) $(LIBDIR)/sim/arch/*.v))
-# AXIS	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/axis/*.v))
-# FIFO	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/fifo/*.v))
-# MISC	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/misc/*.v))
-# SPI	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/spi/*.v))
-# USB	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/usb/*.v))
-
 ARCH	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/arch/*.v) $(LIBDIR)/sim/arch/*.v)
 AXIS	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/axis/*.v))
 FIFO	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/fifo/*.v))
 MISC	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/misc/*.v))
 SPI	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/spi/*.v))
 USB	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/usb/*.v))
-
-# ARCH	:= $(wildcard $(LIBDIR)/arch/*.v) $(LIBDIR)/sim/arch/*.v)
-# AXIS	:= $(wildcard $(LIBDIR)/axis/*.v)
-# FIFO	:= $(wildcard $(LIBDIR)/fifo/*.v)
-# MISC	:= $(wildcard $(LIBDIR)/misc/*.v)
-# SPI	:= $(wildcard $(LIBDIR)/spi/*.v)
-# USB	:= $(wildcard $(LIBDIR)/usb/*.v)
 
 DIR	:= ../../rtl
 CORR	:= $(wildcard $(DIR)/correlator/*.v)
