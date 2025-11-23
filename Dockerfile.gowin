@@ -3,8 +3,18 @@ FROM ubuntu:jammy
 MAINTAINER Tim Molteno "tim@elec.ac.nz"
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Define user, in order to use Git and access credentials
+ARG USERNAME=patrick
+ARG USER_UID=1000
+ARG USER_GID=1000
+
+# Create group and user with correct UID/GID
+RUN groupadd --gid ${USER_GID} ${USERNAME} \
+    && useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash ${USERNAME}
+
 # debian setup
-RUN apt-get update -y && apt-get install -y build-essential bash git wget libglib2.0.0
+RUN apt-get update -y && apt-get install -y locales gawk build-essential bash \
+    git wget libglib2.0.0
 
 # RUN apt-get install -y libwayland-dev qtbase5-dev qtbase5-dev-tools \
 #     qtbase5-private-dev qtquickcontrols2-5-dev qtquickcontrols2-5-private-dev \
@@ -16,6 +26,14 @@ RUN apt-get update -y && apt-get install -y build-essential bash git wget libgli
 #     qtxdg-dev-tools libqt5opengl5-dev qttools5-dev qttools5-dev-tools qtscript5-dev
 
 # RUN rm -rf /var/lib/apt/lists/*
+
+# Set the locale
+RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+RUN dpkg-reconfigure --frontend=noninteractive locales && \
+    update-locale LANG=$LANG
 
 #########################################################################################
 ##
@@ -40,20 +58,20 @@ RUN tar xvf Gowin_V1.9.8.11_Education_linux.tar.gz
 # RUN wget https://cdn.gowinsemi.com.cn/Gowin_V1.9.11.01_Education_Linux.tar.gz
 # RUN tar xvf Gowin_V1.9.11.01_Education_Linux.tar.gz
 
+
 #########################################################################################
 #
 ###################   Now build the USB test ##############################
 #
 #########################################################################################
-WORKDIR /build
-ARG VERVER=856ade2728870367403c3c6fda9d150a61bbaa3d
-RUN git clone --depth=1 --recurse-submodules https://github.com/psuggate/misc-verilog-cores.git \
-    && cd misc-verilog-cores \
-    && git checkout $VERVER
-
-WORKDIR /build/misc-verilog-cores/synth/sipeed-tang-primer-20k/
-
-RUN make -f Makefile.gowin GW_SH=/opt/gowin/IDE/bin/gw_sh
+# WORKDIR /build
+# ARG VERVER=856ade2728870367403c3c6fda9d150a61bbaa3d
+# RUN git clone --depth=1 --recurse-submodules https://github.com/psuggate/misc-verilog-cores.git \
+#     && cd misc-verilog-cores \
+#     && git checkout $VERVER
+# 
+# WORKDIR /build/misc-verilog-cores/synth/sipeed-tang-primer-20k/
+# RUN make -f Makefile.gowin GW_SH=/opt/gowin/IDE/bin/gw_sh
 
 
 #########################################################################################
@@ -62,22 +80,6 @@ RUN make -f Makefile.gowin GW_SH=/opt/gowin/IDE/bin/gw_sh
 #
 #########################################################################################
 WORKDIR /build
+RUN chown -R $USERNAME:$USERNAME /build
 
-# For dev-builds, I only want the latest, from this branch.
-ARG SIGVER=5b0d3108cd3a98cb40290fc9228fe9d9ec3630bd
-RUN git clone https://github.com/tart-telescope/signal_pipeline.git && \
-    cd signal_pipeline && git checkout $SIGVER
-
-#     cd signal_pipeline && git branch feature/toy_correlator && \
-#     git checkout feature/toy_correlator && git checkout $SIGVER
-
-# ARG SIGVER=b505aabc10f1eea794328246ae3210badac89793
-# RUN git clone --depth=1 https://github.com/tart-telescope/signal_pipeline.git \
-#     && cd signal_pipeline \
-#     && git checkout $SIGVER
-
-WORKDIR /build/signal_pipeline/lib
-RUN ./verilog-axis.bash && ./verilog-axi.bash && ./misc-verilog-cores.bash
-
-WORKDIR /build/signal_pipeline/synth/sipeed-tang-primer-20k/
-RUN make -f gowin.mk GW_SH=/opt/gowin/IDE/bin/gw_sh
+USER $USERNAME

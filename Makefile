@@ -1,4 +1,4 @@
-.PHONY:	all sim gowin ide doc diagrams clean
+.PHONY:	all sim docker gowin ide doc diagrams clean
 all:
 	@make -C generator all
 	@make -C bench all
@@ -10,8 +10,25 @@ sim:
 	@make -C synth sim
 	@make -C build sim
 
-gowin:
-	@docker build -f Dockerfile.gowin -t gowin-eda:latest .
+# Settings for building the Docker image:
+UID	:= `id -u $(USER)`
+GID	:= `id -g $(USER)`
+
+# Settings for running Gowin synthesis within the Docker image:
+USERDIR	:= /home/$(USER)/:/home/$(USER):rw
+PASSWD	:= /etc/passwd:/etc/passwd:ro
+GROUP	:= /etc/group:/etc/group:ro
+VOLUMES	:= -v `pwd`:/build/signal_pipeline:rw -v $(PASSWD) -v $(GROUP) -v $(USERDIR)
+MAKE	:= cd /build/signal_pipeline/synth/sipeed-tang-primer-20k && make -f gowin.mk GW_SH=/opt/gowin/IDE/bin/gw_sh
+
+docker:
+	@docker build -f Dockerfile.gowin --build-arg USERNAME=$(USER) --build-arg USER_UID=$(UID) --build-arg USER_GID=$(GID) -t gowin-eda:latest .
+
+gowin:	docker
+	@docker run $(VOLUMES) -e USER=$(USER) --user=$(UID):$(GID) --rm -it gowin-eda bash -c "$(MAKE)"
+
+synth:	docker
+	@docker run $(VOLUMES) -e USER=$(USER) --user=$(UID):$(GID) --rm -it gowin-eda bash
 
 ide:
 	@scripts/docker-gowin-ide.sh

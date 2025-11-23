@@ -32,6 +32,7 @@ module sigdelay #(
     localparam integer DEPTH = 1 << DBITS
 ) (
     input clock,  // Correlator clock domain
+    input reset,
 
     // Undelayed, source signals
     input valid_i,

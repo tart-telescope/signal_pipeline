@@ -7,4 +7,13 @@ target
 *.vcd
 *.out
 *.log
-
+bench/
+build/
+doc/
+generator/
+.git/
+lib/
+rtl/
+scripts/
+synth/
+vcd/
