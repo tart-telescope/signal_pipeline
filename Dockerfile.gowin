@@ -64,9 +64,12 @@ RUN make -f Makefile.gowin GW_SH=/opt/gowin/IDE/bin/gw_sh
 WORKDIR /build
 
 # For dev-builds, I only want the latest, from this branch.
-RUN git clone --depth=1 https://github.com/tart-telescope/signal_pipeline.git \
-    && cd signal_pipeline && git branch feature/toy_correlator && \
-    git checkout feature/toy_correlator
+ARG SIGVER=5b0d3108cd3a98cb40290fc9228fe9d9ec3630bd
+RUN git clone https://github.com/tart-telescope/signal_pipeline.git && \
+    cd signal_pipeline && git checkout $SIGVER
+
+#     cd signal_pipeline && git branch feature/toy_correlator && \
+#     git checkout feature/toy_correlator && git checkout $SIGVER
 
 # ARG SIGVER=b505aabc10f1eea794328246ae3210badac89793
 # RUN git clone --depth=1 https://github.com/tart-telescope/signal_pipeline.git \

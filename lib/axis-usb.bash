@@ -2,7 +2,8 @@
 # Use TMP dir to clone
 TMP=`mktemp --directory`
 pushd ${TMP}
-git clone --depth=1 https://github.com/psuggate/axis-usb.git
+git clone https://github.com/psuggate/axis-usb.git
+# git clone --depth=1 https://github.com/psuggate/axis-usb.git
 cd axis-usb
 git checkout b3f14401ae30aec2441b6b5ecfe39354fddc3113
 popd

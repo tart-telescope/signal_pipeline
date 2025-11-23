@@ -2,7 +2,8 @@
 # Use TMP dir to clone
 TMP=`mktemp --directory`
 pushd ${TMP}
-git clone --depth=1 https://github.com/psuggate/misc-verilog-cores.git
+git clone https://github.com/psuggate/misc-verilog-cores.git
+# git clone --depth=1 https://github.com/psuggate/misc-verilog-cores.git
 cd misc-verilog-cores
 git checkout 781dad6696dc2ac72457a7b34538f45d2d30c39e
 popd

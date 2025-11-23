@@ -2,7 +2,8 @@
 # Use TMP dir to clone
 TMP=`mktemp --directory`
 pushd ${TMP}
-git clone --depth=1 https://github.com/alexforencich/verilog-axis.git
+git clone https://github.com/alexforencich/verilog-axis.git
+# git clone --depth=1 https://github.com/alexforencich/verilog-axis.git
 cd verilog-axis
 git checkout 7823b916bfd298441d5fdabf0b03d0ae8dc210e8
 popd
