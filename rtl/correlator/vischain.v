@@ -110,6 +110,7 @@ module vischain #(
       .LOOP0  (LOOP0)
   ) U_DELAY1 (
       .clock(clock),
+      .reset(reset),
 
       .valid_i(sig_valid_i),  // Undelayed, source signals
       .first_i(sig_first_i),
