@@ -38,9 +38,10 @@ synth:	docker
 ide:
 	@scripts/docker-gowin-ide.sh
 
+.PHONY:	tart
 SYNDIR	:= `pwd`/synth/sipeed-tang-primer-20k
 BIT	:= $(SYNDIR)/impl/pnr/project.fs
-flash:	gowin
+tart:	gowin
 	openFPGALoader --board tangprimer20k --write-sram $(BIT)
 
 #

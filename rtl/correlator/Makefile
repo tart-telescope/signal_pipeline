@@ -61,7 +61,10 @@ clean:
 
 # Implicit rules:
 %.pdf: %.md $(PIC) $(PNG) $(TMP) $(INC)
-	+pandoc --template=$(TMP) $(FLT) $(OPT) -f markdown+tex_math_double_backslash -t latex -V papersize:a4 -V geometry:margin=2cm $< -o $@
+	@pandoc -f markdown $(FLT) $(OPT) -t latex -V papersize:a4 -V geometry:margin=2cm $< -o $@
+
+%.ps:	%.md $(PIC) $(PNG) $(TMP) $(INC)
+	+pandoc --template=$(TMP) $(FLT) $(OPT) -f markdown -t latex -V papersize:a4 -V geometry:margin=2cm $< -o $@
 
 %.tex: %.md $(PIC) $(PNG) $(TMP)
 	+pandoc --filter=pandoc-fignos --filter=pandoc-citeproc --bibliography=$(REF) \

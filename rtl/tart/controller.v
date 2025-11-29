@@ -57,6 +57,7 @@
  *
  */
 module controller #(
+    parameter [6:0] ADDRESS = 7'hE0,
     parameter  integer WIDTH = 48,
     localparam integer MSB   = WIDTH - 1,
     localparam integer ABITS = 2,
@@ -161,5 +162,63 @@ module controller #(
     end
   end
 
+  // -- Controller USB Logics -- //
+
+`ifdef __icarus
+
+  localparam [3:0] ST_IDLE = 4'b0001;
+  localparam [3:0] ST_ADDR;
+  localparam [3:0] ST_REGN;
+  localparam [3:0] ST_RECV;
+  localparam [3:0] ST_SEND;
+  localparam [3:0] ST_READ;
+  localparam [3:0] ST_WRIT;
+  localparam [3:0] ST_WAIT;
+  localparam [3:0] ST_DONE;
+
+  reg [3:0] state = ST_IDLE;
+  reg fetch;
+
+  wire select_w = (s_tdata[7:1] == ADDR);
+
+  always @(posedge bus_clock) begin
+    if (bus_reset) begin
+      // Todo: reset control registers to their default values
+      state <= ST_IDLE;
+      fetch <= 1'bx;
+    end
+    else if (!s_tvalid || !s_tready) begin
+      // Chill
+      state <= state;
+      fetch <= fetch;
+    end
+    else if (s_tlast) begin
+      state <= ST_IDLE;
+      fetch <= 1'bx;
+    end
+    else begin
+      case (state)
+
+        ST_IDLE: begin
+          if (select_w) begin
+            fetch <= s_tdata[0];
+            state <= ST_ADDR;
+          end
+        end
+
+        ST_ADDR: begin
+          if (s_tvalid && s_tready) begin
+          end
+        end
+
+        default: begin
+          $fatal("Goodbye");
+        end
+
+      endcase  /* state */
+    end
+  end
+
+`endif /* __icarus */  
 
 endmodule  /* controller */

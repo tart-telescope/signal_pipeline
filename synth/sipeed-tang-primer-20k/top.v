@@ -150,6 +150,7 @@ module top #(
       .WIDTH(8)
   ) U_CTRL1 (
       .clock_in (CLK_16),
+      // .clock_in (clk_26),
       .areset_n (rst_n),
       .sig_clk_o(sig_clock),
       .sig_rst_o(sig_reset),
@@ -366,7 +367,8 @@ module top #(
       .ENDPOINT4(ENDPOINT4),
       .USE_EP4_OUT(USE_EP4_OUT)
   ) U_USB1 (
-      .osc_in(clk_26),
+      .osc_in(CLK_16),
+      // .osc_in(clk_26),
       .arst_n(rst_n),
 
       .ulpi_clk (ulpi_clk),
@@ -441,6 +443,7 @@ module top #(
       .WRITE_DELAY (WRITE_DELAY)
   ) U_DDR1 (
       .osc_in(CLK_16),  // TART radio clock, 16.368 MHz
+      // .osc_in(clk_26),
       .arst_n(rst_n),   // 'S2' button for async-reset
 
       .bus_clock(usb_clock),

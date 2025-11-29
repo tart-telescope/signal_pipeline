@@ -153,6 +153,11 @@ module tart_correlator #(
   assign acc_re  = re_w[CORES];
   assign acc_im  = im_w[CORES];
 
+`ifdef __potato
+  //
+  // Todo:
+  //  - update to the latest version of correlator;
+  //
   genvar ii;
   generate
     for (ii = 0; ii < CORES; ii = ii + 1) begin : gen_corr_inst
@@ -184,6 +189,7 @@ module tart_correlator #(
       );
     end  // gen_corr_inst
   endgenerate
+`endif /* __potato */
 
   /**
    *  Accumulates each of the partial-sums into the full-width visibilities.

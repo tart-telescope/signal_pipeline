@@ -8,7 +8,7 @@ all:	doc sim
 LIBDIR	:= ../lib/misc-verilog-cores
 AXIDIR	:= $(LIBDIR)/axis
 DDRDIR	:= ../lib/axi-ddr3-lite
-USBDIR	:= ../lib/axis-usb
+USBDIR	:= $(LIBDIR)/usb
 
 # Various cores & modules
 ARCH	:= $(filter-out %_tb.v, $(wildcard $(LIBDIR)/arch/*.v))
