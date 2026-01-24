@@ -5,7 +5,7 @@ pushd ${TMP}
 git clone https://github.com/psuggate/misc-verilog-cores.git
 # git clone --depth=1 https://github.com/psuggate/misc-verilog-cores.git
 cd misc-verilog-cores
-git checkout 856ade2728870367403c3c6fda9d150a61bbaa3d
+git checkout de7e454a00e9e4a1b3c1a36abd75f550c6450fed
 popd
 mkdir -p misc-verilog-cores/sim
 cp -a ${TMP}/misc-verilog-cores/bench/arch misc-verilog-cores/sim/
