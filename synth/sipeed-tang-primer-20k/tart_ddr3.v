@@ -71,9 +71,9 @@ module tart_ddr3 #(
     input bus_reset,
 
     output ddr3_conf_o,
-    output ddr_reset_o,  // Default: 245.52 MHz
+    output ddr_reset_o,
     output ddr_clock_o,  // Default: 122.76 MHz
-    output ddr_clkx2_o,
+    output ddr_clkx2_o,  // Default: 245.52 MHz
 
     // From USB or SPI
     input s_tvalid,
@@ -232,6 +232,7 @@ module tart_ddr3 #(
 
 `endif  /* !__icarus */
 
+  // Also the AXI clock & (synchronous-)reset.
   assign ddr_reset_o = ~locked;
   assign ddr_clock_o = clk_x1;
   assign ddr_clkx2_o = clk_x2;

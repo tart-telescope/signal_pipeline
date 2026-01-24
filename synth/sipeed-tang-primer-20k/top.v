@@ -11,8 +11,7 @@ module top #(
     parameter AXI_ADDRS = 27,
     localparam ASB = AXI_ADDRS - 1
 ) (
-    // -- Global 16.368 MHz clock oscillator -- //
-    input CLK_16,
+    // -- Global 27.000 MHz clock oscillator -- //
     input clk_26,
     input rst_n,   // Button 'S1' on the Sipeeed Tang Primer 20k dev-board
 
@@ -22,6 +21,7 @@ module top #(
     input  uart_rx,  // '/dev/ttyUSB1'
     output uart_tx,
 
+`ifdef __spanner_banana
     // -- SPI interface to the RPi -- //
     input  SCLK,
     output MISO,
@@ -32,6 +32,7 @@ module top #(
     output RADIO_RECONFIG,
     // input [ANTENNAS-1:0] I1,
     // input [ANTENNAS-1:0] Q1,
+`endif /* __spanner_banana */
 
     // -- USB PHY (ULPI) -- //
     output       ulpi_rst,
@@ -43,6 +44,7 @@ module top #(
 
     // 1Gb DDR3 SDRAM pins
     output ddr_ck,
+    output ddr_ck_n,
     output ddr_cke,
     output ddr_rst_n,
     output ddr_cs,
@@ -54,6 +56,7 @@ module top #(
     output [13:0] ddr_addr,
     output [1:0] ddr_dm,
     inout [1:0] ddr_dqs,
+    inout [1:0] ddr_dqs_n,
     inout [15:0] ddr_dq
 );
 
@@ -99,6 +102,7 @@ module top #(
   localparam DDR3_WIDTH = 32;
   localparam DFIFO_BYPASS = 1;
 
+`ifdef __spanner_banana
   // So 16.368 MHz divided by 1, then x15 = 245.52 MHz.
   localparam DDR_FREQ_MHZ = 125;
   localparam CLK_IN_FREQ = "16.368";
@@ -107,10 +111,27 @@ module top #(
   localparam CLK_ODIV_SEL = 4;  // 8 ??
   localparam CLK_SDIV_SEL = 2;
 
+  localparam CLOCK_SHIFT = 2'b11;  // Todo: not required as param?
   localparam WRITE_DELAY = 2'b01;  // In 1/4-cycle increments
   localparam PHY_WR_DELAY = 3;
   localparam PHY_RD_DELAY = 2;
 
+`else  /* !__spanner_banana */
+  // So 27.0 MHz divided by 4, then x37 = 249.75 MHz.
+  localparam DDR_FREQ_MHZ = 125;
+  localparam CLK_IN_FREQ  = "27";
+  localparam CLK_IDIV_SEL = 3;
+  localparam CLK_FBDV_SEL = 36;
+  // localparam CLK_FBDV_SEL = 39; // Works with 'PHY_RD_DELAY = 3', below
+  localparam CLK_ODIV_SEL = 4;
+  localparam CLK_SDIV_SEL = 2;
+
+  localparam CLOCK_SHIFT = 2'b11;  // Todo: not required as param?
+  localparam WRITE_DELAY = 2'b01;
+  localparam PHY_WR_DELAY = 3;
+  localparam PHY_RD_DELAY = 2;
+
+`endif /* !__spanner_banana */
   assign uart_tx = 1'b1;
 
 
@@ -149,8 +170,7 @@ module top #(
   controller #(
       .WIDTH(8)
   ) U_CTRL1 (
-      .clock_in (CLK_16),
-      // .clock_in (clk_26),
+      .clock_in (clk_26),
       .areset_n (rst_n),
       .sig_clk_o(sig_clock),
       .sig_rst_o(sig_reset),
@@ -367,8 +387,7 @@ module top #(
       .ENDPOINT4(ENDPOINT4),
       .USE_EP4_OUT(USE_EP4_OUT)
   ) U_USB1 (
-      .osc_in(CLK_16),
-      // .osc_in(clk_26),
+      .osc_in(clk_26),
       .arst_n(rst_n),
 
       .ulpi_clk (ulpi_clk),
@@ -440,10 +459,10 @@ module top #(
       .DDR_FREQ_MHZ(DDR_FREQ_MHZ),
       .LOW_LATENCY (0),
       .WR_PREFETCH (0),
-      .WRITE_DELAY (WRITE_DELAY)
+      .WRITE_DELAY (WRITE_DELAY),
+      .CLOCK_SHIFT (CLOCK_SHIFT)
   ) U_DDR1 (
-      .osc_in(CLK_16),  // TART radio clock, 16.368 MHz
-      // .osc_in(clk_26),
+      .osc_in(clk_26),  // Dev-kit clock, "26.0 MHz" (but seems to be 27 MHz?)
       .arst_n(rst_n),   // 'S2' button for async-reset
 
       .bus_clock(usb_clock),
@@ -489,7 +508,7 @@ module top #(
 
       // 1Gb DDR3 SDRAM pins
       .ddr_ck(ddr_ck),
-      .ddr_ck_n(),
+      .ddr_ck_n(ddr_ck_n),
       .ddr_cke(ddr_cke),
       .ddr_rst_n(ddr_rst_n),
       .ddr_cs(ddr_cs),
@@ -501,7 +520,7 @@ module top #(
       .ddr_addr(ddr_addr[12:0]),
       .ddr_dm(ddr_dm),
       .ddr_dqs(ddr_dqs),
-      .ddr_dqs_n(),
+      .ddr_dqs_n(ddr_dqs_n),
       .ddr_dq(ddr_dq)
   );
 
