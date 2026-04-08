@@ -21,6 +21,19 @@ module top #(
     input  uart_rx,  // '/dev/ttyUSB1'
     output uart_tx,
 
+`ifdef __spanner_banana
+    // -- SPI interface to the RPi -- //
+    input  SCLK,
+    output MISO,
+    input  MOSI,
+    input  CS,
+
+    // -- Radio signals -- //
+    output RADIO_RECONFIG,
+    // input [ANTENNAS-1:0] I1,
+    // input [ANTENNAS-1:0] Q1,
+`endif /* __spanner_banana */
+
     // -- USB PHY (ULPI) -- //
     output       ulpi_rst,
     input        ulpi_clk,
@@ -89,6 +102,21 @@ module top #(
   localparam DDR3_WIDTH = 32;
   localparam DFIFO_BYPASS = 1;
 
+`ifdef __spanner_banana
+  // So 16.368 MHz divided by 1, then x15 = 245.52 MHz.
+  localparam DDR_FREQ_MHZ = 125;
+  localparam CLK_IN_FREQ = "16.368";
+  localparam CLK_IDIV_SEL = 0;
+  localparam CLK_FBDV_SEL = 14;
+  localparam CLK_ODIV_SEL = 4;  // 8 ??
+  localparam CLK_SDIV_SEL = 2;
+
+  localparam CLOCK_SHIFT = 2'b11;  // Todo: not required as param?
+  localparam WRITE_DELAY = 2'b01;  // In 1/4-cycle increments
+  localparam PHY_WR_DELAY = 3;
+  localparam PHY_RD_DELAY = 2;
+
+`else  /* !__spanner_banana */
   // So 27.0 MHz divided by 4, then x37 = 249.75 MHz.
   localparam DDR_FREQ_MHZ = 125;
   localparam CLK_IN_FREQ  = "27";
@@ -103,6 +131,7 @@ module top #(
   localparam PHY_WR_DELAY = 3;
   localparam PHY_RD_DELAY = 2;
 
+`endif /* !__spanner_banana */
   assign uart_tx = 1'b1;
 
 
@@ -119,7 +148,7 @@ module top #(
   sync_reset #(
       .N(2)
   ) U_VISRST (
-      .clock(vis_clock),  // Default: 249.75 MHz
+      .clock(vis_clock),  // Default: 245.52 MHz
       .arstn(rst_n),
       .reset(vis_reset)
   );
@@ -440,8 +469,8 @@ module top #(
       .bus_reset(usb_reset),
 
       .ddr3_conf_o(ddr3_ready_w),
-      .ddr_clkx2_o(vis_clock),  // (default: 249.750 MHz)
-      .ddr_clock_o(axi_clock),  // (default: 124.875 MHz)
+      .ddr_clkx2_o(vis_clock),  // (default: 245.52 MHz)
+      .ddr_clock_o(axi_clock),  // (default: 122.76 MHz)
       .ddr_reset_o(axi_reset),
 
       // From USB or SPI (default: 60.0 MHz)
